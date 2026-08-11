@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -13,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.governance import AlertWebhook
 from app.services.integration_service import mask_secret
+
+logger = logging.getLogger(__name__)
 
 VALID_WEBHOOK_TYPES = frozenset({"slack", "servicenow"})
 
@@ -33,6 +36,105 @@ class AlertDispatchResult:
     webhook_id: str
     webhook_name: str
     message: str
+    delivered: bool = True
+
+
+GATEWAY_BLOCK_ACTIONS = frozenset(
+    {
+        "gateway.policy.block",
+        "gateway.injection.block",
+        "gateway.abac.block",
+        "gateway.egress.block",
+    }
+)
+
+
+def build_gateway_alert_event(
+    *,
+    action: str,
+    actor: str,
+    resource: str,
+    status: str,
+    risk: str,
+    details: str,
+    tenant: str | None = None,
+    trace_id: str | None = None,
+) -> dict[str, Any]:
+    title_by_action = {
+        "gateway.policy.block": "Gateway request blocked by policy",
+        "gateway.injection.block": "Prompt injection blocked",
+        "gateway.abac.block": "Gateway request blocked by ABAC",
+        "gateway.egress.block": "Gateway response blocked by egress policy",
+    }
+    event: dict[str, Any] = {
+        "title": title_by_action.get(action, "HelixGuard gateway alert"),
+        "action": action,
+        "actor": actor,
+        "resource": resource,
+        "status": status,
+        "risk": risk,
+        "details": details,
+    }
+    if tenant:
+        event["tenant"] = tenant
+    if trace_id:
+        event["trace_id"] = trace_id
+    return event
+
+
+def gateway_block_action(audit_action: str, *, injection: bool = False) -> str:
+    if injection:
+        return "gateway.injection.block"
+    if audit_action == "ABAC Policy":
+        return "gateway.abac.block"
+    if audit_action == "LLM Response":
+        return "gateway.egress.block"
+    return "gateway.policy.block"
+
+
+async def dispatch_tenant_alerts(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    event: dict[str, Any],
+) -> list[AlertDispatchResult]:
+    """Deliver an event to all enabled tenant webhooks; never raises on delivery failure."""
+    webhooks = await list_webhooks(db, tenant_id)
+    results: list[AlertDispatchResult] = []
+    for webhook in webhooks:
+        if not webhook.enabled:
+            continue
+        try:
+            await send_alert(webhook, event)
+            webhook.alerts_sent += 1
+            webhook.last_alert_at = datetime.now(UTC)
+            webhook.last_error = ""
+            await db.commit()
+            results.append(
+                AlertDispatchResult(
+                    webhook_id=str(webhook.id),
+                    webhook_name=webhook.name,
+                    message=f"Alert sent to {webhook.webhook_type}",
+                    delivered=True,
+                )
+            )
+        except Exception as exc:
+            webhook.last_error = str(exc)
+            await db.commit()
+            logger.warning(
+                "Alert webhook delivery failed for tenant %s webhook %s: %s",
+                tenant_id,
+                webhook.id,
+                exc,
+            )
+            results.append(
+                AlertDispatchResult(
+                    webhook_id=str(webhook.id),
+                    webhook_name=webhook.name,
+                    message=str(exc),
+                    delivered=False,
+                )
+            )
+    return results
 
 
 def webhook_to_dict(webhook: AlertWebhook, *, include_token: bool = False) -> dict:

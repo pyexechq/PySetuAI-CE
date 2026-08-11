@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -22,6 +23,11 @@ from app.schemas.openai import (
 from app.modules.uag.canonical import CanonicalPrompt, TranslationTrace
 from app.modules.uag.provider_registry import get_provider
 from app.modules.uag.service import run_uag_post_upstream, run_uag_pre_governance
+from app.services.alert_webhook_service import (
+    build_gateway_alert_event,
+    dispatch_tenant_alerts,
+    gateway_block_action,
+)
 from app.services.dlp_service import infer_region_from_bundle
 from app.services.dlp_service import scan_content as dlp_scan_content
 from app.services.gateway_context import GatewayContext
@@ -38,6 +44,7 @@ from app.services.secrets_service import apply_provider_gateway_credentials
 from app.services.uag_admin_service import record_translation_event
 
 tracer = get_tracer(__name__)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -148,6 +155,32 @@ async def _write_audit(
     )
 
 
+async def _dispatch_gateway_block_alert(
+    db: AsyncSession,
+    ctx: GatewayContext,
+    *,
+    audit_action: str,
+    resource: str,
+    risk: str,
+    details: str,
+    injection: bool = False,
+) -> None:
+    trace_id = current_trace_id()
+    event = build_gateway_alert_event(
+        action=gateway_block_action(audit_action, injection=injection),
+        actor=ctx.actor,
+        resource=resource,
+        status="blocked",
+        risk=risk,
+        details=details,
+        trace_id=trace_id,
+    )
+    try:
+        await dispatch_tenant_alerts(db, ctx.tenant_id, event)
+    except Exception as exc:
+        logger.warning("Gateway alert dispatch failed for tenant %s: %s", ctx.tenant_id, exc)
+
+
 async def _load_bundle(db: AsyncSession, bundle_id) -> PolicyBundle | None:
     if not bundle_id:
         return None
@@ -235,6 +268,15 @@ async def prepare_chat_request(
             detail_text,
         )
         await db.commit()
+        await _dispatch_gateway_block_alert(
+            db,
+            ctx,
+            audit_action=audit_action,
+            resource=f"{request.model} /chat",
+            risk=ingress.risk,
+            details=detail_text,
+            injection=is_injection_related_violation(violation_names, detail_text),
+        )
         return None, ingress, "Request blocked by HelixGuard policy engine."
 
     uag_trace.governance_actions.extend(["dlp", "policy_engine"])
@@ -277,6 +319,14 @@ async def prepare_chat_request(
             detail_text,
         )
         await db.commit()
+        await _dispatch_gateway_block_alert(
+            db,
+            ctx,
+            audit_action="ABAC Policy",
+            resource=f"{routed_model} /chat",
+            risk=ingress.risk,
+            details=detail_text,
+        )
         return None, ingress, "Request blocked by HelixGuard ABAC policy (OPA)."
 
     uag_trace.governance_actions.append("opa")
@@ -604,6 +654,14 @@ async def process_chat_completion(
                 "Output blocked by egress policy",
             )
             await db.commit()
+            await _dispatch_gateway_block_alert(
+                db,
+                ctx,
+                audit_action="LLM Response",
+                resource=f"{prepared.routed_model} /chat",
+                risk=egress.risk,
+                details="Output blocked by egress policy",
+            )
             return None, egress, "Response blocked by HelixGuard egress inspection."
 
         await record_provider_request(db, ctx.tenant_id, prepared.routed_model, latency_ms, success=True)
