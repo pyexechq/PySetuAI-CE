@@ -17,6 +17,16 @@ from app.schemas.dashboard import DashboardComplianceFramework
 from app.services.compliance_service import build_compliance_frameworks
 
 
+def compute_period_compliance_metrics(*, total_requests: int, blocked_requests: int) -> tuple[float, float]:
+    """Derive block rate and overall compliance score from audit counts."""
+    block_rate = (blocked_requests / total_requests * 100) if total_requests else 5.0
+    compliance_score = max(
+        0.0,
+        min(100.0, round(100 - (blocked_requests / total_requests * 100) if total_requests else 92.0, 1)),
+    )
+    return block_rate, compliance_score
+
+
 async def _load_compliance_metrics(
     db: AsyncSession,
     tenant_id: uuid.UUID,
@@ -41,10 +51,9 @@ async def _load_compliance_metrics(
     ).scalar() or 0
     pii = (await db.execute(select(func.count(AuditLog.id)).where(*base, AuditLog.action.ilike("%PII%")))).scalar() or 0
 
-    block_rate = (blocked / total * 100) if total else 5.0
-    compliance_score = max(
-        0.0,
-        min(100.0, round(100 - (blocked / total * 100) if total else 92.0, 1)),
+    block_rate, compliance_score = compute_period_compliance_metrics(
+        total_requests=total,
+        blocked_requests=blocked,
     )
 
     frameworks = await build_compliance_frameworks(
