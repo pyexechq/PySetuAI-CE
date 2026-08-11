@@ -3,6 +3,7 @@ import asyncio
 from sqlalchemy import select
 
 from app.config import settings
+from app.core.demo_credentials import resolve_demo_seed_password, resolve_platform_admin_password
 from app.core.security import get_password_hash
 from app.db import async_session_factory
 from app.models.tenant import Tenant, User
@@ -20,45 +21,47 @@ PLATFORM_TENANT = {
 PLATFORM_ADMIN = {
     "email": "platform@helixguard.com",
     "name": "Platform Administrator",
-    "password": "platform1234",
     "role": "platform_admin",
 }
 
-DEMO_USERS = [
+DEMO_USER_SPECS = [
     {
         "email": "admin@acme.com",
         "name": "Admin User",
-        "password": "demo1234",
         "role": "tenant_admin",
     },
     {
         "email": "security@acme.com",
         "name": "Security Admin",
-        "password": "demo1234",
         "role": "security_admin",
     },
     {
         "email": "auditor@acme.com",
         "name": "Auditor User",
-        "password": "demo1234",
         "role": "auditor",
     },
     {
         "email": "compliance@acme.com",
         "name": "Compliance Officer",
-        "password": "demo1234",
         "role": "compliance_officer",
     },
     {
         "email": "developer@acme.com",
         "name": "Developer User",
-        "password": "demo1234",
         "role": "developer",
     },
 ]
 
 
 async def seed_demo_data() -> None:
+    demo_password = resolve_demo_seed_password()
+    if demo_password is None:
+        if settings.debug:
+            print(
+                "Demo seed skipped: set DEMO_SEED_PASSWORD in the environment to create demo users."
+            )
+        return
+
     async with async_session_factory() as session:
         tenant_result = await session.execute(select(Tenant).where(Tenant.slug == DEMO_TENANT["slug"]))
         tenant = tenant_result.scalar_one_or_none()
@@ -76,7 +79,7 @@ async def seed_demo_data() -> None:
             if not tenant.subdomain:
                 tenant.subdomain = DEMO_TENANT["slug"]
 
-        for demo_user in DEMO_USERS:
+        for demo_user in DEMO_USER_SPECS:
             user_result = await session.execute(
                 select(User).where(User.tenant_id == tenant.id, User.email == demo_user["email"])
             )
@@ -86,7 +89,7 @@ async def seed_demo_data() -> None:
                         tenant_id=tenant.id,
                         email=demo_user["email"],
                         name=demo_user["name"],
-                        hashed_password=get_password_hash(demo_user["password"]),
+                        hashed_password=get_password_hash(demo_password),
                         role=demo_user["role"],
                     )
                 )
@@ -96,6 +99,14 @@ async def seed_demo_data() -> None:
 
 async def seed_platform_admin() -> None:
     if not settings.platform_portal_enabled:
+        return
+
+    platform_password = resolve_platform_admin_password()
+    if platform_password is None:
+        if settings.debug:
+            print(
+                "Platform admin seed skipped: set DEMO_PLATFORM_ADMIN_PASSWORD in the environment."
+            )
         return
 
     async with async_session_factory() as session:
@@ -131,7 +142,7 @@ async def seed_platform_admin() -> None:
                         tenant_id=tenant.id,
                         email=PLATFORM_ADMIN["email"],
                         name=PLATFORM_ADMIN["name"],
-                        hashed_password=get_password_hash(PLATFORM_ADMIN["password"]),
+                        hashed_password=get_password_hash(platform_password),
                         role=PLATFORM_ADMIN["role"],
                     )
                 )

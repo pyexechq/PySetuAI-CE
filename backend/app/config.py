@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     app_name: str = "HelixGuard AI"
     app_version: str = "0.1.0"
     debug: bool = True
+    demo_credentials_enabled: bool = False
+    demo_seed_password: str | None = None
+    demo_platform_admin_password: str | None = None
     api_prefix: str = "/api/v1"
 
     database_url: str = "postgresql+asyncpg://helixguard:helixguard@localhost:5432/helixguard"

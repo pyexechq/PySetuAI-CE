@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ApiError, api, type ApiPublicOidcProvider } from "@/lib/api";
+import {
+  DEMO_LOGIN_DEFAULT_EMAIL,
+  DEMO_LOGIN_DEFAULT_PASSWORD,
+  DEMO_LOGIN_DEFAULT_TENANT,
+  DEMO_LOGIN_HINTS_ENABLED,
+  demoLoginHintText,
+} from "@/lib/demo-login";
 import { useAuthStore, type UserRole } from "@/stores/auth-store";
 import { useTenantStore } from "@/stores/tenant-store";
 
@@ -17,17 +24,17 @@ interface TenantLoginPanelProps {
 }
 
 export function TenantLoginPanel({
-  initialTenantSlug = "acme",
+  initialTenantSlug = DEMO_LOGIN_DEFAULT_TENANT,
   showTenantField = true,
-  showDemoHints = true,
+  showDemoHints = DEMO_LOGIN_HINTS_ENABLED,
   submitLabel = "Sign In",
   onSuccess,
 }: TenantLoginPanelProps) {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
   const setTenant = useTenantStore((s) => s.setTenant);
-  const [email, setEmail] = useState("admin@acme.com");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState(DEMO_LOGIN_DEFAULT_EMAIL);
+  const [password, setPassword] = useState(DEMO_LOGIN_DEFAULT_PASSWORD);
   const [tenantSlug, setTenantSlug] = useState(initialTenantSlug);
   const [oidcProviders, setOidcProviders] = useState<ApiPublicOidcProvider[]>([]);
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
@@ -181,9 +188,9 @@ export function TenantLoginPanel({
           submitLabel
         )}
       </Button>
-      {showDemoHints && showTenantField && (
+      {showDemoHints && showTenantField && demoLoginHintText() && (
         <div className="space-y-1 text-center text-xs text-muted-foreground">
-          <p>Demo: admin@acme.com / demo1234 (tenant: acme)</p>
+          <p>{demoLoginHintText()}</p>
         </div>
       )}
     </form>

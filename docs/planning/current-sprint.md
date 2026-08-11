@@ -2,7 +2,7 @@
 
 **Sprint:** 7 (starting after Phase 5 remainder)  
 **Dates:** Nov 3 – Dec 14, 2026 (planned)  
-**Active focus:** **S6-08** — Remove demo credentials from production bundles
+**Active focus:** **S6-09** — Penetration test prep checklist
 
 > Phase 5 plan: [phase-5-sprint.md](./phase-5-sprint.md)  
 > Phase 6 plan: [phase-6-sprint.md](./phase-6-sprint.md)  
@@ -15,7 +15,7 @@
 | S6-05 | OIDC JIT provisioning toggle in Settings UI | Done |
 | S6-06 | Production env template + JWT rotation guide | Done |
 | **S6-07** | **OIDC group → role mapping** | **Done** |
-| S6-08 | Remove demo credentials from prod bundles | **Next** |
+| S6-08 | Remove demo credentials from prod bundles | **Done** |
 | S6-09 | Penetration test prep checklist | Planned |
 
 ## Ops backlog (non-blocking)

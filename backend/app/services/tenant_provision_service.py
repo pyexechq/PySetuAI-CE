@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.demo_credentials import include_password_in_provision_response, redact_demo_users
 from app.core.security import get_password_hash
 from app.db.seed_governance import seed_access_for_tenant, seed_governance_for_tenant
 from app.models.governance import MCPServer
@@ -181,7 +182,11 @@ async def provision_tenant(
             "email": normalized_email,
             "name": admin_name.strip(),
             "role": "tenant_admin",
-            "password": admin_password,
+            **(
+                {"password": admin_password}
+                if include_password_in_provision_response()
+                else {}
+            ),
         }
     ]
 
@@ -198,14 +203,14 @@ async def provision_tenant(
                     role=role,
                 )
             )
-            demo_users.append(
-                {
-                    "email": email,
-                    "name": display_name,
-                    "role": role,
-                    "password": admin_password,
-                }
-            )
+            user_entry: dict[str, str] = {
+                "email": email,
+                "name": display_name,
+                "role": role,
+            }
+            if include_password_in_provision_response():
+                user_entry["password"] = admin_password
+            demo_users.append(user_entry)
 
         await seed_governance_for_tenant(db, tenant.id)
         await seed_access_for_tenant(db, tenant.id)
@@ -220,7 +225,7 @@ async def provision_tenant(
             demo_data_loaded=demo_loaded,
             admin_email=normalized_email,
         ),
-        "demo_users": demo_users if include_demo_data else [],
+        "demo_users": redact_demo_users(demo_users) if include_demo_data else [],
         "message": "Tenant provisioned with demo data." if include_demo_data else "Tenant provisioned.",
     }
 
