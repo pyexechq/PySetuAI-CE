@@ -9,6 +9,7 @@ import httpx
 
 from app.models.governance import MCPServer
 from app.services.mcp_transport import build_mcp_headers, resolve_timeout_sec
+from app.services.mcp_trust_scoring_service import refresh_mcp_trust_scores
 
 
 @dataclass
@@ -103,3 +104,4 @@ def apply_health_result(server: MCPServer, result: McpHealthResult) -> None:
     server.status = result.status
     if result.latency_ms > 0:
         server.avg_latency_ms = result.latency_ms
+    refresh_mcp_trust_scores(server)

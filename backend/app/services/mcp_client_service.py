@@ -11,6 +11,7 @@ import httpx
 
 from app.models.governance import MCPServer
 from app.services.mcp_transport import build_mcp_headers, resolve_timeout_sec
+from app.services.mcp_trust_scoring_service import record_mcp_invoke_outcome, refresh_mcp_trust_scores
 
 MCP_PROTOCOL_VERSION = "2024-11-05"
 SESSION_TTL_SEC = 1800
@@ -296,6 +297,7 @@ def apply_discovered_tools(server: MCPServer, result: McpDiscoverResult) -> None
     if result.latency_ms > 0:
         server.avg_latency_ms = result.latency_ms
     server.status = "healthy"
+    refresh_mcp_trust_scores(server)
 
 
 def apply_tool_invoke(server: MCPServer, result: McpToolInvokeResult) -> None:
@@ -303,6 +305,4 @@ def apply_tool_invoke(server: MCPServer, result: McpToolInvokeResult) -> None:
     if result.session:
         config["mcp_session"] = result.session
         server.connection_config = config
-    if result.ok and result.latency_ms > 0:
-        server.avg_latency_ms = result.latency_ms
-        server.total_calls += 1
+    record_mcp_invoke_outcome(server, ok=result.ok, latency_ms=result.latency_ms or 0)
