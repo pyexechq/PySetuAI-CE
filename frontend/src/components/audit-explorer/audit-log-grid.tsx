@@ -21,9 +21,10 @@ interface AuditLogGridProps {
   recentIds: Set<string>;
   quickFilterText?: string;
   onGridReady?: (api: GridApi<AuditLogEntry>) => void;
+  onRowSelect?: (entry: AuditLogEntry | null) => void;
 }
 
-export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridReady }: AuditLogGridProps) {
+export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridReady, onRowSelect }: AuditLogGridProps) {
   const columnDefs = useMemo<ColDef<AuditLogEntry>[]>(
     () => [
       {
@@ -105,6 +106,7 @@ export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridRead
         getRowClass={getRowClass}
         suppressCellFocus
         onGridReady={handleGridReady}
+        onRowClicked={(event) => onRowSelect?.(event.data ?? null)}
         domLayout="normal"
         rowHeight={44}
         headerHeight={42}

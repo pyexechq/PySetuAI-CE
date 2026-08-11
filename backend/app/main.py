@@ -8,7 +8,8 @@ from app.api.v1.access import router as access_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.compliance import router as compliance_router
 from app.api.v1.data_protection import router as data_protection_router
-from app.api.v1.gateway import router as gateway_router
+from app.api.v1.gateway import admin_router as gateway_admin_router
+from app.api.v1.gateway import openai_router as gateway_openai_router
 from app.api.v1.governance import router as governance_router
 from app.api.v1.integrations import router as integrations_router
 from app.api.v1.notifications import router as notifications_router
@@ -19,13 +20,14 @@ from app.api.v1.reports import router as reports_router
 from app.api.v1.router import router as auth_router
 from app.api.v1.security import router as security_router
 from app.api.v1.settings import router as settings_router
+from app.api.v1.uag import router as uag_router
 from app.api.v1.users import router as users_router
 from app.config import settings
 from app.core.rate_limit import AuthRateLimitMiddleware
 from app.core.security import get_jwt_secret, set_jwt_secret_override
 from app.core.telemetry import setup_telemetry
 from app.db.seed import seed_demo_data, seed_platform_admin
-from app.db.seed_governance import seed_access_data, seed_governance_data
+from app.db.seed_governance import seed_access_data, seed_governance_data, seed_uag_data
 from app.services.vault_service import assert_production_security, load_jwt_secret_from_vault
 
 
@@ -42,6 +44,7 @@ async def lifespan(app: FastAPI):
             await seed_platform_admin()
             await seed_governance_data()
             await seed_access_data()
+            await seed_uag_data()
         except Exception as exc:
             print(f"Seed skipped (database may be unavailable): {exc}")
     yield
@@ -72,14 +75,15 @@ app.include_router(observability_router, prefix=settings.api_prefix)
 app.include_router(settings_router, prefix=settings.api_prefix)
 app.include_router(integrations_router, prefix=settings.api_prefix)
 app.include_router(oidc_router, prefix=settings.api_prefix)
+app.include_router(uag_router, prefix=settings.api_prefix)
 app.include_router(users_router, prefix=settings.api_prefix)
 app.include_router(reports_router, prefix=settings.api_prefix)
 app.include_router(compliance_router, prefix=settings.api_prefix)
 app.include_router(security_router, prefix=settings.api_prefix)
 app.include_router(data_protection_router, prefix=settings.api_prefix)
 app.include_router(notifications_router, prefix=settings.api_prefix)
-app.include_router(gateway_router, prefix=settings.api_prefix)
-app.include_router(gateway_router)
+app.include_router(gateway_admin_router, prefix=settings.api_prefix)
+app.include_router(gateway_openai_router)
 
 
 setup_telemetry(app)

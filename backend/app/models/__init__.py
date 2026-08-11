@@ -11,6 +11,7 @@ from app.models.governance import (
     SiemConnector,
 )
 from app.models.tenant import Base, Tenant, User
+from app.models.uag import UagModelMapping, UagTranslationEvent, UagTranslationPolicy
 
 __all__ = [
     "Base",
@@ -26,4 +27,7 @@ __all__ = [
     "LLMProvider",
     "RoutingRule",
     "ReportDefinition",
+    "UagModelMapping",
+    "UagTranslationPolicy",
+    "UagTranslationEvent",
 ]

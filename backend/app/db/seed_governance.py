@@ -1,12 +1,13 @@
 import asyncio
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
 from app.db import async_session_factory
 from app.models.governance import AuditLog, ClientApiKey, LLMProvider, MCPServer, Policy, PolicyBundle, RoutingRule
 from app.models.tenant import Tenant
+from app.models.uag import UagModelMapping, UagTranslationPolicy
 from app.services.client_api_key_service import hash_client_key
 
 POLICY_RULES = [
@@ -98,6 +99,33 @@ PII_US_RULES = [
     },
 ]
 
+DLP_CLASSIFICATION_RULES = [
+    {
+        "id": "dlp-r1",
+        "name": "Classify EU personal data",
+        "condition": "region == 'EU' && has_pii",
+        "action": "Redact",
+        "severity": "high",
+        "enabled": True,
+    },
+    {
+        "id": "dlp-r2",
+        "name": "Classify US sensitive identifiers",
+        "condition": "region == 'US' && has_pii",
+        "action": "Redact",
+        "severity": "high",
+        "enabled": True,
+    },
+    {
+        "id": "dlp-r3",
+        "name": "Cross-border residency block",
+        "condition": "region != user_region && has_pii",
+        "action": "Block",
+        "severity": "critical",
+        "enabled": True,
+    },
+]
+
 JAILBREAK_RULES = [
     {
         "id": "jb-r1",
@@ -122,6 +150,7 @@ POLICY_RULE_SETS: dict[str, list] = {
     "PII Redaction — EU": PII_EU_RULES,
     "PII Redaction — US": PII_US_RULES,
     "Jailbreak Prevention": JAILBREAK_RULES,
+    "DLP Classification": DLP_CLASSIFICATION_RULES,
 }
 
 POLICY_TREE = [
@@ -129,7 +158,7 @@ POLICY_TREE = [
     ("Data Protection", "folder", "Organization Policies", None),
     ("PII Redaction — EU", "policy", "Data Protection", "active"),
     ("PII Redaction — US", "policy", "Data Protection", "active"),
-    ("DLP Classification", "policy", "Data Protection", "draft"),
+    ("DLP Classification", "policy", "Data Protection", "active"),
     ("Security Controls", "folder", "Organization Policies", None),
     ("Prompt Injection Guard", "policy", "Security Controls", "active"),
     ("Jailbreak Prevention", "policy", "Security Controls", "active"),
@@ -237,7 +266,7 @@ async def seed_governance_for_tenant(session, tenant_id: uuid.UUID) -> bool:
             )
         )
 
-    base_time = datetime(2026, 5, 18, 14, 28, 53, tzinfo=UTC)
+    base_time = datetime.now(UTC) - timedelta(hours=len(AUDIT_LOGS) + 2)
     for i, row in enumerate(AUDIT_LOGS):
         session.add(
             AuditLog(
@@ -324,6 +353,58 @@ async def seed_access_for_tenant(session, tenant_id: uuid.UUID) -> bool:
             )
         )
     return True
+
+
+async def seed_uag_for_tenant(session, tenant_id: uuid.UUID) -> bool:
+    existing = await session.execute(
+        select(UagModelMapping).where(UagModelMapping.tenant_id == tenant_id).limit(1)
+    )
+    if existing.scalar_one_or_none() is not None:
+        return False
+
+    for requested, actual, provider in (
+        ("gpt-4o", "gemini-1.5-pro", "gemini"),
+        ("gpt-4o-mini", "gemini-1.5-flash", "gemini"),
+        ("gpt-5", "claude-sonnet-4", "claude"),
+        ("gpt-4", "llama3:70b", "ollama"),
+    ):
+        session.add(
+            UagModelMapping(
+                tenant_id=tenant_id,
+                requested_model=requested,
+                actual_model=actual,
+                target_provider=provider,
+                emulate_protocol="openai",
+                enabled=True,
+            )
+        )
+
+    for name, conditions, actions, priority in (
+        ("Finance to local LLM", {"department": "finance"}, {"route_to": "ollama"}, 10),
+        ("EU data residency", {"country": "EU"}, {"route_to": "azure_openai"}, 20),
+        ("Legacy app emulation", {"application": "legacy_app"}, {"emulate": "openai"}, 30),
+    ):
+        session.add(
+            UagTranslationPolicy(
+                tenant_id=tenant_id,
+                name=name,
+                conditions=conditions,
+                actions=actions,
+                priority=priority,
+                enabled=True,
+            )
+        )
+    return True
+
+
+async def seed_uag_data() -> None:
+    async with async_session_factory() as session:
+        tenant_result = await session.execute(select(Tenant).where(Tenant.slug == "acme"))
+        tenant = tenant_result.scalar_one_or_none()
+        if tenant is None:
+            return
+        if await seed_uag_for_tenant(session, tenant.id):
+            await session.commit()
 
 
 async def seed_governance_data() -> None:

@@ -19,6 +19,9 @@ from app.schemas.openai import (
     ChatMessage,
     InspectionResult,
 )
+from app.modules.uag.canonical import CanonicalPrompt, TranslationTrace
+from app.modules.uag.provider_registry import get_provider
+from app.modules.uag.service import run_uag_post_upstream, run_uag_pre_governance
 from app.services.dlp_service import infer_region_from_bundle
 from app.services.dlp_service import scan_content as dlp_scan_content
 from app.services.gateway_context import GatewayContext
@@ -32,6 +35,7 @@ from app.services.policy_engine import inspect_for_gateway
 from app.services.provider_metrics_service import record_provider_request
 from app.services.routing_context import build_routing_context
 from app.services.secrets_service import apply_provider_gateway_credentials
+from app.services.uag_admin_service import record_translation_event
 
 tracer = get_tracer(__name__)
 
@@ -53,6 +57,9 @@ class PreparedChat:
     client_api_key_name: str | None = None
     opa_applied: bool = False
     opa_skipped: bool = False
+    uag_canonical: CanonicalPrompt | None = None
+    uag_trace: TranslationTrace | None = None
+    requested_model: str | None = None
 
 
 def _estimate_tokens(text: str) -> int:
@@ -78,6 +85,8 @@ def _helixguard_meta(prepared: PreparedChat, **extra) -> dict:
         meta["abac_engine"] = "opa"
     if prepared.opa_skipped:
         meta["opa_skipped"] = True
+    if prepared.uag_trace:
+        meta["uag"] = prepared.uag_trace.to_dict()
     meta.update(extra)
     return meta
 
@@ -146,12 +155,34 @@ async def _load_bundle(db: AsyncSession, bundle_id) -> PolicyBundle | None:
     return result.scalar_one_or_none()
 
 
+def coerce_upstream(
+    upstream: str,
+    config: GatewayConfig,
+    model: str,
+    routed_model: str,
+) -> str:
+    """Use the requested upstream only when credentials are available; otherwise fall back."""
+    effective_model = model if model != "auto" else routed_model
+    if upstream == "openai" and config.openai_api_key:
+        return "openai"
+    if upstream == "gemini" and config.gemini_api_key:
+        return "gemini"
+    if upstream == "ollama" and config.ollama_enabled:
+        return "ollama"
+    return config.resolve_upstream(effective_model)
+
+
 async def prepare_chat_request(
     request: ChatCompletionRequest,
     ctx: GatewayContext,
     db: AsyncSession,
 ) -> tuple[PreparedChat | None, InspectionResult | None, str | None]:
-    combined = "\n".join(m.content for m in request.messages if m.role in {"user", "system"})
+    uag_pipeline = await run_uag_pre_governance(db, request, tenant_id=ctx.tenant_id)
+    canonical = uag_pipeline.canonical
+    uag_trace = uag_pipeline.trace
+    effective_request = uag_pipeline.translated_request
+
+    combined = canonical.text_for_inspection()
     bundle = await _load_bundle(db, ctx.policy_bundle_id)
     region = infer_region_from_bundle(ctx.policy_bundle_name)
     dlp = dlp_scan_content(combined, region=region)
@@ -206,7 +237,9 @@ async def prepare_chat_request(
         await db.commit()
         return None, ingress, "Request blocked by HelixGuard policy engine."
 
-    messages = list(request.messages)
+    uag_trace.governance_actions.extend(["dlp", "policy_engine"])
+
+    messages = list(effective_request.messages)
     if ingress.redacted_content:
         messages = [
             ChatMessage(role=m.role, content=ingress.redacted_content if m.role == "user" else m.content)
@@ -216,7 +249,7 @@ async def prepare_chat_request(
         ]
 
     routed_model, matched_rule, routing_strategy = await select_model(
-        request.model,
+        effective_request.model,
         db,
         ctx.tenant_id,
         build_routing_context(request),
@@ -246,9 +279,21 @@ async def prepare_chat_request(
         await db.commit()
         return None, ingress, "Request blocked by HelixGuard ABAC policy (OPA)."
 
+    uag_trace.governance_actions.append("opa")
+
     config = await resolve_gateway_config(db, ctx.tenant_id)
     config = await apply_provider_gateway_credentials(db, ctx.tenant_id, routed_model, config)
-    upstream = config.resolve_upstream(request.model if request.model != "auto" else routed_model)
+    provider_def = get_provider(canonical.target_provider)
+    if provider_def:
+        upstream = provider_def.upstream_key
+    else:
+        upstream = config.resolve_upstream(effective_request.model if effective_request.model != "auto" else routed_model)
+    upstream = coerce_upstream(
+        upstream,
+        config,
+        effective_request.model,
+        routed_model,
+    )
 
     prepared = PreparedChat(
         messages=messages,
@@ -264,18 +309,21 @@ async def prepare_chat_request(
         client_api_key_name=ctx.client_api_key_name,
         opa_applied=opa_decision.available and not opa_decision.skipped,
         opa_skipped=opa_decision.skipped,
+        uag_canonical=canonical,
+        uag_trace=uag_trace,
+        requested_model=request.model,
     )
 
     if upstream == "ollama":
         available = await list_ollama_models(config.ollama_base_url)
         prepared.ollama_model = resolve_ollama_model(
-            request.model if request.model != "auto" else routed_model,
+            effective_request.model if effective_request.model != "auto" else routed_model,
             available,
             config.ollama_default_model,
         )
     elif upstream == "gemini":
         prepared.gemini_model = normalize_gemini_model(
-            request.model if "gemini" in request.model.lower() else config.gemini_default_model,
+            effective_request.model if "gemini" in effective_request.model.lower() else routed_model,
             config.gemini_default_model,
         )
 
@@ -307,8 +355,7 @@ async def _call_ollama_payload(
 
 
 async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionRequest) -> ChatCompletionResponse:
-    if prepared.upstream == "openai":
-        assert prepared.config.openai_api_key
+    if prepared.upstream == "openai" and prepared.config.openai_api_key:
         payload, url, headers = await _call_openai(
             prepared.routed_model, prepared.messages, request.temperature, prepared.config.openai_api_key
         )
@@ -336,8 +383,7 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
             helixguard=_helixguard_meta(prepared),
         )
 
-    if prepared.upstream == "gemini":
-        assert prepared.config.gemini_api_key and prepared.gemini_model
+    if prepared.upstream == "gemini" and prepared.config.gemini_api_key and prepared.gemini_model:
         text, gemini_model = await call_gemini(
             prepared.gemini_model,
             prepared.messages,
@@ -359,8 +405,7 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
             helixguard=_helixguard_meta(prepared, gemini_model=gemini_model),
         )
 
-    if prepared.upstream == "ollama":
-        assert prepared.ollama_model
+    if prepared.upstream == "ollama" and prepared.ollama_model:
         payload, url, _ = await _call_ollama_payload(
             prepared.ollama_model, prepared.messages, request.temperature, prepared.config.ollama_base_url, False
         )
@@ -563,14 +608,37 @@ async def process_chat_completion(
 
         await record_provider_request(db, ctx.tenant_id, prepared.routed_model, latency_ms, success=True)
 
+        if prepared.uag_canonical and prepared.uag_trace:
+            response = await run_uag_post_upstream(prepared.uag_canonical, prepared.uag_trace, response)
+            prepared.uag_trace.governance_actions.append("egress_policy")
+            await record_translation_event(
+                db,
+                tenant_id=ctx.tenant_id,
+                request_id=prepared.uag_canonical.request_id,
+                source_protocol=prepared.uag_trace.source_protocol,
+                target_provider=prepared.uag_trace.target_provider,
+                requested_model=prepared.uag_trace.requested_model,
+                translated_model=prepared.uag_trace.translated_model,
+                success=True,
+                latency_ms=prepared.uag_trace.translation_ms,
+                compatibility_score=prepared.uag_trace.compatibility_score,
+                details="; ".join(prepared.uag_trace.governance_actions),
+            )
+
         audit_status = "review" if prepared.ingress.violations else "allowed"
         audit_details = f"Routed to {prepared.routed_model} via {prepared.upstream}"
+        if prepared.requested_model and prepared.requested_model != prepared.routed_model:
+            audit_details = (
+                f"UAG translated {prepared.requested_model} → {prepared.routed_model} via {prepared.upstream}"
+            )
         if prepared.ollama_model:
             audit_details += f" (Ollama: {prepared.ollama_model})"
         if prepared.gemini_model:
             audit_details += f" (Gemini: {prepared.gemini_model})"
         if prepared.ingress.violations:
             audit_details += f"; {len(prepared.ingress.violations)} policy rule(s) applied"
+        if prepared.uag_trace:
+            audit_details += f" |uag_trace={json.dumps(prepared.uag_trace.to_dict(), separators=(',', ':'))}"
 
         await _write_audit(
             db,
