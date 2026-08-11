@@ -1,14 +1,14 @@
-# JWT Secret Rotation — HelixGuard AI
+# JWT Secret Rotation — PySetu AI
 
 **Task:** S6-06 / BL-040 · **Addresses:** KI-005
 
-HelixGuard signs API access tokens with `HS256` and a shared platform secret. Production deployments must not use development defaults.
+PySetu signs API access tokens with `HS256` and a shared platform secret. Production deployments must not use development defaults.
 
 ## How secrets are loaded
 
 On API startup (`backend/app/main.py`):
 
-1. If `VAULT_ENABLED=true`, read `secret/helixguard/platform/jwt_secret` (`value` field).
+1. If `VAULT_ENABLED=true`, read `secret/pysetu/platform/jwt_secret` (`value` field).
 2. Otherwise use `JWT_SECRET_KEY` from the environment.
 3. When `DEBUG=false`, refuse to start if the active secret matches a known insecure default (`vault_service.is_insecure_jwt_secret`).
 
@@ -80,7 +80,7 @@ Rotating the JWT secret **invalidates all outstanding access tokens**. Plan a ma
 | 3 | Confirm Settings → Integrations shows secure JWT status |
 | 4 | Optional: keep previous KV version in Vault audit log for forensics |
 
-Vault KV v2 retains version history; HelixGuard always reads the **latest** version.
+Vault KV v2 retains version history; PySetu always reads the **latest** version.
 
 ## Insecure defaults (blocked when DEBUG=false)
 
@@ -96,7 +96,7 @@ Vault KV v2 retains version history; HelixGuard always reads the **latest** vers
 Use [`.env.production.example`](../../.env.production.example) as the variable reference.
 
 - [ ] `DEBUG=false`
-- [ ] Strong `JWT_SECRET_KEY` **or** Vault JWT at `helixguard/platform/jwt_secret`
+- [ ] Strong `JWT_SECRET_KEY` **or** Vault JWT at `pysetu/platform/jwt_secret`
 - [ ] `VAULT_ENABLED=true` for tenant API keys
 - [ ] Unique `POSTGRES_PASSWORD` and Redis auth if exposed
 - [ ] `OPA_FAIL_OPEN=false` when OPA is required for gateway decisions

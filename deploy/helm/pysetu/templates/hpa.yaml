@@ -2,15 +2,15 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "helixguard.fullname" . }}-backend
+  name: {{ include "pysetu.fullname" . }}-backend
   labels:
     {{- $ctx := dict "component" "backend" "Values" .Values "Chart" .Chart "Release" .Release }}
-    {{- include "helixguard.componentLabels" $ctx | nindent 4 }}
+    {{- include "pysetu.componentLabels" $ctx | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "helixguard.fullname" . }}-backend
+    name: {{ include "pysetu.fullname" . }}-backend
   minReplicas: {{ .Values.backend.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.backend.autoscaling.maxReplicas }}
   metrics:

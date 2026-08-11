@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Install HelixGuard AI from an offline bundle (run inside extracted bundle directory).
+# Install PySetu AI from an offline bundle (run inside extracted bundle directory).
 set -euo pipefail
 
 BUNDLE_DIR="$(cd "$(dirname "$0")" && pwd)"
-IMAGE_ARCHIVE="${BUNDLE_DIR}/images/helixguard-images.tar"
+IMAGE_ARCHIVE="${BUNDLE_DIR}/images/pysetu-images.tar"
 COMPOSE_FILE="${BUNDLE_DIR}/docker-compose.airgap.yml"
 MANIFEST="${BUNDLE_DIR}/manifest.json"
 
@@ -34,7 +34,7 @@ if [[ -x "${BUNDLE_DIR}/import-ollama-models.sh" ]]; then
 fi
 
 echo ""
-echo "HelixGuard air-gap stack is starting."
+echo "PySetu air-gap stack is starting."
 echo "  UI:      http://localhost:3000"
 echo "  API:     http://localhost:8001"
 echo "  Health:  http://localhost:8001/health"

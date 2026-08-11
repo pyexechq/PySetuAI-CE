@@ -20,8 +20,8 @@ if ($outputDir -and -not (Test-Path $outputDir)) {
 }
 $outputAbs = (Resolve-Path $outputDir).Path + "\" + (Split-Path -Leaf $OutputPath)
 
-$vol = "helixguard-ollama-export-$(Get-Random)"
-$container = "helixguard-ollama-export-$(Get-Random)"
+$vol = "pysetu-ollama-export-$(Get-Random)"
+$container = "pysetu-ollama-export-$(Get-Random)"
 
 function Cleanup {
     docker rm -f $container 2>$null | Out-Null

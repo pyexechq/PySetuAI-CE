@@ -8,7 +8,7 @@ from typing import Any
 from app.models.governance import AuditLog
 
 CEF_VERSION = 0
-CEF_DEVICE_VENDOR = "HelixGuard"
+CEF_DEVICE_VENDOR = "PySetu"
 CEF_DEVICE_PRODUCT = "AI Gateway"
 CEF_DEVICE_VERSION = "0.1.0"
 
@@ -68,7 +68,7 @@ def format_json_array(logs: list[AuditLog]) -> str:
     return json.dumps([audit_log_to_dict(log) for log in logs], indent=2)
 
 
-def format_elastic_ndjson(logs: list[AuditLog], index: str = "helixguard-audit") -> str:
+def format_elastic_ndjson(logs: list[AuditLog], index: str = "pysetu-audit") -> str:
     lines: list[str] = []
     for log in logs:
         meta = json.dumps({"index": {"_index": index, "_id": str(log.id)}})

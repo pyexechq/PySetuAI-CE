@@ -34,7 +34,7 @@ class ChatCompletionResponse(BaseModel):
     model: str
     choices: list[ChatCompletionChoice]
     usage: ChatCompletionUsage
-    helixguard: dict | None = None
+    pysetu: dict | None = None
 
 
 class OpenAIError(BaseModel):
@@ -51,7 +51,7 @@ class ModelInfo(BaseModel):
     id: str
     object: str = "model"
     created: int = 1686935002
-    owned_by: str = "helixguard"
+    owned_by: str = "pysetu"
 
 
 class ModelsListResponse(BaseModel):

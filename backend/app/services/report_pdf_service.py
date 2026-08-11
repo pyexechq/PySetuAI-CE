@@ -25,7 +25,7 @@ class HelixReportPDF(FPDF):
         self.set_text_color(255, 255, 255)
         self.set_font("Helvetica", "B", 14)
         self.set_xy(10, 6)
-        self.cell(0, 8, "HelixGuard AI", ln=False)
+        self.cell(0, 8, "PySetu AI", ln=False)
         self.set_font("Helvetica", "", 10)
         self.set_xy(10, 14)
         self.cell(0, 6, self._title, ln=True)

@@ -200,13 +200,13 @@ def _merge_threat_scan(content: str, result: InspectionResult) -> InspectionResu
 
 def inspect_content(content: str) -> InspectionResult:
     with tracer.start_as_current_span("policy.inspect") as span:
-        span.set_attribute("helixguard.content_length", len(content))
+        span.set_attribute("pysetu.content_length", len(content))
         result = _evaluate_rules(content, BUILTIN_RULES)
-        span.set_attribute("helixguard.inspection_action", result.action or "allow")
-        span.set_attribute("helixguard.violation_count", len(result.violations))
+        span.set_attribute("pysetu.inspection_action", result.action or "allow")
+        span.set_attribute("pysetu.violation_count", len(result.violations))
         trace_id = current_trace_id()
         if trace_id:
-            span.set_attribute("helixguard.trace_id", trace_id)
+            span.set_attribute("pysetu.trace_id", trace_id)
         return result
 
 

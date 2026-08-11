@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from app.config import settings
 from app.services.secrets_service import secrets_backend_name, vault_auth_method_name
 
-JWT_SECRET_VAULT_PATH = "helixguard/platform/jwt_secret"
+JWT_SECRET_VAULT_PATH = "pysetu/platform/jwt_secret"
 
 INSECURE_JWT_SECRETS = frozenset(
     {

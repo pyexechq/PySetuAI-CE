@@ -20,13 +20,13 @@ logger = logging.getLogger(__name__)
 VALID_WEBHOOK_TYPES = frozenset({"slack", "servicenow"})
 
 SAMPLE_EVENT: dict[str, Any] = {
-    "title": "HelixGuard test alert",
+    "title": "PySetu test alert",
     "action": "policy.violation",
     "actor": "admin@acme.com",
     "resource": "gpt-4",
     "status": "blocked",
     "risk": "high",
-    "details": "Test notification from HelixGuard AI — no action required.",
+    "details": "Test notification from PySetu AI — no action required.",
     "tenant": "acme",
 }
 
@@ -67,7 +67,7 @@ def build_gateway_alert_event(
         "gateway.egress.block": "Gateway response blocked by egress policy",
     }
     event: dict[str, Any] = {
-        "title": title_by_action.get(action, "HelixGuard gateway alert"),
+        "title": title_by_action.get(action, "PySetu gateway alert"),
         "action": action,
         "actor": actor,
         "resource": resource,
@@ -159,7 +159,7 @@ def build_slack_payload(event: dict[str, Any], *, channel: str | None = None) ->
     emoji = {"LOW": ":white_check_mark:", "MEDIUM": ":warning:", "HIGH": ":rotating_light:", "CRITICAL": ":fire:"}.get(
         risk, ":bell:"
     )
-    text = f"{emoji} *{event.get('title', 'HelixGuard alert')}* — `{event.get('action', 'event')}`"
+    text = f"{emoji} *{event.get('title', 'PySetu alert')}* — `{event.get('action', 'event')}`"
     blocks: list[dict[str, Any]] = [
         {"type": "section", "text": {"type": "mrkdwn", "text": text}},
         {
@@ -182,10 +182,10 @@ def build_slack_payload(event: dict[str, Any], *, channel: str | None = None) ->
 def build_servicenow_payload(event: dict[str, Any]) -> dict[str, Any]:
     risk = str(event.get("risk", "medium")).lower()
     urgency = {"low": "3", "medium": "2", "high": "1", "critical": "1"}.get(risk, "2")
-    short = f"HelixGuard: {event.get('action', 'security event')} — {event.get('resource', 'n/a')}"
+    short = f"PySetu: {event.get('action', 'security event')} — {event.get('resource', 'n/a')}"
     description = "\n".join(
         [
-            f"Event: {event.get('title', 'HelixGuard alert')}",
+            f"Event: {event.get('title', 'PySetu alert')}",
             f"Actor: {event.get('actor', 'unknown')}",
             f"Resource: {event.get('resource', 'n/a')}",
             f"Status: {event.get('status', 'n/a')}",
@@ -206,7 +206,7 @@ def build_servicenow_payload(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_payload(webhook: AlertWebhook, event: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
-    headers = {"Content-Type": "application/json", "User-Agent": "HelixGuard-Alerts/0.1"}
+    headers = {"Content-Type": "application/json", "User-Agent": "PySetu-Alerts/0.1"}
     if webhook.webhook_type == "slack":
         return build_slack_payload(event, channel=webhook.channel), headers
     if webhook.webhook_type == "servicenow":

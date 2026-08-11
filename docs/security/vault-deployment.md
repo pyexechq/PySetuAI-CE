@@ -1,6 +1,6 @@
 # Hashicorp Vault Deployment Guide
 
-HelixGuard AI stores tenant API keys through a secrets abstraction (`secrets_service.py`). By default keys live in PostgreSQL; production deployments should enable Vault.
+PySetu AI stores tenant API keys through a secrets abstraction (`secrets_service.py`). By default keys live in PostgreSQL; production deployments should enable Vault.
 
 ## Local development (Docker Compose)
 
@@ -39,25 +39,25 @@ Restart the backend after changing these variables. Settings → Integrations wi
 
 | Secret | Vault path |
 |--------|------------|
-| OpenAI API key | `helixguard/tenants/{tenant_id}/integrations/openai_api_key` |
-| Gemini API key | `helixguard/tenants/{tenant_id}/integrations/gemini_api_key` |
-| Provider API key | `helixguard/tenants/{tenant_id}/providers/{provider_id}/api_key` |
+| OpenAI API key | `pysetu/tenants/{tenant_id}/integrations/openai_api_key` |
+| Gemini API key | `pysetu/tenants/{tenant_id}/integrations/gemini_api_key` |
+| Provider API key | `pysetu/tenants/{tenant_id}/providers/{provider_id}/api_key` |
 
 Each secret is stored as KV v2 data: `{ "value": "<key>" }`.
 
 ## Production recommendations
 
 1. **Never use dev mode** — deploy Vault in HA mode with auto-unseal (cloud KMS or HSM).
-2. **Use AppRole or Kubernetes auth** instead of long-lived root tokens for the HelixGuard backend.
-3. **Scope policies per tenant** — restrict read/write to `helixguard/tenants/{tenant_id}/*` paths.
+2. **Use AppRole or Kubernetes auth** instead of long-lived root tokens for the PySetu backend.
+3. **Scope policies per tenant** — restrict read/write to `pysetu/tenants/{tenant_id}/*` paths.
 4. **Enable audit logging** on the Vault cluster and ship logs to your SIEM.
-5. **Rotate keys** through Vault versions; HelixGuard reads the latest version on each gateway request.
+5. **Rotate keys** through Vault versions; PySetu reads the latest version on each gateway request.
 6. **Disable DB fallback** — with `VAULT_ENABLED=true`, plaintext keys are cleared from Postgres on write.
 
 ### Example policy (single tenant)
 
 ```hcl
-path "secret/data/helixguard/tenants/{{tenant_id}}/*" {
+path "secret/data/pysetu/tenants/{{tenant_id}}/*" {
   capabilities = ["create", "read", "update", "delete"]
 }
 ```
@@ -74,9 +74,9 @@ Or configure manually:
 
 ```bash
 vault auth enable approle
-vault write auth/approle/role/helixguard-api token_policies="helixguard-secrets"
-vault read auth/approle/role/helixguard-api/role-id
-vault write -f auth/approle/role/helixguard-api/secret-id
+vault write auth/approle/role/pysetu-api token_policies="pysetu-secrets"
+vault read auth/approle/role/pysetu-api/role-id
+vault write -f auth/approle/role/pysetu-api/secret-id
 ```
 
 Configure the backend with `VAULT_AUTH_METHOD=approle`, `VAULT_ROLE_ID`, and `VAULT_SECRET_ID`. The backend caches AppRole tokens and refreshes them before lease expiry.
@@ -102,7 +102,7 @@ Configure the backend with `VAULT_AUTH_METHOD=approle`, `VAULT_ROLE_ID`, and `VA
 
 | Secret | Vault path |
 |--------|------------|
-| JWT signing key | `helixguard/platform/jwt_secret` |
+| JWT signing key | `pysetu/platform/jwt_secret` |
 
 Bootstrap locally:
 

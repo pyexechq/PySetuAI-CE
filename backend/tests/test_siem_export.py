@@ -40,7 +40,7 @@ def test_format_ndjson_one_line_per_event() -> None:
 
 def test_format_cef_contains_action_and_vendor() -> None:
     line = format_cef(_sample_log(action="Login", risk="high"))
-    assert line.startswith("CEF:0|HelixGuard|AI Gateway|")
+    assert line.startswith("CEF:0|PySetu|AI Gateway|")
     assert "Login" in line
     assert "cs2=high" in line
 

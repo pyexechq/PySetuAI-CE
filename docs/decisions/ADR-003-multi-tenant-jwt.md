@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-HelixGuard AI is a multi-tenant SaaS platform. Every API request and database query must be scoped to a tenant. We need an authentication mechanism that carries tenant context.
+PySetu AI is a multi-tenant SaaS platform. Every API request and database query must be scoped to a tenant. We need an authentication mechanism that carries tenant context.
 
 ## Decision
 

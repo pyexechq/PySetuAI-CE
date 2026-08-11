@@ -2,11 +2,11 @@
 
 ## Overview
 
-HelixGuard AI is a multi-tenant Enterprise AI Control Plane that sits between AI agents, MCP servers, enterprise data sources, and LLMs.
+PySetu AI is a multi-tenant Enterprise AI Control Plane that sits between AI agents, MCP servers, enterprise data sources, and LLMs.
 
 ```
 ┌─────────────┐     ┌──────────────────────────────────┐     ┌─────────────┐
-│  AI Agents  │────▶│         HelixGuard AI            │────▶│    LLMs     │
+│  AI Agents  │────▶│         PySetu AI            │────▶│    LLMs     │
 │  & Users    │     │  Gateway │ Router │ Policy │ DLP  │     │ OpenAI/Gemini│
 └─────────────┘     │  MCP Gov │ Audit  │ Compliance     │     └─────────────┘
        │            └──────────────────────────────────┘            │

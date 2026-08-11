@@ -1,6 +1,6 @@
 # Air-Gap Offline Bundle (BL-032)
 
-Deploy HelixGuard AI in environments with **no outbound internet** access.
+Deploy PySetu AI in environments with **no outbound internet** access.
 
 ## What's included
 
@@ -12,7 +12,7 @@ Deploy HelixGuard AI in environments with **no outbound internet** access.
 | `deploy/airgap/export-ollama-models.*` | Pull + tarball Ollama models on connected host |
 | `deploy/airgap/import-ollama-models.*` | Import model tarball into running Ollama (install) |
 | `deploy/airgap/install.sh` / `install.ps1` | Install from bundle on isolated host |
-| `deploy/helm/helixguard/values-airgap.yaml` | Kubernetes air-gap values |
+| `deploy/helm/pysetu/values-airgap.yaml` | Kubernetes air-gap values |
 
 ## Quick start (connected machine)
 
@@ -35,12 +35,12 @@ chmod +x deploy/airgap/bundle.sh
 OLLAMA_MODELS=llama3.2 ./deploy/airgap/bundle.sh 0.1.0
 ```
 
-Output: `dist/helixguard-airgap-0.1.0.zip` (or `.tar.gz` on Linux)
+Output: `dist/pysetu-airgap-0.1.0.zip` (or `.tar.gz` on Linux)
 
 ## Install on air-gapped host
 
 1. Transfer and extract the archive
-2. Verify `manifest.json` SHA256 matches `images/helixguard-images.tar`
+2. Verify `manifest.json` SHA256 matches `images/pysetu-images.tar`
 3. Run install:
 
 ```powershell
@@ -89,9 +89,9 @@ Health check reports air-gap status: `GET /health` → `"air_gap_mode": "true"`
 ## Kubernetes
 
 ```bash
-helm upgrade --install helixguard ./helm/helixguard \
-  -f ./helm/helixguard/values-airgap.yaml \
-  --namespace helixguard --create-namespace
+helm upgrade --install pysetu ./helm/pysetu \
+  -f ./helm/pysetu/values-airgap.yaml \
+  --namespace pysetu --create-namespace
 ```
 
 Bundle Ollama models separately for fully offline K8s inference.

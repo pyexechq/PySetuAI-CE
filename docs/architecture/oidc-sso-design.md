@@ -7,7 +7,7 @@
 ## Goals
 
 1. Allow enterprise tenants to sign in with their IdP (Azure AD, Okta, Google Workspace) via OpenID Connect.
-2. Preserve HelixGuard multi-tenancy: every authenticated session must resolve to exactly one `tenant_id`.
+2. Preserve PySetu multi-tenancy: every authenticated session must resolve to exactly one `tenant_id`.
 3. Keep local username/password as a fallback for demo, break-glass, and air-gap deployments.
 4. Avoid blocking current JWT-based API clients and gateway client keys.
 
@@ -24,7 +24,7 @@
 sequenceDiagram
     participant Browser
     participant UI as Next.js UI
-    participant API as HelixGuard API
+    participant API as PySetu API
     participant IdP as OIDC Provider
 
     Browser->>UI: Open /login
@@ -35,13 +35,13 @@ sequenceDiagram
     Browser->>API: POST /auth/oidc/callback {code, state}
     API->>IdP: Token exchange + JWKS verify
     API->>API: Map claims → User + tenant_id
-    API-->>Browser: HelixGuard JWT (same shape as today)
+    API-->>Browser: PySetu JWT (same shape as today)
     Browser->>UI: Store token; redirect /dashboard
 ```
 
 ## Identity mapping
 
-| IdP claim | HelixGuard field | Notes |
+| IdP claim | PySetu field | Notes |
 |-----------|------------------|-------|
 | `sub` | `external_subject` (new column on `users`) | Stable IdP subject |
 | `email` | `users.email` | Lowercased; required |

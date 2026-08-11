@@ -121,7 +121,7 @@ async def establish_mcp_session(
         {
             "protocolVersion": MCP_PROTOCOL_VERSION,
             "capabilities": {},
-            "clientInfo": {"name": "helixguard", "version": "1.0"},
+            "clientInfo": {"name": "pysetu", "version": "1.0"},
         },
     )
     await _jsonrpc_notification(client, url, headers, "notifications/initialized")

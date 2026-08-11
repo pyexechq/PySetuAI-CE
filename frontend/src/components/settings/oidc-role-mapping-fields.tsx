@@ -106,7 +106,7 @@ export function OidcRoleMappingFields({
 
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Group → HelixGuard role</span>
+          <span className="text-xs font-medium text-muted-foreground">Group → PySetu role</span>
           <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" disabled={disabled} onClick={addRow}>
             <Plus className="h-3.5 w-3.5" />
             Add rule

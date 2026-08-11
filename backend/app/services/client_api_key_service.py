@@ -1,4 +1,4 @@
-"""HelixGuard client API keys for ingress authentication."""
+"""PySetu client API keys for ingress authentication."""
 
 from __future__ import annotations
 

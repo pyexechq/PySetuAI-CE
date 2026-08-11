@@ -79,12 +79,12 @@ jobs:
           version: v3.16.4
 
       - name: Helm lint
-        run: helm lint deploy/helm/helixguard
+        run: helm lint deploy/helm/pysetu
 
       - name: Render templates
         run: |
-          helm template helixguard deploy/helm/helixguard \
-            -f deploy/helm/helixguard/values-minikube.yaml \
+          helm template pysetu deploy/helm/pysetu \
+            -f deploy/helm/pysetu/values-minikube.yaml \
             > /dev/null
 
   docker-build:
@@ -101,7 +101,7 @@ jobs:
         with:
           context: ./backend
           push: false
-          tags: helixguard/backend:ci
+          tags: pysetu/backend:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -110,7 +110,7 @@ jobs:
         with:
           context: ./frontend
           push: false
-          tags: helixguard/frontend:ci
+          tags: pysetu/frontend:ci
           build-args: |
             NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
           cache-from: type=gha

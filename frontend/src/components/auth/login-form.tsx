@@ -13,7 +13,7 @@ const DEFAULT_TAGLINE = "Enterprise AI Control Plane";
 function LoginFormInner() {
   const searchParams = useSearchParams();
   const initialTenant = searchParams.get("tenant") ?? searchParams.get("tenant_slug") ?? "acme";
-  const [brandName, setBrandName] = useState("HelixGuard AI");
+  const [brandName, setBrandName] = useState("PySetu AI");
   const [brandTagline, setBrandTagline] = useState(DEFAULT_TAGLINE);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
@@ -29,7 +29,7 @@ function LoginFormInner() {
         setLogoUrl(branding.logo_url);
       })
       .catch(() => {
-        setBrandName("HelixGuard AI");
+        setBrandName("PySetu AI");
         setBrandTagline(DEFAULT_TAGLINE);
         setLogoUrl(null);
       });

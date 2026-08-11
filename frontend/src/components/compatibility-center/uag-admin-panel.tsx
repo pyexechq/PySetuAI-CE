@@ -169,7 +169,7 @@ export function UagAdminPanel() {
         <CardHeader>
           <CardTitle className="text-base">Client response format</CardTitle>
           <CardDescription>
-            Choose the API shape returned to clients. HelixGuard routing metadata is omitted by default for strict SDK
+            Choose the API shape returned to clients. PySetu routing metadata is omitted by default for strict SDK
             compatibility; append <code className="text-xs">?mode=debug</code> to include it. Client API keys can
             override the tenant default. UAG model mappings still override both when a model alias matches.
           </CardDescription>

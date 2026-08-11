@@ -1,4 +1,4 @@
-# HelixGuard AI — Release Readiness Assessment
+# PySetu AI — Release Readiness Assessment
 
 **Assessment Date:** Aug 11, 2026  
 **Test Cycle:** QA-001  
@@ -11,7 +11,7 @@
 
 # NOT APPROVED FOR RELEASE
 
-HelixGuard AI is **not ready for production release**. Two Severity-1 security defects, five Severity-2 functional/security defects, and significant test coverage gaps block release approval.
+PySetu AI is **not ready for production release**. Two Severity-1 security defects, five Severity-2 functional/security defects, and significant test coverage gaps block release approval.
 
 ---
 

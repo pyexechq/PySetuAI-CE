@@ -49,7 +49,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "helixguard-auth",
+      name: "pysetu-auth",
       onRehydrateStorage: () => (state) => {
         if (!state?.token) return;
         if (isJwtExpired(state.token)) {

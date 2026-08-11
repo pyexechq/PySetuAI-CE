@@ -22,6 +22,6 @@ export const useDateRangeStore = create<DateRangeState>()(
         set(range);
       },
     }),
-    { name: "helixguard-date-range" }
+    { name: "pysetu-date-range" }
   )
 );

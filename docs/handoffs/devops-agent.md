@@ -5,7 +5,7 @@
 ## Work Completed
 
 - Created Docker Compose stack with postgres, redis, vault, opa, backend, frontend, celery worker/beat
-- Kubernetes Helm chart at `deploy/helm/helixguard` (S4-35 / BL-031)
+- Kubernetes Helm chart at `deploy/helm/pysetu` (S4-35 / BL-031)
 - Air-gap offline bundle at `deploy/airgap` (S4-36 / BL-032)
 - Backend Dockerfile (Python 3.12-slim)
 - Frontend Dockerfile (Node 20-alpine, multi-stage build)
@@ -15,7 +15,7 @@
 
 ```
 docker-compose.yml
-deploy/helm/helixguard/
+deploy/helm/pysetu/
 backend/Dockerfile
 frontend/Dockerfile
 ```
@@ -37,7 +37,7 @@ frontend/Dockerfile
 ## Dependencies
 
 - Docker Desktop on developer machines
-- Kubernetes/Helm chart available at deploy/helm/helixguard
+- Kubernetes/Helm chart available at deploy/helm/pysetu
 
 ## Next Recommended Tasks
 

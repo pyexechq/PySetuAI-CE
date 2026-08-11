@@ -97,7 +97,7 @@ async def root() -> dict[str, str]:
     return {
         "service": settings.app_name,
         "version": settings.app_version,
-        "message": "HelixGuard AI API — use the web UI or API docs below.",
+        "message": "PySetu AI API — use the web UI or API docs below.",
         "ui": settings.frontend_url,
         "docs": "/docs",
         "health": "/health",

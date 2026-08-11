@@ -96,7 +96,7 @@ class AuthRateLimitMiddleware(BaseHTTPMiddleware):
             else settings.rate_limit_auth_requests
         )
         window = settings.rate_limit_window_seconds
-        key = f"helixguard:ratelimit:{path}:{client_ip(request)}"
+        key = f"pysetu:ratelimit:{path}:{client_ip(request)}"
         allowed, retry_after = check_rate_limit(key, limit=limit, window_seconds=window)
 
         if allowed:

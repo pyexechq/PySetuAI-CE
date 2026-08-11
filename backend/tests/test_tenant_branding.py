@@ -47,4 +47,4 @@ def test_public_branding_dict_shape() -> None:
 def test_branding_dict_includes_defaults() -> None:
     payload = branding_dict(_tenant())
     assert payload["display_name"] == "Acme Corporation"
-    assert payload["default_product_name"] == "HelixGuard AI"
+    assert payload["default_product_name"] == "PySetu AI"

@@ -120,7 +120,7 @@ export interface ApiComplianceControl {
   status: "met" | "not_met" | "in_progress";
   evidence?: string | null;
   remediation?: string | null;
-  helixguard_module?: string | null;
+  pysetu_module?: string | null;
 }
 
 export interface ApiComplianceSnapshotSummary {
@@ -1179,7 +1179,7 @@ export const api = {
         const blob = await response.blob();
         const disposition = response.headers.get("Content-Disposition") ?? "";
         const match = disposition.match(/filename="([^"]+)"/);
-        const filename = match?.[1] ?? `helixguard-${reportId}.csv`;
+        const filename = match?.[1] ?? `pysetu-${reportId}.csv`;
         return { blob, filename };
       }
 
@@ -1753,7 +1753,7 @@ export interface ChatCompletionResponse {
   id: string;
   model: string;
   choices: { message: { role: string; content: string } }[];
-  helixguard?: {
+  pysetu?: {
     inspection_action?: string;
     violations?: Array<{ rule_name: string; action: string; severity: string; detail: string }>;
     ollama_model?: string;

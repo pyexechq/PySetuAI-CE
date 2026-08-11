@@ -42,7 +42,7 @@ def test_build_servicenow_payload_maps_urgency_by_risk() -> None:
     assert payload["urgency"] == "1"
     assert payload["category"] == "Security"
     assert "Cross-region" in payload["description"]
-    assert payload["short_description"].startswith("HelixGuard:")
+    assert payload["short_description"].startswith("PySetu:")
 
 
 def test_build_gateway_alert_event_includes_trace_and_tenant() -> None:

@@ -38,9 +38,9 @@ def build_report_download(
             generated_at=generated_at,
             row_count=row_count,
         )
-        filename = f"helixguard-{safe_name}-{date_suffix}.pdf"
+        filename = f"pysetu-{safe_name}-{date_suffix}.pdf"
         return content, "application/pdf", filename
 
     csv_text = build_report_csv(columns, rows)
-    filename = f"helixguard-{safe_name}-{date_suffix}.csv"
+    filename = f"pysetu-{safe_name}-{date_suffix}.csv"
     return csv_text.encode("utf-8"), "text/csv; charset=utf-8", filename

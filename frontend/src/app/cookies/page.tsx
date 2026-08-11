@@ -4,7 +4,7 @@ export default function CookiesPage() {
   return (
     <LegalPageShell title="Cookie Policy" lastUpdated="August 11, 2026">
       <p>
-        This Cookie Policy describes how HelixGuard AI uses cookies and similar technologies on our marketing site
+        This Cookie Policy describes how PySetu AI uses cookies and similar technologies on our marketing site
         and authenticated application.
       </p>
 
@@ -36,7 +36,7 @@ export default function CookiesPage() {
 
       <h2>Contact</h2>
       <p>
-        Questions about this policy: <a href="mailto:privacy@helixguard.com">privacy@helixguard.com</a>
+        Questions about this policy: <a href="mailto:privacy@pysetu.com">privacy@pysetu.com</a>
       </p>
     </LegalPageShell>
   );

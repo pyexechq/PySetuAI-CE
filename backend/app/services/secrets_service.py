@@ -25,11 +25,11 @@ _vault_token_cache: dict[str, float | str | None] = {
 
 
 def _tenant_secret_path(tenant_id: uuid.UUID, secret_name: str) -> str:
-    return f"helixguard/tenants/{tenant_id}/integrations/{secret_name}"
+    return f"pysetu/tenants/{tenant_id}/integrations/{secret_name}"
 
 
 def _provider_secret_path(tenant_id: uuid.UUID, provider_id: uuid.UUID) -> str:
-    return f"helixguard/tenants/{tenant_id}/providers/{provider_id}/api_key"
+    return f"pysetu/tenants/{tenant_id}/providers/{provider_id}/api_key"
 
 
 def _validate_vault_settings() -> None:

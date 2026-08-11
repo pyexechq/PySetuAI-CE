@@ -1,4 +1,4 @@
-# HelixGuard AI — Defect Log
+# PySetu AI — Defect Log
 
 **Last Updated:** Aug 11, 2026  
 **Test Cycle:** QA-001

@@ -1,4 +1,4 @@
-# HelixGuard AI — Test Strategy
+# PySetu AI — Test Strategy
 
 **Version:** 1.0  
 **Last Updated:** Aug 11, 2026  
@@ -8,7 +8,7 @@
 
 ## Purpose
 
-Define the quality assurance approach for HelixGuard AI across functional, security, compliance, performance, and multi-tenant validation. Documentation is the source of truth; implementation is validated against `docs/architecture/`, `docs/security/`, and `docs/api/`.
+Define the quality assurance approach for PySetu AI across functional, security, compliance, performance, and multi-tenant validation. Documentation is the source of truth; implementation is validated against `docs/architecture/`, `docs/security/`, and `docs/api/`.
 
 ---
 

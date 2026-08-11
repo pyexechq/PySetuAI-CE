@@ -452,8 +452,8 @@ async def suggest_policy_rules_with_ai(
         return result
 
     prompt = (
-        "You are a HelixGuard policy engineer. Return ONLY JSON: an array of up to 4 objects with keys "
-        "name, condition, action, severity, rationale. Use HelixGuard condition syntax only:\n"
+        "You are a PySetu policy engineer. Return ONLY JSON: an array of up to 4 objects with keys "
+        "name, condition, action, severity, rationale. Use PySetu condition syntax only:\n"
         "- prompt.contains('phrase')\n"
         "- content.matches(/regex/i)\n"
         "- region != 'EU' && has_pii\n"

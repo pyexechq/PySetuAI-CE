@@ -68,7 +68,7 @@ function exportFrameworkCsv(framework: Framework) {
       control.requirement,
       control.evidence ?? "",
       control.remediation ?? "",
-      control.helixguard_module ?? "",
+      control.pysetu_module ?? "",
     ]),
   ];
   const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");

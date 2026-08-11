@@ -55,7 +55,7 @@ export function ComplianceRemediationDialog({
               {plan.estimated_effort && <Badge variant="secondary">Effort: {plan.estimated_effort}</Badge>}
               {plan.mode === "ai" && (
                 <Badge variant={plan.ai_generated ? "default" : "outline"}>
-                  {plan.ai_generated ? "AI generated" : "HelixGuard playbook"}
+                  {plan.ai_generated ? "AI generated" : "PySetu playbook"}
                 </Badge>
               )}
             </div>
@@ -67,7 +67,7 @@ export function ComplianceRemediationDialog({
             </ol>
             {plan.manual_route && (
               <Button asChild variant="secondary" className="gap-2">
-                <Link href={plan.manual_route}>Open HelixGuard module</Link>
+                <Link href={plan.manual_route}>Open PySetu module</Link>
               </Button>
             )}
           </div>

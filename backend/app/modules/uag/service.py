@@ -107,9 +107,9 @@ async def run_uag_post_upstream(
     """Translate upstream response back to the caller's source protocol."""
     translator = ProtocolTranslator(source_protocol=canonical.source_protocol)
     translated = translator.translate_response(canonical, response, trace)
-    helixguard = dict(translated.helixguard or {})
-    helixguard["uag"] = trace.to_dict()
-    translated.helixguard = helixguard
+    pysetu = dict(translated.pysetu or {})
+    pysetu["uag"] = trace.to_dict()
+    translated.pysetu = pysetu
     translated.model = canonical.requested_model
     return translated
 

@@ -12,20 +12,20 @@ def _sample_response(*, with_metadata: bool = True) -> ChatCompletionResponse:
         model="llama3.2",
         choices=[ChatCompletionChoice(message=ChatMessage(role="assistant", content="Hello"))],
         usage=ChatCompletionUsage(prompt_tokens=3, completion_tokens=2, total_tokens=5),
-        helixguard={"upstream": "ollama"} if with_metadata else None,
+        pysetu={"upstream": "ollama"} if with_metadata else None,
     )
 
 
-def test_openai_response_strips_helixguard_by_default() -> None:
+def test_openai_response_strips_pysetu_by_default() -> None:
     body = serialize_gateway_response("openai", _sample_response(), None, None, include_metadata=False)
     assert body["object"] == "chat.completion"
-    assert "helixguard" not in body
+    assert "pysetu" not in body
     assert body["choices"][0]["message"]["content"] == "Hello"
 
 
 def test_openai_response_can_include_metadata() -> None:
     body = serialize_gateway_response("openai", _sample_response(), None, None, include_metadata=True)
-    assert body["helixguard"]["upstream"] == "ollama"
+    assert body["pysetu"]["upstream"] == "ollama"
 
 
 def test_gemini_response_shape() -> None:

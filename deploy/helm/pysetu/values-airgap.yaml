@@ -2,8 +2,8 @@
 
 ingress:
   enabled: true
-  host: helixguard.airgap.local
-  publicApiUrl: http://helixguard.airgap.local/api/v1
+  host: pysetu.airgap.local
+  publicApiUrl: http://pysetu.airgap.local/api/v1
 
 backend:
   replicaCount: 1
@@ -13,8 +13,8 @@ frontend:
 
 config:
   debug: "false"
-  corsOrigins: '["http://helixguard.airgap.local"]'
-  frontendUrl: http://helixguard.airgap.local
+  corsOrigins: '["http://pysetu.airgap.local"]'
+  frontendUrl: http://pysetu.airgap.local
   gatewayMockMode: "false"
   ollamaEnabled: "true"
   ollamaBaseUrl: http://ollama:11434

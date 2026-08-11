@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    app_name: str = "HelixGuard AI"
+    app_name: str = "PySetu AI"
     app_version: str = "0.1.0"
     debug: bool = True
     demo_credentials_enabled: bool = False
@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     demo_platform_admin_password: str | None = None
     api_prefix: str = "/api/v1"
 
-    database_url: str = "postgresql+asyncpg://helixguard:helixguard@localhost:5432/helixguard"
+    database_url: str = "postgresql+asyncpg://pysetu:pysetu@localhost:5432/pysetu"
     redis_url: str = "redis://localhost:6379/0"
 
     jwt_secret_key: str = "change-me-in-production-use-vault"
@@ -55,13 +55,13 @@ class Settings(BaseSettings):
     llm_rebalance_cron_minute: int = 0
 
     otel_enabled: bool = True
-    otel_service_name: str = "helixguard-api"
+    otel_service_name: str = "pysetu-api"
     otel_exporter: str = "console"
     otel_otlp_endpoint: str | None = None
 
     opa_enabled: bool = False
     opa_base_url: str = "http://localhost:8181"
-    opa_policy_path: str = "helixguard/gateway/decision"
+    opa_policy_path: str = "pysetu/gateway/decision"
     opa_timeout_seconds: float = 2.0
     opa_fail_open: bool = True
 
@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     smtp_port: int = 1025
     smtp_user: str | None = None
     smtp_password: str | None = None
-    smtp_from: str = "helixguard@localhost"
+    smtp_from: str = "pysetu@localhost"
     smtp_use_tls: bool = False
 
     @property

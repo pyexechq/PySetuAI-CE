@@ -13,8 +13,8 @@ output_dir="$(dirname "${OUTPUT_PATH}")"
 mkdir -p "${output_dir}"
 output_abs="$(cd "${output_dir}" && pwd)/$(basename "${OUTPUT_PATH}")"
 
-vol="helixguard-ollama-export-$$"
-container="helixguard-ollama-export-$$"
+vol="pysetu-ollama-export-$$"
+container="pysetu-ollama-export-$$"
 
 cleanup() {
   docker rm -f "${container}" >/dev/null 2>&1 || true

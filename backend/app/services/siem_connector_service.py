@@ -134,7 +134,7 @@ async def fetch_logs_for_export(
 
 
 def _build_headers(connector: SiemConnector) -> dict[str, str]:
-    headers = {"Content-Type": "application/json", "User-Agent": "HelixGuard-SIEM/0.1"}
+    headers = {"Content-Type": "application/json", "User-Agent": "PySetu-SIEM/0.1"}
     token = connector.auth_token or ""
     if connector.connector_type == "splunk_hec":
         headers["Authorization"] = f"Splunk {token}" if token else ""
@@ -155,7 +155,7 @@ def _build_payload(connector: SiemConnector, logs: list[AuditLog]) -> tuple[str,
     fmt = connector.export_format
 
     if connector.connector_type == "splunk_hec":
-        events = [{"event": audit_log_to_dict(log), "sourcetype": "helixguard:audit"} for log in logs]
+        events = [{"event": audit_log_to_dict(log), "sourcetype": "pysetu:audit"} for log in logs]
         return json.dumps(events), headers, "application/json"
 
     if connector.connector_type == "elastic" or fmt == "elastic_bulk":

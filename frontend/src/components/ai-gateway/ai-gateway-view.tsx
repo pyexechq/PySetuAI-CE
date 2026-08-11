@@ -29,7 +29,7 @@ ${methodFlag}${authHeader} \\
   "messages": [
     {
       "role": "user",
-      "content": "Hello from HelixGuard"
+      "content": "Hello from PySetu"
     }
   ]
 }'`;

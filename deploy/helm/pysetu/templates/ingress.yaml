@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "helixguard.fullname" . }}
+  name: {{ include "pysetu.fullname" . }}
   labels:
-    {{- include "helixguard.labels" . | nindent 4 }}
+    {{- include "pysetu.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -31,35 +31,35 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "helixguard.fullname" . }}-backend
+                name: {{ include "pysetu.fullname" . }}-backend
                 port:
                   number: 8000
           - path: /v1
             pathType: Prefix
             backend:
               service:
-                name: {{ include "helixguard.fullname" . }}-backend
+                name: {{ include "pysetu.fullname" . }}-backend
                 port:
                   number: 8000
           - path: /health
             pathType: Prefix
             backend:
               service:
-                name: {{ include "helixguard.fullname" . }}-backend
+                name: {{ include "pysetu.fullname" . }}-backend
                 port:
                   number: 8000
           - path: /docs
             pathType: Prefix
             backend:
               service:
-                name: {{ include "helixguard.fullname" . }}-backend
+                name: {{ include "pysetu.fullname" . }}-backend
                 port:
                   number: 8000
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ include "helixguard.fullname" . }}-frontend
+                name: {{ include "pysetu.fullname" . }}-frontend
                 port:
                   number: 3000
 {{- end }}

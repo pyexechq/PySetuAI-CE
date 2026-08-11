@@ -81,7 +81,7 @@ export default function OidcCallbackPage() {
       <Card className="w-full max-w-md border-border/60">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Completing SSO sign-in</CardTitle>
-          <CardDescription>Exchanging authorization code for your HelixGuard session…</CardDescription>
+          <CardDescription>Exchanging authorization code for your PySetu session…</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-3 text-sm">
           {!error ? (

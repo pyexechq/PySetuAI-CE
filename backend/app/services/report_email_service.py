@@ -34,14 +34,14 @@ def send_report_email(
         return {"status": "skipped", "reason": "smtp_disabled", "recipients": cleaned}
 
     message = MIMEMultipart()
-    message["Subject"] = f"HelixGuard Report: {report_name}"
+    message["Subject"] = f"PySetu Report: {report_name}"
     message["From"] = settings.smtp_from
     message["To"] = ", ".join(cleaned)
 
     body = (
-        f'Your scheduled HelixGuard report "{report_name}" is attached.\n\n'
+        f'Your scheduled PySetu report "{report_name}" is attached.\n\n'
         f"Records exported: {row_count:,}\n\n"
-        f"— HelixGuard AI\n{settings.frontend_url}"
+        f"— PySetu AI\n{settings.frontend_url}"
     )
     message.attach(MIMEText(body, "plain"))
 

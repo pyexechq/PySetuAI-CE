@@ -2,7 +2,7 @@
 
 ## Overview
 
-HelixGuard AI follows an enterprise SaaS design language inspired by Datadog, Grafana, CrowdStrike, Wiz, and ServiceNow.
+PySetu AI follows an enterprise SaaS design language inspired by Datadog, Grafana, CrowdStrike, Wiz, and ServiceNow.
 
 ## Themes
 

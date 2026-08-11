@@ -15,7 +15,7 @@ def resolve_timeout_sec(connection_config: dict | None) -> float:
 def build_mcp_headers(connection_config: dict | None, *, json_rpc: bool = False) -> dict[str, str]:
     headers = {
         "Accept": "application/json, text/event-stream",
-        "User-Agent": "HelixGuard-MCP/1.0",
+        "User-Agent": "PySetu-MCP/1.0",
     }
     if json_rpc:
         headers["Content-Type"] = "application/json"

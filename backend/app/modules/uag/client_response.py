@@ -63,13 +63,13 @@ def serialize_gateway_response(
     else:
         body = _serialize_openai(response)
 
-    if include_metadata and response.helixguard:
-        body["helixguard"] = response.helixguard
+    if include_metadata and response.pysetu:
+        body["pysetu"] = response.pysetu
     return body
 
 
 def _serialize_openai(response: ChatCompletionResponse) -> dict[str, Any]:
-    return response.model_dump(exclude_none=True, exclude={"helixguard"})
+    return response.model_dump(exclude_none=True, exclude={"pysetu"})
 
 
 def _serialize_gemini(response: ChatCompletionResponse, canonical: CanonicalPrompt | None) -> dict[str, Any]:

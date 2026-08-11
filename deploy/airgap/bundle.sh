@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Package HelixGuard AI for offline / air-gapped installation.
+# Package PySetu AI for offline / air-gapped installation.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 VERSION="${1:-0.1.0}"
 OLLAMA_MODELS="${OLLAMA_MODELS:-}"
-OUTPUT_DIR="${ROOT}/dist/helixguard-airgap-${VERSION}"
-IMAGE_ARCHIVE="${OUTPUT_DIR}/images/helixguard-images.tar"
+OUTPUT_DIR="${ROOT}/dist/pysetu-airgap-${VERSION}"
+IMAGE_ARCHIVE="${OUTPUT_DIR}/images/pysetu-images.tar"
 COMPOSE_BUILD="docker-compose.airgap.yml"
-BACKEND_TAG="helixguard/backend:${VERSION}"
-FRONTEND_TAG="helixguard/frontend:${VERSION}"
+BACKEND_TAG="pysetu/backend:${VERSION}"
+FRONTEND_TAG="pysetu/frontend:${VERSION}"
 
-echo "==> HelixGuard air-gap bundle v${VERSION}"
+echo "==> PySetu air-gap bundle v${VERSION}"
 rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}/images"
 
@@ -60,17 +60,17 @@ if [[ -n "${OLLAMA_MODELS}" ]]; then
 fi
 
 cat > "${OUTPUT_DIR}/.env.airgap" <<EOF
-HELIXGUARD_BACKEND_IMAGE=${BACKEND_TAG}
-HELIXGUARD_FRONTEND_IMAGE=${FRONTEND_TAG}
+PYSETU_BACKEND_IMAGE=${BACKEND_TAG}
+PYSETU_FRONTEND_IMAGE=${FRONTEND_TAG}
 JWT_SECRET_KEY=airgap-change-me-before-production
-POSTGRES_PASSWORD=helixguard-airgap
+POSTGRES_PASSWORD=pysetu-airgap
 NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
 EOF
 
 python3 - <<PY
 import hashlib, json, pathlib
 root = pathlib.Path("${OUTPUT_DIR}")
-archive = root / "images/helixguard-images.tar"
+archive = root / "images/pysetu-images.tar"
 sha = hashlib.sha256(archive.read_bytes()).hexdigest()
 manifest = json.loads((root / "manifest.json").read_text())
 manifest["version"] = "${VERSION}"
@@ -85,8 +85,8 @@ if model_manifest.exists():
 print("SHA256:", sha)
 PY
 
-ARCHIVE="${ROOT}/dist/helixguard-airgap-${VERSION}.tar.gz"
-tar -czf "${ARCHIVE}" -C "${ROOT}/dist" "helixguard-airgap-${VERSION}"
+ARCHIVE="${ROOT}/dist/pysetu-airgap-${VERSION}.tar.gz"
+tar -czf "${ARCHIVE}" -C "${ROOT}/dist" "pysetu-airgap-${VERSION}"
 
 echo ""
 echo "Bundle ready:"

@@ -1,9 +1,9 @@
 {
-  "name": "helixguard-airgap",
+  "name": "pysetu-airgap",
   "version": "0.1.0",
-  "description": "HelixGuard AI offline installation bundle",
+  "description": "PySetu AI offline installation bundle",
   "created_at": "",
-  "images_archive": "helixguard-images.tar",
+  "images_archive": "pysetu-images.tar",
   "sha256": "",
   "components": {
     "backend": "FastAPI control plane + AI gateway",

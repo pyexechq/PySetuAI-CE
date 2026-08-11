@@ -2,8 +2,8 @@
 ingress:
   enabled: true
   className: nginx
-  host: helixguard.local
-  publicApiUrl: http://helixguard.local/api/v1
+  host: pysetu.local
+  publicApiUrl: http://pysetu.local/api/v1
 
 backend:
   replicaCount: 1
@@ -23,8 +23,8 @@ postgresql:
 
 config:
   debug: "true"
-  corsOrigins: '["http://helixguard.local"]'
-  frontendUrl: http://helixguard.local
+  corsOrigins: '["http://pysetu.local"]'
+  frontendUrl: http://pysetu.local
   opaFailOpen: "true"
   gatewayMockMode: "true"
 

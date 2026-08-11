@@ -5,13 +5,13 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: helixguard
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helixguard-airgap}
-      POSTGRES_DB: helixguard
+      POSTGRES_USER: pysetu
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pysetu-airgap}
+      POSTGRES_DB: pysetu
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U helixguard -d helixguard"]
+      test: ["CMD-SHELL", "pg_isready -U pysetu -d pysetu"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -49,12 +49,12 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ${HELIXGUARD_BACKEND_IMAGE:-helixguard/backend:0.1.0}
+    image: ${PYSETU_BACKEND_IMAGE:-pysetu/backend:0.1.0}
     ports:
       - "${BACKEND_PORT:-8001}:8000"
     environment:
       AIR_GAP_MODE: "true"
-      DATABASE_URL: postgresql+asyncpg://helixguard:${POSTGRES_PASSWORD:-helixguard-airgap}@postgres:5432/helixguard
+      DATABASE_URL: postgresql+asyncpg://pysetu:${POSTGRES_PASSWORD:-pysetu-airgap}@postgres:5432/pysetu
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-airgap-change-me-before-production}
       DEBUG: "false"
@@ -86,11 +86,11 @@ services:
     restart: unless-stopped
 
   celery-worker:
-    image: ${HELIXGUARD_BACKEND_IMAGE:-helixguard/backend:0.1.0}
+    image: ${PYSETU_BACKEND_IMAGE:-pysetu/backend:0.1.0}
     command: celery -A app.worker.celery_app worker --loglevel=info
     environment:
       AIR_GAP_MODE: "true"
-      DATABASE_URL: postgresql+asyncpg://helixguard:${POSTGRES_PASSWORD:-helixguard-airgap}@postgres:5432/helixguard
+      DATABASE_URL: postgresql+asyncpg://pysetu:${POSTGRES_PASSWORD:-pysetu-airgap}@postgres:5432/pysetu
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-airgap-change-me-before-production}
       DEBUG: "false"
@@ -107,11 +107,11 @@ services:
     restart: unless-stopped
 
   celery-beat:
-    image: ${HELIXGUARD_BACKEND_IMAGE:-helixguard/backend:0.1.0}
+    image: ${PYSETU_BACKEND_IMAGE:-pysetu/backend:0.1.0}
     command: celery -A app.worker.celery_app beat --loglevel=info
     environment:
       AIR_GAP_MODE: "true"
-      DATABASE_URL: postgresql+asyncpg://helixguard:${POSTGRES_PASSWORD:-helixguard-airgap}@postgres:5432/helixguard
+      DATABASE_URL: postgresql+asyncpg://pysetu:${POSTGRES_PASSWORD:-pysetu-airgap}@postgres:5432/pysetu
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-airgap-change-me-before-production}
       DEBUG: "false"
@@ -126,7 +126,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ${HELIXGUARD_FRONTEND_IMAGE:-helixguard/frontend:0.1.0}
+    image: ${PYSETU_FRONTEND_IMAGE:-pysetu/frontend:0.1.0}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:

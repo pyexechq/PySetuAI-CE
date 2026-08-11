@@ -58,7 +58,7 @@ export function IdentitySettingsPanel() {
                 <span className="text-sm font-medium">Enable JIT provisioning for this tenant</span>
               </label>
               <p className="text-xs text-muted-foreground">
-                When disabled, only users that already exist in HelixGuard (or linked on first SSO login by
+                When disabled, only users that already exist in PySetu (or linked on first SSO login by
                 email) can sign in. When enabled, new IdP users receive a local account on first SSO login.
               </p>
               {platformDefault && (

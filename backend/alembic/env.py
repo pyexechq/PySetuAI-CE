@@ -17,7 +17,7 @@ if config.config_file_name is not None:
 
 database_url = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://helixguard:helixguard@localhost:5432/helixguard",
+    "postgresql+asyncpg://pysetu:pysetu@localhost:5432/pysetu",
 )
 if database_url.startswith("postgresql://"):
     database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)

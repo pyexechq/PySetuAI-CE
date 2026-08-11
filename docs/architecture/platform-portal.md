@@ -1,6 +1,6 @@
 # Platform tenant management portal
 
-HelixGuard separates **tenant application** access from **SaaS operator** tenant lifecycle management.
+PySetu separates **tenant application** access from **SaaS operator** tenant lifecycle management.
 
 ## Deployment modes
 
@@ -47,7 +47,7 @@ When `PLATFORM_PORTAL_ENABLED=false`, protected routes respond with **404**.
 
 | Portal | Email | Password | Tenant slug |
 |--------|-------|----------|-------------|
-| Platform | `platform@helixguard.com` | `platform1234` | `platform` |
+| Platform | `platform@pysetu.com` | `platform1234` | `platform` |
 | Demo customer | `admin@acme.com` | `demo1234` | `acme` |
 
 ## Docker Compose

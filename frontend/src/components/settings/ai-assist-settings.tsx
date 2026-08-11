@@ -71,7 +71,7 @@ export function AiAssistSettings() {
               Platform AI Assist
             </CardTitle>
             <CardDescription>
-              Tenant Admins configure one API key for HelixGuard AI features across the control plane.
+              Tenant Admins configure one API key for PySetu AI features across the control plane.
             </CardDescription>
           </div>
           <Badge variant={settings.available ? "success" : settings.enabled ? "warning" : "secondary"}>

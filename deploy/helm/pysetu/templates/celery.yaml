@@ -1,30 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "helixguard.fullname" . }}-celery-worker
+  name: {{ include "pysetu.fullname" . }}-celery-worker
   labels:
     {{- $ctx := dict "component" "celery-worker" "Values" .Values "Chart" .Chart "Release" .Release }}
-    {{- include "helixguard.componentLabels" $ctx | nindent 4 }}
+    {{- include "pysetu.componentLabels" $ctx | nindent 4 }}
 spec:
   replicas: {{ .Values.celery.worker.replicaCount }}
   selector:
     matchLabels:
       {{- $ctx := dict "component" "celery-worker" "Values" .Values "Chart" .Chart "Release" .Release }}
-      {{- include "helixguard.componentSelectorLabels" $ctx | nindent 6 }}
+      {{- include "pysetu.componentSelectorLabels" $ctx | nindent 6 }}
   template:
     metadata:
       labels:
         {{- $ctx := dict "component" "celery-worker" "Values" .Values "Chart" .Chart "Release" .Release }}
-        {{- include "helixguard.componentSelectorLabels" $ctx | nindent 8 }}
+        {{- include "pysetu.componentSelectorLabels" $ctx | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "helixguard.serviceAccountName" . }}
+      serviceAccountName: {{ include "pysetu.serviceAccountName" . }}
       containers:
         - name: celery-worker
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info"]
           env:
-            {{- include "helixguard.backendEnv" . | nindent 12 }}
+            {{- include "pysetu.backendEnv" . | nindent 12 }}
           resources:
             {{- toYaml .Values.celery.worker.resources | nindent 12 }}
 ---
@@ -32,30 +32,30 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "helixguard.fullname" . }}-celery-beat
+  name: {{ include "pysetu.fullname" . }}-celery-beat
   labels:
     {{- $ctx := dict "component" "celery-beat" "Values" .Values "Chart" .Chart "Release" .Release }}
-    {{- include "helixguard.componentLabels" $ctx | nindent 4 }}
+    {{- include "pysetu.componentLabels" $ctx | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
       {{- $ctx := dict "component" "celery-beat" "Values" .Values "Chart" .Chart "Release" .Release }}
-      {{- include "helixguard.componentSelectorLabels" $ctx | nindent 6 }}
+      {{- include "pysetu.componentSelectorLabels" $ctx | nindent 6 }}
   template:
     metadata:
       labels:
         {{- $ctx := dict "component" "celery-beat" "Values" .Values "Chart" .Chart "Release" .Release }}
-        {{- include "helixguard.componentSelectorLabels" $ctx | nindent 8 }}
+        {{- include "pysetu.componentSelectorLabels" $ctx | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "helixguard.serviceAccountName" . }}
+      serviceAccountName: {{ include "pysetu.serviceAccountName" . }}
       containers:
         - name: celery-beat
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           command: ["celery", "-A", "app.worker.celery_app", "beat", "--loglevel=info"]
           env:
-            {{- include "helixguard.backendEnv" . | nindent 12 }}
+            {{- include "pysetu.backendEnv" . | nindent 12 }}
           resources:
             {{- toYaml .Values.celery.beat.resources | nindent 12 }}
 {{- end }}

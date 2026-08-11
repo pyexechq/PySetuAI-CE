@@ -69,7 +69,7 @@ class DashboardComplianceControl(BaseModel):
     status: str
     evidence: str | None = None
     remediation: str | None = None
-    helixguard_module: str | None = None
+    pysetu_module: str | None = None
 
 
 class DashboardComplianceFramework(BaseModel):

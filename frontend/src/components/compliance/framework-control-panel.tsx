@@ -51,9 +51,9 @@ function ControlRow({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium">{control.title}</p>
             <Badge variant={config.variant}>{config.label}</Badge>
-            {control.helixguard_module && (
+            {control.pysetu_module && (
               <Badge variant="outline" className="font-normal">
-                {control.helixguard_module}
+                {control.pysetu_module}
               </Badge>
             )}
           </div>

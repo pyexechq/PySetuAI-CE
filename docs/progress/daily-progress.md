@@ -22,7 +22,7 @@
 | Email | Password | Role / Notes |
 |-------|----------|--------------|
 | admin@acme.com | demo1234 | tenant_admin (tenant: acme) |
-| platform@helixguard.com | platform1234 | platform_admin (tenant: platform) |
+| platform@pysetu.com | platform1234 | platform_admin (tenant: platform) |
 
 ## Blockers
 

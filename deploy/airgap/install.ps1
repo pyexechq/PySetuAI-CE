@@ -1,11 +1,11 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Install HelixGuard AI from an offline bundle (run inside extracted bundle directory).
+  Install PySetu AI from an offline bundle (run inside extracted bundle directory).
 #>
 $ErrorActionPreference = "Stop"
 $BundleDir = $PSScriptRoot
-$ImageArchive = Join-Path $BundleDir "images\helixguard-images.tar"
+$ImageArchive = Join-Path $BundleDir "images\pysetu-images.tar"
 $ComposeFile = Join-Path $BundleDir "docker-compose.airgap.yml"
 $Manifest = Join-Path $BundleDir "manifest.json"
 
@@ -41,7 +41,7 @@ if (Test-Path $importScript) {
 }
 
 Write-Host ""
-Write-Host "HelixGuard air-gap stack is starting."
+Write-Host "PySetu air-gap stack is starting."
 Write-Host "  UI:      http://localhost:3000"
 Write-Host "  API:     http://localhost:8001"
 Write-Host "  Health:  http://localhost:8001/health"

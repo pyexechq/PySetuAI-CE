@@ -6,14 +6,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
-$OutputDir = Join-Path $Root "dist\helixguard-airgap-$Version"
+$OutputDir = Join-Path $Root "dist\pysetu-airgap-$Version"
 $ImagesDir = Join-Path $OutputDir "images"
-$ImageArchive = Join-Path $ImagesDir "helixguard-images.tar"
+$ImageArchive = Join-Path $ImagesDir "pysetu-images.tar"
 $ComposeBuild = "docker-compose.airgap.yml"
-$BackendTag = "helixguard/backend:$Version"
-$FrontendTag = "helixguard/frontend:$Version"
+$BackendTag = "pysetu/backend:$Version"
+$FrontendTag = "pysetu/frontend:$Version"
 
-Write-Host "==> HelixGuard air-gap bundle v$Version"
+Write-Host "==> PySetu air-gap bundle v$Version"
 if (Test-Path $OutputDir) { Remove-Item $OutputDir -Recurse -Force }
 New-Item -ItemType Directory -Path $ImagesDir -Force | Out-Null
 
@@ -63,10 +63,10 @@ try {
     }
 
     @"
-HELIXGUARD_BACKEND_IMAGE=$BackendTag
-HELIXGUARD_FRONTEND_IMAGE=$FrontendTag
+PYSETU_BACKEND_IMAGE=$BackendTag
+PYSETU_FRONTEND_IMAGE=$FrontendTag
 JWT_SECRET_KEY=airgap-change-me-before-production
-POSTGRES_PASSWORD=helixguard-airgap
+POSTGRES_PASSWORD=pysetu-airgap
 NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
 "@ | Set-Content (Join-Path $OutputDir ".env.airgap")
 
@@ -74,7 +74,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
     $manifest = Get-Content (Join-Path $OutputDir "manifest.json") -Raw | ConvertFrom-Json
     $manifest.version = $Version
     $manifest.created_at = (Get-Date).ToUniversalTime().ToString("o")
-    $manifest.images_archive = "helixguard-images.tar"
+    $manifest.images_archive = "pysetu-images.tar"
     $manifest.sha256 = $hash.Hash.ToLower()
     $manifest | Add-Member -NotePropertyName images -NotePropertyValue @{
         backend = $BackendTag
@@ -88,11 +88,11 @@ NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
     }
     $manifest | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $OutputDir "manifest.json")
 
-    $archiveBase = Join-Path $Root "dist\helixguard-airgap-$Version"
+    $archiveBase = Join-Path $Root "dist\pysetu-airgap-$Version"
     $tarPath = "$archiveBase.tar.gz"
     if (Test-Path $tarPath) { Remove-Item $tarPath -Force }
     Write-Host "==> Creating archive (tar.gz)..."
-    tar -czf $tarPath -C (Join-Path $Root "dist") "helixguard-airgap-$Version"
+    tar -czf $tarPath -C (Join-Path $Root "dist") "pysetu-airgap-$Version"
 
     Write-Host ""
     Write-Host "Bundle ready:"

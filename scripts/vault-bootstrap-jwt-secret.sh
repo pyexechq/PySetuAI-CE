@@ -4,14 +4,14 @@
 #   VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=dev-root-token ./scripts/vault-bootstrap-jwt-secret.sh
 #   JWT_SECRET=<existing> ./scripts/vault-bootstrap-jwt-secret.sh   # rotate to a known value
 #
-# Vault path: secret/helixguard/platform/jwt_secret  (field: value)
+# Vault path: secret/pysetu/platform/jwt_secret  (field: value)
 
 set -eu
 
 VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
 VAULT_TOKEN="${VAULT_TOKEN:-dev-root-token}"
 VAULT_MOUNT="${VAULT_MOUNT_PATH:-secret}"
-JWT_PATH="${VAULT_MOUNT}/helixguard/platform/jwt_secret"
+JWT_PATH="${VAULT_MOUNT}/pysetu/platform/jwt_secret"
 export VAULT_ADDR VAULT_TOKEN
 
 if ! command -v vault >/dev/null 2>&1; then

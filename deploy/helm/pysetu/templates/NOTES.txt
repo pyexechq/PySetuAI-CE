@@ -1,20 +1,20 @@
-HelixGuard AI has been deployed.
+PySetu AI has been deployed.
 
 Release: {{ .Release.Name }}
 Namespace: {{ .Release.Namespace }}
 
 Components:
 {{- if .Values.postgresql.enabled }}
-  PostgreSQL: {{ include "helixguard.fullname" . }}-postgresql:5432
+  PostgreSQL: {{ include "pysetu.fullname" . }}-postgresql:5432
 {{- end }}
 {{- if .Values.redis.enabled }}
-  Redis: {{ include "helixguard.fullname" . }}-redis:6379
+  Redis: {{ include "pysetu.fullname" . }}-redis:6379
 {{- end }}
 {{- if .Values.opa.enabled }}
-  OPA: {{ include "helixguard.fullname" . }}-opa:8181
+  OPA: {{ include "pysetu.fullname" . }}-opa:8181
 {{- end }}
-  Backend: {{ include "helixguard.fullname" . }}-backend:8000
-  Frontend: {{ include "helixguard.fullname" . }}-frontend:3000
+  Backend: {{ include "pysetu.fullname" . }}-backend:8000
+  Frontend: {{ include "pysetu.fullname" . }}-frontend:3000
 
 {{- if .Values.ingress.enabled }}
 
@@ -26,8 +26,8 @@ Ingress host: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.ho
 {{- else }}
 
 Port-forward (local access):
-  kubectl port-forward svc/{{ include "helixguard.fullname" . }}-frontend 3000:3000
-  kubectl port-forward svc/{{ include "helixguard.fullname" . }}-backend 8001:8000
+  kubectl port-forward svc/{{ include "pysetu.fullname" . }}-frontend 3000:3000
+  kubectl port-forward svc/{{ include "pysetu.fullname" . }}-backend 8001:8000
 {{- end }}
 
 Build images before install:

@@ -1,4 +1,4 @@
-# HelixGuard AI — Test Plan
+# PySetu AI — Test Plan
 
 **Version:** 1.0  
 **Last Updated:** Aug 11, 2026  
@@ -9,7 +9,7 @@
 
 ## Scope
 
-Validate all HelixGuard AI modules against documented requirements in `docs/architecture/`, `docs/security/`, and `docs/api/`. This plan covers Cycle QA-001: documentation review, automated test execution, build verification, and targeted security/compliance assessment.
+Validate all PySetu AI modules against documented requirements in `docs/architecture/`, `docs/security/`, and `docs/api/`. This plan covers Cycle QA-001: documentation review, automated test execution, build verification, and targeted security/compliance assessment.
 
 ---
 

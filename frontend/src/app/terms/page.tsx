@@ -4,14 +4,14 @@ export default function TermsPage() {
   return (
     <LegalPageShell title="Terms & Conditions" lastUpdated="August 11, 2026">
       <p>
-        These Terms & Conditions (&quot;Terms&quot;) govern access to and use of the HelixGuard AI platform,
+        These Terms & Conditions (&quot;Terms&quot;) govern access to and use of the PySetu AI platform,
         websites, and related services (collectively, the &quot;Service&quot;). By using the Service, you agree to
         these Terms.
       </p>
 
       <h2>1. Service description</h2>
       <p>
-        HelixGuard AI provides enterprise AI governance capabilities including LLM routing, MCP governance,
+        PySetu AI provides enterprise AI governance capabilities including LLM routing, MCP governance,
         policy enforcement, observability, and compliance tooling. Features may vary by deployment mode and
         subscription tier.
       </p>
@@ -36,7 +36,7 @@ export default function TermsPage() {
 
       <h2>5. Intellectual property</h2>
       <p>
-        HelixGuard AI and its licensors retain all rights in the Service, documentation, and branding. You retain
+        PySetu AI and its licensors retain all rights in the Service, documentation, and branding. You retain
         ownership of your content and configuration data submitted to the Service.
       </p>
 
@@ -56,7 +56,7 @@ export default function TermsPage() {
       <h2>8. Contact</h2>
       <p>
         For questions about these Terms, contact{" "}
-        <a href="mailto:legal@helixguard.com">legal@helixguard.com</a>.
+        <a href="mailto:legal@pysetu.com">legal@pysetu.com</a>.
       </p>
     </LegalPageShell>
   );

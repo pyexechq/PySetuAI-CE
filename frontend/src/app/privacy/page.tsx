@@ -4,7 +4,7 @@ export default function PrivacyPage() {
   return (
     <LegalPageShell title="Privacy Policy" lastUpdated="August 11, 2026">
       <p>
-        This Privacy Policy explains how HelixGuard AI (&quot;HelixGuard&quot;, &quot;we&quot;, &quot;us&quot;) collects, uses, and
+        This Privacy Policy explains how PySetu AI (&quot;PySetu&quot;, &quot;we&quot;, &quot;us&quot;) collects, uses, and
         protects personal information when you visit our marketing site or use our platform.
       </p>
 
@@ -41,7 +41,7 @@ export default function PrivacyPage() {
       <p>
         Depending on your jurisdiction, you may have rights to access, correct, delete, or restrict processing of
         your personal information. Contact your tenant administrator or{" "}
-        <a href="mailto:privacy@helixguard.com">privacy@helixguard.com</a> to submit a request.
+        <a href="mailto:privacy@pysetu.com">privacy@pysetu.com</a> to submit a request.
       </p>
 
       <h2>International transfers</h2>
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
 
       <h2>Contact</h2>
       <p>
-        Privacy inquiries: <a href="mailto:privacy@helixguard.com">privacy@helixguard.com</a>
+        Privacy inquiries: <a href="mailto:privacy@pysetu.com">privacy@pysetu.com</a>
       </p>
     </LegalPageShell>
   );

@@ -175,7 +175,7 @@ export function MonitoringSecurityTab() {
           <p className="text-sm text-muted-foreground">
             Gateway requests pass through Open Policy Agent after regex/DLP inspection. Policy package:{" "}
             <code className="rounded bg-muted px-1 py-0.5 text-xs">
-              {opaStatus?.policy_path ?? "helixguard/gateway/decision"}
+              {opaStatus?.policy_path ?? "pysetu/gateway/decision"}
             </code>
           </p>
           <div className="grid gap-3 sm:grid-cols-3">

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Generate a cryptographically secure JWT signing secret for HelixGuard AI.
+# Generate a cryptographically secure JWT signing secret for PySetu AI.
 # Usage: ./scripts/generate-jwt-secret.sh
 
 set -eu

@@ -18,7 +18,7 @@ function evaluateGatewayHealth(status: ApiGatewayStatus | undefined, failed: boo
     return {
       label: "Issue",
       variant: "destructive",
-      detail: "Unable to reach the HelixGuard control plane. Check network or backend services.",
+      detail: "Unable to reach the PySetu control plane. Check network or backend services.",
     };
   }
 

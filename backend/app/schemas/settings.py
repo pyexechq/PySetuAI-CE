@@ -39,7 +39,7 @@ class OrganizationSettingsResponse(BaseModel):
     display_name: str
     logo_url: str | None = None
     brand_tagline: str
-    default_product_name: str = "HelixGuard AI"
+    default_product_name: str = "PySetu AI"
     default_tagline: str = "Enterprise AI Control Plane"
     qa_dashboard_enabled: bool = True
     features: TenantFeaturesResponse = Field(default_factory=TenantFeaturesResponse)

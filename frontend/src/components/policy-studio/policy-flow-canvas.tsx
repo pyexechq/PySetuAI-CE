@@ -191,7 +191,7 @@ export function PolicyFlowCanvas({
           </div>
           <p className="text-xs text-muted-foreground">Drag rule nodes to reorder evaluation sequence</p>
         </div>
-        <div className="relative h-[480px] w-full helixguard-flow">
+        <div className="relative h-[480px] w-full pysetu-flow">
           {rules.length === 0 && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 p-6 text-center backdrop-blur-[1px]">
               <p className="text-sm font-medium">No rules in this policy yet</p>

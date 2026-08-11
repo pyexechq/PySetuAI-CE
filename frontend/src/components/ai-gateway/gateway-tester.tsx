@@ -23,7 +23,7 @@ export function GatewayTester() {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<string | null>(null);
-  const [meta, setMeta] = useState<ChatCompletionResponse["helixguard"] | null>(null);
+  const [meta, setMeta] = useState<ChatCompletionResponse["pysetu"] | null>(null);
 
   const { data: ollamaStatus } = useQuery({
     queryKey: ["ollama-status", token],
@@ -66,14 +66,14 @@ export function GatewayTester() {
       } else {
         const result = await api.chatCompletion(authToken, { ...payload, debug: debugMode });
         setResponse(result.choices[0]?.message?.content ?? "No content");
-        setMeta(result.helixguard ?? null);
+        setMeta(result.pysetu ?? null);
       }
     } catch (err) {
       if (err instanceof SyntaxError) {
         setBlocked("Routing context must be valid JSON");
       } else if (err instanceof ApiError) {
         if (err.status === 403) {
-          setBlocked(`Policy blocked: ${err.message || "Request blocked by HelixGuard policy engine"}`);
+          setBlocked(`Policy blocked: ${err.message || "Request blocked by PySetu policy engine"}`);
         } else if (err.status === 401) {
           setBlocked("Authentication failed — check your session or client API key");
         } else if (err.status >= 500) {
@@ -177,7 +177,7 @@ export function GatewayTester() {
             onChange={(e) => setDebugMode(e.target.checked)}
             className="rounded border-input"
           />
-          Debug response (<code className="text-xs">?mode=debug</code> — include HelixGuard metadata)
+          Debug response (<code className="text-xs">?mode=debug</code> — include PySetu metadata)
         </label>
 
         <label className="flex items-center gap-2 text-sm">

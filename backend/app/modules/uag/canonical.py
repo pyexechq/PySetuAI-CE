@@ -123,8 +123,8 @@ def attach_translation_to_response(
     response: ChatCompletionResponse,
     trace: TranslationTrace,
 ) -> ChatCompletionResponse:
-    helixguard = dict(response.helixguard or {})
-    helixguard["uag"] = trace.to_dict()
-    response.helixguard = helixguard
+    pysetu = dict(response.pysetu or {})
+    pysetu["uag"] = trace.to_dict()
+    response.pysetu = pysetu
     response.model = trace.requested_model
     return response

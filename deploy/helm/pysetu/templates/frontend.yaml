@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "helixguard.fullname" . }}-frontend
+  name: {{ include "pysetu.fullname" . }}-frontend
   labels:
     {{- $ctx := dict "component" "frontend" "Values" .Values "Chart" .Chart "Release" .Release }}
-    {{- include "helixguard.componentLabels" $ctx | nindent 4 }}
+    {{- include "pysetu.componentLabels" $ctx | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -13,21 +13,21 @@ spec:
       targetPort: http
   selector:
     {{- $ctx := dict "component" "frontend" "Values" .Values "Chart" .Chart "Release" .Release }}
-    {{- include "helixguard.componentSelectorLabels" $ctx | nindent 4 }}
+    {{- include "pysetu.componentSelectorLabels" $ctx | nindent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "helixguard.fullname" . }}-frontend
+  name: {{ include "pysetu.fullname" . }}-frontend
   labels:
     {{- $ctx := dict "component" "frontend" "Values" .Values "Chart" .Chart "Release" .Release }}
-    {{- include "helixguard.componentLabels" $ctx | nindent 4 }}
+    {{- include "pysetu.componentLabels" $ctx | nindent 4 }}
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
   selector:
     matchLabels:
       {{- $ctx := dict "component" "frontend" "Values" .Values "Chart" .Chart "Release" .Release }}
-      {{- include "helixguard.componentSelectorLabels" $ctx | nindent 6 }}
+      {{- include "pysetu.componentSelectorLabels" $ctx | nindent 6 }}
   template:
     metadata:
       {{- with .Values.frontend.podAnnotations }}
@@ -36,9 +36,9 @@ spec:
       {{- end }}
       labels:
         {{- $ctx := dict "component" "frontend" "Values" .Values "Chart" .Chart "Release" .Release }}
-        {{- include "helixguard.componentSelectorLabels" $ctx | nindent 8 }}
+        {{- include "pysetu.componentSelectorLabels" $ctx | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "helixguard.serviceAccountName" . }}
+      serviceAccountName: {{ include "pysetu.serviceAccountName" . }}
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -54,7 +54,7 @@ spec:
             - name: NEXT_PUBLIC_API_URL
               value: {{ .Values.ingress.publicApiUrl | default (printf "http://%s/api/v1" .Values.ingress.host) | quote }}
             - name: INTERNAL_API_URL
-              value: {{ printf "http://%s-backend:8000" (include "helixguard.fullname" .) | quote }}
+              value: {{ printf "http://%s-backend:8000" (include "pysetu.fullname" .) | quote }}
           readinessProbe:
             httpGet:
               path: /

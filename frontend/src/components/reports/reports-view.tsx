@@ -106,7 +106,7 @@ export function ReportsView() {
       downloadBlob(filename, blob);
       invalidateCatalog();
     } catch {
-      downloadCsv(`helixguard-${report.id}-${new Date().toISOString().slice(0, 10)}.csv`, [
+      downloadCsv(`pysetu-${report.id}-${new Date().toISOString().slice(0, 10)}.csv`, [
         ["Report", report.name],
         ["Format", report.format],
         ["Note", "Run failed — export metadata only"],

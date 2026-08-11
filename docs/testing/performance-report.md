@@ -1,4 +1,4 @@
-# HelixGuard AI — Performance Report
+# PySetu AI — Performance Report
 
 **Test Cycle:** QA-001  
 **Date:** Aug 11, 2026  
@@ -40,7 +40,7 @@ Performance testing was **not executed** in Cycle QA-001 because:
 | Audit Explorer live polling | Frontend polls `/audit/logs` every 3 seconds | Medium — unnecessary load at scale; should use WebSocket or SSE |
 | Dashboard overview | Single endpoint aggregates KPIs, trends, charts | Low — efficient if query is optimized |
 | Policy engine | In-process regex/keyword evaluation | Low — should meet 100ms target for typical rule sets |
-| Gateway chat | Policy inspect → DLP → route → upstream → audit | Medium — latency depends on upstream LLM; HelixGuard overhead should be measured separately |
+| Gateway chat | Policy inspect → DLP → route → upstream → audit | Medium — latency depends on upstream LLM; PySetu overhead should be measured separately |
 | Celery tasks | Reports, audit ingest, SIEM export, rebalance | Low — async, non-blocking |
 | Audit log table | No pagination limit documented in API | Medium — large tenants may return slow queries |
 | MCP tool discovery | JSON-RPC session per server | Low — admin operation, not hot path |
@@ -72,7 +72,7 @@ Performance testing was **not executed** in Cycle QA-001 because:
 | Test | Tool | Load | Target |
 |------|------|------|--------|
 | Concurrent logins | k6 | 50 VU, 5 min | p95 < 500ms, 0 errors |
-| Gateway chat completions | k6 | 20 VU, 5 min | p95 < 500ms (HelixGuard overhead only, mock mode) |
+| Gateway chat completions | k6 | 20 VU, 5 min | p95 < 500ms (PySetu overhead only, mock mode) |
 | Audit ingest batch | k6 | 10 VU, 100 events each | p95 < 1000ms |
 | Dashboard under load | k6 | 30 VU, 5 min | p95 < 2000ms |
 

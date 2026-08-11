@@ -83,7 +83,7 @@ export function PolicyAiHelper({
           AI Helper
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Describe what you want to enforce. HelixGuard suggests rule conditions you can add to{" "}
+          Describe what you want to enforce. PySetu suggests rule conditions you can add to{" "}
           {policyName ? `"${policyName}"` : "the selected policy"}.
         </p>
         {aiAssistSettings && !aiAssistSettings.available && (

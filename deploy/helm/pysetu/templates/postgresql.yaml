@@ -2,10 +2,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "helixguard.fullname" . }}-postgresql
+  name: {{ include "pysetu.fullname" . }}-postgresql
   labels:
     {{- $ctx := dict "component" "postgresql" "Values" .Values "Chart" .Chart "Release" .Release }}
-    {{- include "helixguard.componentLabels" $ctx | nindent 4 }}
+    {{- include "pysetu.componentLabels" $ctx | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -14,27 +14,27 @@ spec:
       targetPort: postgres
   selector:
     {{- $ctx := dict "component" "postgresql" "Values" .Values "Chart" .Chart "Release" .Release }}
-    {{- include "helixguard.componentSelectorLabels" $ctx | nindent 4 }}
+    {{- include "pysetu.componentSelectorLabels" $ctx | nindent 4 }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "helixguard.fullname" . }}-postgresql
+  name: {{ include "pysetu.fullname" . }}-postgresql
   labels:
     {{- $ctx := dict "component" "postgresql" "Values" .Values "Chart" .Chart "Release" .Release }}
-    {{- include "helixguard.componentLabels" $ctx | nindent 4 }}
+    {{- include "pysetu.componentLabels" $ctx | nindent 4 }}
 spec:
-  serviceName: {{ include "helixguard.fullname" . }}-postgresql
+  serviceName: {{ include "pysetu.fullname" . }}-postgresql
   replicas: 1
   selector:
     matchLabels:
       {{- $ctx := dict "component" "postgresql" "Values" .Values "Chart" .Chart "Release" .Release }}
-      {{- include "helixguard.componentSelectorLabels" $ctx | nindent 6 }}
+      {{- include "pysetu.componentSelectorLabels" $ctx | nindent 6 }}
   template:
     metadata:
       labels:
         {{- $ctx := dict "component" "postgresql" "Values" .Values "Chart" .Chart "Release" .Release }}
-        {{- include "helixguard.componentSelectorLabels" $ctx | nindent 8 }}
+        {{- include "pysetu.componentSelectorLabels" $ctx | nindent 8 }}
     spec:
       containers:
         - name: postgresql

@@ -81,7 +81,7 @@ export function MetricInsightModal({ open, loading, insight, error, onClose }: M
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <Badge variant={insight.ai_generated ? "default" : "outline"}>
-                {insight.ai_generated ? "AI generated" : "HelixGuard playbook"}
+                {insight.ai_generated ? "AI generated" : "PySetu playbook"}
               </Badge>
             </div>
 

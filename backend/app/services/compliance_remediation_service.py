@@ -84,10 +84,10 @@ def _manual_steps(control: DashboardComplianceControl) -> list[str]:
     steps: list[str] = []
     if control.remediation:
         steps.append(control.remediation)
-    if control.helixguard_module:
-        route = MODULE_ROUTES.get(control.helixguard_module, "/")
+    if control.pysetu_module:
+        route = MODULE_ROUTES.get(control.pysetu_module, "/")
         steps.append(
-            f"Navigate to {control.helixguard_module} ({route}) and apply the configuration described above."
+            f"Navigate to {control.pysetu_module} ({route}) and apply the configuration described above."
         )
     if control.status == "not_met":
         steps.append("Validate evidence appears under the control (status should move to In progress or Met).")
@@ -143,7 +143,7 @@ async def build_remediation_plan(
     control: DashboardComplianceControl,
     mode: str,
 ) -> dict:
-    manual_route = MODULE_ROUTES.get(control.helixguard_module or "")
+    manual_route = MODULE_ROUTES.get(control.pysetu_module or "")
     effort = "Low" if control.status == "in_progress" else "Medium" if control.status == "not_met" else "Low"
 
     if mode == "manual":
@@ -166,13 +166,13 @@ async def build_remediation_plan(
 
     ai_config = await resolve_ai_assist_config(db, tenant_id)
     prompt = (
-        "You are a GRC engineer helping remediate HelixGuard AI compliance gaps. "
+        "You are a GRC engineer helping remediate PySetu AI compliance gaps. "
         "Return ONLY a JSON array of 4-6 short imperative steps (strings), no markdown.\n\n"
         f"Framework: {framework.name}\n"
         f"Control: {control.title}\n"
         f"Status: {control.status}\n"
         f"Requirement: {control.requirement}\n"
-        f"HelixGuard module: {control.helixguard_module or 'N/A'}\n"
+        f"PySetu module: {control.pysetu_module or 'N/A'}\n"
         f"Known remediation hint: {control.remediation or 'None'}\n"
         f"Evidence today: {control.evidence or 'None'}"
     )
@@ -191,7 +191,7 @@ async def build_remediation_plan(
 
     if not steps:
         steps = _template_ai_steps(control, framework)
-        summary = f"Structured remediation plan for {control.title} (AI Assist unavailable — using HelixGuard playbook)."
+        summary = f"Structured remediation plan for {control.title} (AI Assist unavailable — using PySetu playbook)."
 
     return {
         "control_id": control.id,
@@ -220,7 +220,7 @@ def build_framework_gap_summary(framework: DashboardComplianceFramework) -> dict
                 "id": c.id,
                 "title": c.title,
                 "status": c.status,
-                "helixguard_module": c.helixguard_module,
+                "pysetu_module": c.pysetu_module,
             }
             for c in gaps
             if c.status == "not_met"

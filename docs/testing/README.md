@@ -7,7 +7,7 @@
 
 ## Current State
 
-HelixGuard AI has **44 backend unit tests** (all passing) and **frontend production build verification**. Integration, E2E, and performance testing are not yet implemented. See [test-strategy.md](./test-strategy.md) for the full testing approach.
+PySetu AI has **44 backend unit tests** (all passing) and **frontend production build verification**. Integration, E2E, and performance testing are not yet implemented. See [test-strategy.md](./test-strategy.md) for the full testing approach.
 
 ### Test Results Summary (QA-001)
 

@@ -1,6 +1,6 @@
 # Penetration Test Preparation Checklist
 
-HelixGuard AI — pre-engagement hardening and evidence collection for S6-09.
+PySetu AI — pre-engagement hardening and evidence collection for S6-09.
 
 ## Scope
 
@@ -40,7 +40,7 @@ HelixGuard AI — pre-engagement hardening and evidence collection for S6-09.
 
 ## Gateway & UAG
 
-- [ ] `helixguard` debug block only with `?mode=debug`
+- [ ] `pysetu` debug block only with `?mode=debug`
 - [ ] Client response protocol override order: mapping → API key → tenant
 - [ ] Streaming responses do not leak upstream errors with stack traces
 

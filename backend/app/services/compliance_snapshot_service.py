@@ -142,7 +142,7 @@ def export_snapshot_csv(snapshot: ComplianceSnapshot) -> str:
             "Requirement",
             "Evidence",
             "Remediation",
-            "HelixGuard Module",
+            "PySetu Module",
         ]
     )
     for raw_framework in snapshot.frameworks or []:
@@ -157,7 +157,7 @@ def export_snapshot_csv(snapshot: ComplianceSnapshot) -> str:
                     control.get("requirement", ""),
                     control.get("evidence") or "",
                     control.get("remediation") or "",
-                    control.get("helixguard_module") or "",
+                    control.get("pysetu_module") or "",
                 ]
             )
     return buffer.getvalue()

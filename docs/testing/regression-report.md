@@ -1,4 +1,4 @@
-# HelixGuard AI — Regression Report
+# PySetu AI — Regression Report
 
 **Test Cycle:** QA-001  
 **Date:** Aug 11, 2026  
@@ -9,7 +9,7 @@
 
 ## Regression Scope
 
-This is the **initial regression baseline** for HelixGuard AI. No prior test cycle exists for comparison. Future cycles will diff against QA-001 results.
+This is the **initial regression baseline** for PySetu AI. No prior test cycle exists for comparison. Future cycles will diff against QA-001 results.
 
 ### Automated Regression
 

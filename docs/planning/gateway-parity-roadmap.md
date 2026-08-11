@@ -1,7 +1,7 @@
 # Gateway & Platform Parity Roadmap
 
 **Last updated:** Aug 11, 2026  
-**Purpose:** Close the gap vs. full-stack AI gateway platforms (OpenRouter Enterprise, Lakera, Prompt Security, QuirlAI-class products) while keeping HelixGuard’s MCP governance and air-gap differentiators.
+**Purpose:** Close the gap vs. full-stack AI gateway platforms (OpenRouter Enterprise, Lakera, Prompt Security, QuirlAI-class products) while keeping PySetu’s MCP governance and air-gap differentiators.
 
 **Related:** [product-roadmap.md](./product-roadmap.md) · [backlog.md](./backlog.md) · [phase-7-sprint.md](./phase-7-sprint.md)
 
@@ -9,7 +9,7 @@
 
 ## Executive summary
 
-HelixGuard today is strong on **governance, audit, compliance UI, UAG v1, and MCP admin**. It is **not** yet a complete AI gateway product across cost optimization, MCP marketplace, per-user metering, prompt lifecycle, and production alerting.
+PySetu today is strong on **governance, audit, compliance UI, UAG v1, and MCP admin**. It is **not** yet a complete AI gateway product across cost optimization, MCP marketplace, per-user metering, prompt lifecycle, and production alerting.
 
 This plan adds **Phases 7–10** (Sprints 8–14, estimated) to reach **competitive parity** on the capability sets shown in enterprise gateway marketing (7-stage pipeline, dynamic MCP tool calling, MCP platform, cost/routing, observability, CISO security bundle).
 

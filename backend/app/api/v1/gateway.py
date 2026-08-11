@@ -62,7 +62,7 @@ async def _handle_chat_completions(
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content=OpenAIErrorResponse(
-                    error=OpenAIError(message=error_message, type="policy_violation", code="helixguard_blocked")
+                    error=OpenAIError(message=error_message, type="policy_violation", code="pysetu_blocked")
                 ).model_dump(),
             )
         if error_message or prepared is None:
@@ -72,7 +72,7 @@ async def _handle_chat_completions(
         return StreamingResponse(
             stream_chat_completion(prepared, request, ctx, db),
             media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-HelixGuard-Stream": "true"},
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-PySetu-Stream": "true"},
         )
 
     response, inspection, error_message = await process_chat_completion(request, ctx, db)
@@ -81,7 +81,7 @@ async def _handle_chat_completions(
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=OpenAIErrorResponse(
-                error=OpenAIError(message=error_message, type="policy_violation", code="helixguard_blocked")
+                error=OpenAIError(message=error_message, type="policy_violation", code="pysetu_blocked")
             ).model_dump(),
         )
 
@@ -156,7 +156,7 @@ async def gemini_generate_content(
     if not ingress.allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Request blocked by HelixGuard policy engine.",
+            detail="Request blocked by PySetu policy engine.",
         )
 
     messages = [ChatMessage(role="user", content=combined or "Hello")]
@@ -169,7 +169,7 @@ async def gemini_generate_content(
     return {
         "candidates": [{"content": {"parts": [{"text": text}], "role": "model"}, "finishReason": "STOP"}],
         "modelVersion": resolved_model,
-        "helixguard": {"upstream": "gemini", "inspection_action": ingress.action},
+        "pysetu": {"upstream": "gemini", "inspection_action": ingress.action},
     }
 
 

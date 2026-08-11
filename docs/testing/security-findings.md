@@ -1,4 +1,4 @@
-# HelixGuard AI — Security Findings
+# PySetu AI — Security Findings
 
 **Test Cycle:** QA-001  
 **Date:** Aug 11, 2026  
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-HelixGuard AI has a solid security foundation: JWT auth with tenant scoping, bcrypt password hashing, RBAC with 6 roles and 9 permissions, rate limiting on auth endpoints, prompt injection/exfiltration detection, and DLP pre-scanning. However, **2 Severity-1 findings** and **5 Severity-2 findings** prevent security approval for production release.
+PySetu AI has a solid security foundation: JWT auth with tenant scoping, bcrypt password hashing, RBAC with 6 roles and 9 permissions, rate limiting on auth endpoints, prompt injection/exfiltration detection, and DLP pre-scanning. However, **2 Severity-1 findings** and **5 Severity-2 findings** prevent security approval for production release.
 
 ---
 

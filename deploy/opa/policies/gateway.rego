@@ -1,4 +1,4 @@
-package helixguard.gateway
+package pysetu.gateway
 
 default decision = {"allow": true, "violations": [], "engine": "opa"}
 

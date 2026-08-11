@@ -4,7 +4,7 @@
 
 ## Overview
 
-The Universal AI Gateway (UAG) lets applications built for one AI provider transparently consume another provider without code changes. HelixGuard performs protocol translation, governance enforcement, auditing, and intelligent routing.
+The Universal AI Gateway (UAG) lets applications built for one AI provider transparently consume another provider without code changes. PySetu performs protocol translation, governance enforcement, auditing, and intelligent routing.
 
 Examples:
 
@@ -63,4 +63,4 @@ Translation never bypasses policy engine, DLP, PII detection, redaction, complia
 
 ## Air-gapped support
 
-Applications may request `gpt-4o` while HelixGuard routes to Llama, Qwen, or Granite through model mappings and translation policies alone.
+Applications may request `gpt-4o` while PySetu routes to Llama, Qwen, or Granite through model mappings and translation policies alone.

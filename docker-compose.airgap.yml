@@ -6,13 +6,13 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: helixguard
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helixguard-airgap}
-      POSTGRES_DB: helixguard
+      POSTGRES_USER: pysetu
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pysetu-airgap}
+      POSTGRES_DB: pysetu
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U helixguard -d helixguard"]
+      test: ["CMD-SHELL", "pg_isready -U pysetu -d pysetu"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -55,7 +55,7 @@ services:
       - "${BACKEND_PORT:-8001}:8000"
     environment:
       AIR_GAP_MODE: "true"
-      DATABASE_URL: postgresql+asyncpg://helixguard:${POSTGRES_PASSWORD:-helixguard-airgap}@postgres:5432/helixguard
+      DATABASE_URL: postgresql+asyncpg://pysetu:${POSTGRES_PASSWORD:-pysetu-airgap}@postgres:5432/pysetu
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-airgap-change-me-before-production}
       DEBUG: "false"
@@ -94,7 +94,7 @@ services:
     command: celery -A app.worker.celery_app worker --loglevel=info
     environment:
       AIR_GAP_MODE: "true"
-      DATABASE_URL: postgresql+asyncpg://helixguard:${POSTGRES_PASSWORD:-helixguard-airgap}@postgres:5432/helixguard
+      DATABASE_URL: postgresql+asyncpg://pysetu:${POSTGRES_PASSWORD:-pysetu-airgap}@postgres:5432/pysetu
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-airgap-change-me-before-production}
       DEBUG: "false"
@@ -115,7 +115,7 @@ services:
     command: celery -A app.worker.celery_app beat --loglevel=info
     environment:
       AIR_GAP_MODE: "true"
-      DATABASE_URL: postgresql+asyncpg://helixguard:${POSTGRES_PASSWORD:-helixguard-airgap}@postgres:5432/helixguard
+      DATABASE_URL: postgresql+asyncpg://pysetu:${POSTGRES_PASSWORD:-pysetu-airgap}@postgres:5432/pysetu
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-airgap-change-me-before-production}
       DEBUG: "false"

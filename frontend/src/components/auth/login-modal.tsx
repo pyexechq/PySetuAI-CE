@@ -18,7 +18,7 @@ export function LoginModal({
   onClose,
   tenantSlug = "acme",
   lockTenant = false,
-  title = "Sign in to HelixGuard",
+  title = "Sign in to PySetu",
   description = "Access your tenant workspace with email and password.",
 }: LoginModalProps) {
   if (!open) return null;

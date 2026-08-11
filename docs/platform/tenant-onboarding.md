@@ -1,10 +1,10 @@
 # Platform tenant onboarding
 
-Guide for SaaS operators provisioning customer tenants on HelixGuard AI.
+Guide for SaaS operators provisioning customer tenants on PySetu AI.
 
 ## Operator workflow
 
-1. Sign in at `/platform/login` as `platform@helixguard.com` (platform tenant).
+1. Sign in at `/platform/login` as `platform@pysetu.com` (platform tenant).
 2. **New tenant** — set organization name, slug, subdomain, and entry mode.
 3. Choose onboarding mode:
    - **Password now** — set an initial admin password (dev/demo only).

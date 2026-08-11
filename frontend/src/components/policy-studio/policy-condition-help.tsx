@@ -113,7 +113,7 @@ export function PolicyConditionHelpButton({
         <div className="absolute left-0 top-full z-[60] mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-border bg-popover p-3 shadow-xl">
           <p className="text-xs font-semibold text-foreground">Condition examples</p>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            HelixGuard evaluates expression-style conditions at the gateway. Click an example to use it in your rule.
+            PySetu evaluates expression-style conditions at the gateway. Click an example to use it in your rule.
           </p>
           <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
             {POLICY_CONDITION_HELP.map((example) => (

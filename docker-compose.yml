@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: helixguard
-      POSTGRES_PASSWORD: helixguard
-      POSTGRES_DB: helixguard
+      POSTGRES_USER: pysetu
+      POSTGRES_PASSWORD: pysetu
+      POSTGRES_DB: pysetu
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U helixguard -d helixguard"]
+      test: ["CMD-SHELL", "pg_isready -U pysetu -d pysetu"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -66,7 +66,7 @@ services:
     ports:
       - "${BACKEND_PORT:-8001}:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://helixguard:helixguard@postgres:5432/helixguard
+      DATABASE_URL: postgresql+asyncpg://pysetu:pysetu@postgres:5432/pysetu
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: dev-secret-change-in-production
       DEBUG: "true"
@@ -83,7 +83,7 @@ services:
       SMTP_ENABLED: ${SMTP_ENABLED:-true}
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
-      SMTP_FROM: ${SMTP_FROM:-helixguard@acme.com}
+      SMTP_FROM: ${SMTP_FROM:-pysetu@acme.com}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       VAULT_ENABLED: ${VAULT_ENABLED:-false}
       VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
@@ -128,14 +128,14 @@ services:
       retries: 3
       start_period: 45s
     environment:
-      DATABASE_URL: postgresql+asyncpg://helixguard:helixguard@postgres:5432/helixguard
+      DATABASE_URL: postgresql+asyncpg://pysetu:pysetu@postgres:5432/pysetu
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: dev-secret-change-in-production
       DEBUG: "true"
       SMTP_ENABLED: ${SMTP_ENABLED:-true}
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
-      SMTP_FROM: ${SMTP_FROM:-helixguard@acme.com}
+      SMTP_FROM: ${SMTP_FROM:-pysetu@acme.com}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       LLM_REBALANCE_SCHEDULE_ENABLED: ${LLM_REBALANCE_SCHEDULE_ENABLED:-true}
       LLM_REBALANCE_CRON_HOUR: ${LLM_REBALANCE_CRON_HOUR:-2}
@@ -157,7 +157,7 @@ services:
       retries: 3
       start_period: 30s
     environment:
-      DATABASE_URL: postgresql+asyncpg://helixguard:helixguard@postgres:5432/helixguard
+      DATABASE_URL: postgresql+asyncpg://pysetu:pysetu@postgres:5432/pysetu
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: dev-secret-change-in-production
       DEBUG: "true"

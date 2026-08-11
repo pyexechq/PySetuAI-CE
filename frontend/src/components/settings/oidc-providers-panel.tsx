@@ -113,7 +113,7 @@ export function OidcProvidersPanel() {
             SSO / OIDC Providers
           </CardTitle>
           <CardDescription>
-            Configure IdP metadata and map IdP groups to HelixGuard roles for SSO sign-in.
+            Configure IdP metadata and map IdP groups to PySetu roles for SSO sign-in.
           </CardDescription>
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowForm((v) => !v)} className="gap-1">

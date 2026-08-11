@@ -14,12 +14,12 @@ DEMO_TENANT = {
 }
 
 PLATFORM_TENANT = {
-    "name": "HelixGuard Platform",
+    "name": "PySetu Platform",
     "slug": "platform",
 }
 
 PLATFORM_ADMIN = {
-    "email": "platform@helixguard.com",
+    "email": "platform@pysetu.com",
     "name": "Platform Administrator",
     "role": "platform_admin",
 }
@@ -130,7 +130,7 @@ async def seed_platform_admin() -> None:
             legacy_result = await session.execute(
                 select(User).where(
                     User.tenant_id == tenant.id,
-                    User.email == "platform@helixguard.local",
+                    User.email == "platform@pysetu.local",
                 )
             )
             legacy_user = legacy_result.scalar_one_or_none()

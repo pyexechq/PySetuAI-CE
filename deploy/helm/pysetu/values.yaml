@@ -1,5 +1,5 @@
-# Default values for helixguard.
-# See deploy/helm/helixguard/values-minikube.yaml for a local cluster profile.
+# Default values for pysetu.
+# See deploy/helm/pysetu/values-minikube.yaml for a local cluster profile.
 
 nameOverride: ""
 fullnameOverride: ""
@@ -16,15 +16,15 @@ ingress:
   enabled: false
   className: nginx
   annotations: {}
-  host: helixguard.local
+  host: pysetu.local
   tls: []
   # Public API URL baked into the frontend image at build time.
-  publicApiUrl: http://helixguard.local/api/v1
+  publicApiUrl: http://pysetu.local/api/v1
 
 backend:
   replicaCount: 2
   image:
-    repository: helixguard/backend
+    repository: pysetu/backend
     tag: latest
     pullPolicy: IfNotPresent
   resources:
@@ -47,7 +47,7 @@ backend:
 frontend:
   replicaCount: 2
   image:
-    repository: helixguard/frontend
+    repository: pysetu/frontend
     tag: latest
     pullPolicy: IfNotPresent
   resources:
@@ -89,9 +89,9 @@ postgresql:
     tag: "16-alpine"
     pullPolicy: IfNotPresent
   auth:
-    username: helixguard
+    username: pysetu
     password: changeme-in-production
-    database: helixguard
+    database: pysetu
   persistence:
     enabled: true
     size: 10Gi
@@ -150,12 +150,12 @@ config:
   geminiDefaultModel: gemini-1.5-pro
   opaEnabled: "true"
   opaFailOpen: "false"
-  opaPolicyPath: helixguard/gateway/decision
+  opaPolicyPath: pysetu/gateway/decision
   otelEnabled: "true"
   smtpEnabled: "false"
   smtpHost: ""
   smtpPort: "587"
-  smtpFrom: helixguard@example.com
+  smtpFrom: pysetu@example.com
   smtpUseTls: "true"
   vaultEnabled: "false"
   vaultAddr: ""

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HelixGuard AI | Enterprise AI Control Plane",
+  title: "PySetu AI | Enterprise AI Control Plane",
   description:
     "Production-grade multi-tenant AI governance platform for LLM routing, MCP governance, policy enforcement, and compliance.",
 };

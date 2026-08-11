@@ -1,8 +1,8 @@
-# HelixGuard AI
+# PySetu AI
 
 **Enterprise AI Governance and Control Plane**
 
-HelixGuard AI is a production-grade, multi-tenant SaaS platform that governs the full AI request lifecycle across agents, LLMs, MCP servers, and enterprise data sources.
+PySetu AI is a production-grade, multi-tenant SaaS platform that governs the full AI request lifecycle across agents, LLMs, MCP servers, and enterprise data sources.
 
 ## Capabilities
 
@@ -86,26 +86,26 @@ Sign in with `admin@acme.com` / `demo1234` (tenant: `acme`).
 
 ### Kubernetes (Helm)
 
-Chart path: `deploy/helm/helixguard`
+Chart path: `deploy/helm/pysetu`
 
 ```bash
 # Build images (set NEXT_PUBLIC_API_URL to your ingress URL)
-docker build -t helixguard/backend:latest ./backend
-docker build -t helixguard/frontend:latest \
-  --build-arg NEXT_PUBLIC_API_URL=http://helixguard.local/api/v1 ./frontend
+docker build -t pysetu/backend:latest ./backend
+docker build -t pysetu/frontend:latest \
+  --build-arg NEXT_PUBLIC_API_URL=http://pysetu.local/api/v1 ./frontend
 
 # Local cluster profile (Minikube / kind)
-helm upgrade --install helixguard ./deploy/helm/helixguard \
-  -f ./deploy/helm/helixguard/values-minikube.yaml \
-  --namespace helixguard --create-namespace
+helm upgrade --install pysetu ./deploy/helm/pysetu \
+  -f ./deploy/helm/pysetu/values-minikube.yaml \
+  --namespace pysetu --create-namespace
 
 # Production overrides (example)
-helm upgrade --install helixguard ./deploy/helm/helixguard \
+helm upgrade --install pysetu ./deploy/helm/pysetu \
   --set secrets.jwtSecretKey=<strong-secret> \
   --set postgresql.auth.password=<strong-password> \
   --set config.opaFailOpen=false \
   --set ingress.enabled=true \
-  --set ingress.host=helixguard.example.com
+  --set ingress.host=pysetu.example.com
 ```
 
 The chart deploys backend, frontend, Celery worker/beat, PostgreSQL, Redis, OPA (with ABAC Rego policies), optional Ingress, and backend HPA.
@@ -144,12 +144,12 @@ GitHub Actions workflow (`.github/workflows/ci.yml`):
 ## Project Structure
 
 ```
-HelixGuard AI/
+PySetu AI/
 ├── frontend/          # Next.js App Router UI
 ├── backend/           # FastAPI services
 ├── deploy/
 │   ├── airgap/            # Offline bundle scripts (BL-032)
-│   ├── helm/helixguard/   # Kubernetes Helm chart (BL-031)
+│   ├── helm/pysetu/   # Kubernetes Helm chart (BL-031)
 │   └── opa/policies/      # OPA Rego policies (Docker Compose)
 ├── docs/              # Architecture, planning, progress, ADRs
 ├── docker-compose.yml
@@ -172,4 +172,4 @@ See `/docs` for architecture, planning, progress tracking, ADRs, and agent hando
 
 ## License
 
-Proprietary — HelixGuard AI
+Proprietary — PySetu AI

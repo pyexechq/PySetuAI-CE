@@ -17,7 +17,7 @@ def _sample_framework() -> DashboardComplianceFramework:
             requirement="Embed privacy controls",
             status="not_met",
             remediation="Activate PII Redaction policies in Policy Studio.",
-            helixguard_module="Policy Studio",
+            pysetu_module="Policy Studio",
         ),
         DashboardComplianceControl(
             id="gdpr-art30",
@@ -25,7 +25,7 @@ def _sample_framework() -> DashboardComplianceFramework:
             requirement="Maintain auditable records",
             status="met",
             evidence="42 audit events captured",
-            helixguard_module="Audit Explorer",
+            pysetu_module="Audit Explorer",
         ),
     ]
     return DashboardComplianceFramework(

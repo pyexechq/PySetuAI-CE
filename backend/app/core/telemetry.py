@@ -1,4 +1,4 @@
-"""OpenTelemetry setup for HelixGuard API."""
+"""OpenTelemetry setup for PySetu API."""
 
 from __future__ import annotations
 

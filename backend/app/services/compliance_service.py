@@ -92,7 +92,7 @@ def _control(
     status: ControlStatus,
     evidence: str | None = None,
     remediation: str | None = None,
-    helixguard_module: str | None = None,
+    pysetu_module: str | None = None,
 ) -> DashboardComplianceControl:
     return DashboardComplianceControl(
         id=id,
@@ -101,7 +101,7 @@ def _control(
         status=status,
         evidence=evidence,
         remediation=remediation,
-        helixguard_module=helixguard_module,
+        pysetu_module=pysetu_module,
     )
 
 
@@ -127,7 +127,7 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="met" if has_eu_pii and has_us_pii else "in_progress" if has_eu_pii or has_us_pii else "not_met",
             evidence="Active PII redaction policies at the gateway." if has_eu_pii or has_us_pii else None,
             remediation="Activate PII Redaction — EU and US policies in Policy Studio.",
-            helixguard_module="Policy Studio",
+            pysetu_module="Policy Studio",
         ),
         _control(
             id="gdpr-art30",
@@ -137,8 +137,8 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             evidence=f"{signals.audit_log_count} audit events captured in the last 30 days."
             if signals.audit_log_count
             else None,
-            remediation="Enable gateway traffic and route requests through HelixGuard to populate Audit Explorer.",
-            helixguard_module="Audit Explorer",
+            remediation="Enable gateway traffic and route requests through PySetu to populate Audit Explorer.",
+            pysetu_module="Audit Explorer",
         ),
         _control(
             id="gdpr-art32",
@@ -149,7 +149,7 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             if "Jailbreak Prevention" in signals.active_policy_names
             else None,
             remediation="Enable Jailbreak Prevention and Prompt Injection Guard policies.",
-            helixguard_module="Policy Studio",
+            pysetu_module="Policy Studio",
         ),
         _control(
             id="gdpr-art17",
@@ -157,7 +157,7 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Document and execute erasure requests for personal data used in AI workflows.",
             status="not_met",
             remediation="Define an erasure runbook and link retention policies to audit log purge schedules.",
-            helixguard_module="Settings",
+            pysetu_module="Settings",
         ),
         _control(
             id="gdpr-art33",
@@ -168,7 +168,7 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             if signals.blocked_requests
             else None,
             remediation="Configure alert routing in Observability and document breach notification owners.",
-            helixguard_module="Observability",
+            pysetu_module="Observability",
         ),
         _control(
             id="gdpr-art35",
@@ -177,7 +177,7 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="in_progress" if has_dlp else "not_met",
             evidence="DLP classification policy drafted." if signals.draft_policy_count else None,
             remediation="Finalize DLP Classification policy and attach DPIA evidence in Reports.",
-            helixguard_module="Reports",
+            pysetu_module="Reports",
         ),
         _control(
             id="gdpr-transfer",
@@ -186,7 +186,7 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="met" if has_eu_pii else "not_met",
             evidence="EU residency gate enforced by PII Redaction — EU." if has_eu_pii else None,
             remediation="Enable EU residency rules on the PII Redaction — EU policy bundle.",
-            helixguard_module="Policy Studio",
+            pysetu_module="Policy Studio",
         ),
         _control(
             id="gdpr-transparency",
@@ -195,7 +195,7 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="in_progress" if signals.audit_log_count >= 5 else "not_met",
             evidence="Gateway audit trail captures actor, policy, and outcome metadata.",
             remediation="Tag audit exports with lawful-basis fields in Reports.",
-            helixguard_module="Reports",
+            pysetu_module="Reports",
         ),
     ]
 
@@ -211,7 +211,7 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Assign security responsibility and enforce role-based access to AI controls.",
             status="met",
             evidence="RBAC roles enforced for tenant users and admin APIs.",
-            helixguard_module="Settings",
+            pysetu_module="Settings",
         ),
         _control(
             id="hipaa-164312",
@@ -220,7 +220,7 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             status="met" if has_pii else "not_met",
             evidence="PII/PHI patterns redacted or blocked at the gateway." if has_pii else None,
             remediation="Activate PII redaction policies and block PHI in outbound tool calls.",
-            helixguard_module="Data Protection",
+            pysetu_module="Data Protection",
         ),
         _control(
             id="hipaa-164314",
@@ -228,7 +228,7 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Track business associate agreements for third-party LLM and MCP vendors.",
             status="not_met",
             remediation="Upload BAA attestations per LLM provider in Integrations settings.",
-            helixguard_module="Settings",
+            pysetu_module="Settings",
         ),
         _control(
             id="hipaa-audit",
@@ -236,8 +236,8 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Record who accessed PHI-bearing AI requests and what action was taken.",
             status="met" if signals.audit_log_count >= 10 else "in_progress" if signals.audit_log_count else "not_met",
             evidence=f"{signals.audit_log_count} auditable gateway events in the last 30 days.",
-            remediation="Route production AI traffic through HelixGuard gateway.",
-            helixguard_module="Audit Explorer",
+            remediation="Route production AI traffic through PySetu gateway.",
+            pysetu_module="Audit Explorer",
         ),
         _control(
             id="hipaa-minimum",
@@ -246,7 +246,7 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             status="in_progress" if has_pii else "not_met",
             evidence="Redaction rules reduce PHI surface area in prompts." if has_pii else None,
             remediation="Add field-level redaction rules and MCP tool allowlists.",
-            helixguard_module="MCP Governance",
+            pysetu_module="MCP Governance",
         ),
         _control(
             id="hipaa-transmission",
@@ -255,7 +255,7 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             status="met" if has_access_controls else "in_progress",
             evidence="TLS enforced for configured LLM providers." if has_access_controls else None,
             remediation="Register providers with TLS-only endpoints in LLM Router.",
-            helixguard_module="LLM Router",
+            pysetu_module="LLM Router",
         ),
         _control(
             id="hipaa-incident",
@@ -264,7 +264,7 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             status="met" if signals.pii_events else "in_progress" if has_pii else "not_met",
             evidence=f"{signals.pii_events} PII-related events detected and handled." if signals.pii_events else None,
             remediation="Enable alert mode on PII policies and review blocked events daily.",
-            helixguard_module="Observability",
+            pysetu_module="Observability",
         ),
         _control(
             id="hipaa-retention",
@@ -272,7 +272,7 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Define retention for audit logs containing PHI metadata.",
             status="not_met",
             remediation="Set audit retention policy and schedule exports in Reports.",
-            helixguard_module="Reports",
+            pysetu_module="Reports",
         ),
     ]
 
@@ -288,7 +288,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Restrict configuration changes to authorized admin roles.",
             status="met",
             evidence="Tenant Admin and Security Admin roles gate write APIs.",
-            helixguard_module="Settings",
+            pysetu_module="Settings",
         ),
         _control(
             id="soc2-cc72",
@@ -299,7 +299,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             if signals.total_requests
             else None,
             remediation="Enable Observability dashboards and alert thresholds.",
-            helixguard_module="Observability",
+            pysetu_module="Observability",
         ),
         _control(
             id="soc2-cc81",
@@ -310,7 +310,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             if signals.draft_policy_count
             else None,
             remediation="Move draft policies through review before activation.",
-            helixguard_module="Policy Studio",
+            pysetu_module="Policy Studio",
         ),
         _control(
             id="soc2-c11",
@@ -319,7 +319,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="met" if has_change_control else "in_progress",
             evidence="Data Exfiltration Block policy active." if has_change_control else None,
             remediation="Activate Data Exfiltration Block and secret detection rules.",
-            helixguard_module="Policy Studio",
+            pysetu_module="Policy Studio",
         ),
         _control(
             id="soc2-p11",
@@ -328,7 +328,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="in_progress",
             evidence="PII handling rules documented in active policies.",
             remediation="Map each active policy to privacy notice sections in Reports.",
-            helixguard_module="Reports",
+            pysetu_module="Reports",
         ),
         _control(
             id="soc2-availability",
@@ -341,7 +341,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             else "not_met",
             evidence=f"{signals.llm_provider_count} active LLM providers configured.",
             remediation="Register backup providers and weighted routing in LLM Router.",
-            helixguard_module="LLM Router",
+            pysetu_module="LLM Router",
         ),
         _control(
             id="soc2-vendor",
@@ -354,7 +354,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             else "not_met",
             evidence=f"{signals.mcp_server_count} MCP servers tracked; {signals.high_risk_mcp_count} high-risk.",
             remediation="Review MCP risk scores and disable high-risk tools.",
-            helixguard_module="MCP Governance",
+            pysetu_module="MCP Governance",
         ),
         _control(
             id="soc2-incident",
@@ -363,7 +363,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="met" if signals.blocked_requests else "in_progress",
             evidence=f"{signals.blocked_requests} blocked events available for triage.",
             remediation="Assign on-call rotation for Security Center alerts.",
-            helixguard_module="Security Center",
+            pysetu_module="Security Center",
         ),
     ]
 
@@ -378,7 +378,7 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             requirement="Define and enforce access rules for AI administration.",
             status="met",
             evidence="RBAC matrix enforced across UI and API.",
-            helixguard_module="Settings",
+            pysetu_module="Settings",
         ),
         _control(
             id="iso-a124",
@@ -386,8 +386,8 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             requirement="Log security events for AI gateway and MCP activity.",
             status="met" if signals.audit_log_count >= 10 else "in_progress" if signals.audit_log_count else "not_met",
             evidence=f"{signals.audit_log_count} security-relevant audit entries.",
-            remediation="Ensure all agents use HelixGuard gateway keys.",
-            helixguard_module="Audit Explorer",
+            remediation="Ensure all agents use PySetu gateway keys.",
+            pysetu_module="Audit Explorer",
         ),
         _control(
             id="iso-a131",
@@ -396,7 +396,7 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             status="met" if signals.llm_provider_count else "not_met",
             evidence="Providers registered with encrypted transport.",
             remediation="Configure TLS-only upstream endpoints.",
-            helixguard_module="LLM Router",
+            pysetu_module="LLM Router",
         ),
         _control(
             id="iso-a141",
@@ -405,7 +405,7 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             status="in_progress",
             evidence="Policy Studio governs production-bound policies.",
             remediation="Link Studio experiments to approved policy bundles before promotion.",
-            helixguard_module="Studio",
+            pysetu_module="Studio",
         ),
         _control(
             id="iso-a181",
@@ -414,7 +414,7 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             status="in_progress",
             evidence="Compliance Center tracks five frameworks.",
             remediation="Attach evidence exports per framework in Reports.",
-            helixguard_module="Compliance Center",
+            pysetu_module="Compliance Center",
         ),
         _control(
             id="iso-a122",
@@ -425,7 +425,7 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             else "in_progress",
             evidence="Injection and jailbreak policies enforced at gateway.",
             remediation="Enable Prompt Injection Guard and Jailbreak Prevention.",
-            helixguard_module="Policy Studio",
+            pysetu_module="Policy Studio",
         ),
         _control(
             id="iso-a131-mcp",
@@ -434,7 +434,7 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             status="met" if has_tool_allowlist else "not_met",
             evidence="Tool Allowlist policy active." if has_tool_allowlist else None,
             remediation="Activate Tool Allowlist under MCP Governance.",
-            helixguard_module="MCP Governance",
+            pysetu_module="MCP Governance",
         ),
         _control(
             id="iso-a161",
@@ -443,7 +443,7 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             status="in_progress" if signals.blocked_requests else "not_met",
             evidence=f"{signals.blocked_requests} incidents captured for review.",
             remediation="Define severity tiers in Security Center playbooks.",
-            helixguard_module="Security Center",
+            pysetu_module="Security Center",
         ),
     ]
 
@@ -460,7 +460,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="met" if len(signals.active_policy_names) >= 4 else "in_progress",
             evidence=f"{len(signals.active_policy_names)} active governance policies.",
             remediation="Activate organization policy folders in Policy Studio.",
-            helixguard_module="Policy Studio",
+            pysetu_module="Policy Studio",
         ),
         _control(
             id="nist-govern-2",
@@ -473,7 +473,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             else "not_met",
             evidence=f"{signals.high_risk_mcp_count} MCP servers above risk threshold.",
             remediation="Remediate or disable high-risk MCP integrations.",
-            helixguard_module="MCP Governance",
+            pysetu_module="MCP Governance",
         ),
         _control(
             id="nist-map-1",
@@ -482,7 +482,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="met" if has_governance else "not_met",
             evidence="Governance Graph maps policies to agents and tools." if has_governance else None,
             remediation="Register all production agents and MCP servers.",
-            helixguard_module="Governance Graph",
+            pysetu_module="Governance Graph",
         ),
         _control(
             id="nist-map-2",
@@ -490,7 +490,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Document trade-offs for high-impact AI workflows.",
             status="not_met",
             remediation="Add harm analysis worksheets to Reports for each agent.",
-            helixguard_module="Reports",
+            pysetu_module="Reports",
         ),
         _control(
             id="nist-measure-1",
@@ -499,7 +499,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="met" if signals.total_requests else "not_met",
             evidence=f"Block rate {signals.block_rate:.1f}% over {signals.total_requests} requests.",
             remediation="Route traffic through gateway to collect baseline metrics.",
-            helixguard_module="Observability",
+            pysetu_module="Observability",
         ),
         _control(
             id="nist-measure-2",
@@ -508,7 +508,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="in_progress" if block_ratio_ok else "not_met",
             evidence="Policy violations tracked in Observability.",
             remediation="Enable toxic content rules and review blocked samples weekly.",
-            helixguard_module="Policy Studio",
+            pysetu_module="Policy Studio",
         ),
         _control(
             id="nist-manage-1",
@@ -517,7 +517,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="met" if signals.blocked_requests else "in_progress",
             evidence=f"{signals.blocked_requests} requests blocked by policy enforcement.",
             remediation="Set enforcement to Block on high-severity rules.",
-            helixguard_module="Policy Studio",
+            pysetu_module="Policy Studio",
         ),
         _control(
             id="nist-manage-2",
@@ -526,7 +526,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             status="in_progress",
             evidence="LLM Router supports weighted pools and scheduled rebalance.",
             remediation="Schedule rebalance jobs and review top policies monthly.",
-            helixguard_module="LLM Router",
+            pysetu_module="LLM Router",
         ),
     ]
 

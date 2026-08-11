@@ -1,4 +1,4 @@
-"""Resolve tenant AI Assist credentials for platform-wide HelixGuard AI features."""
+"""Resolve tenant AI Assist credentials for platform-wide PySetu AI features."""
 
 from __future__ import annotations
 

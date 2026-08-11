@@ -13,7 +13,7 @@ Returns service health status.
 ```json
 {
   "status": "healthy",
-  "service": "HelixGuard AI",
+  "service": "PySetu AI",
   "version": "0.1.0"
 }
 ```

@@ -4,7 +4,7 @@ export default function LegalSecurityPage() {
   return (
     <LegalPageShell title="Security & Trust" lastUpdated="August 11, 2026">
       <p>
-        HelixGuard AI is designed for regulated enterprises. Security is embedded across authentication, tenant
+        PySetu AI is designed for regulated enterprises. Security is embedded across authentication, tenant
         isolation, policy enforcement, and auditability.
       </p>
 
@@ -25,7 +25,7 @@ export default function LegalSecurityPage() {
       <h2>Reporting vulnerabilities</h2>
       <p>
         If you believe you have discovered a security issue, please report it responsibly to{" "}
-        <a href="mailto:security@helixguard.com">security@helixguard.com</a>. Do not publicly disclose issues until
+        <a href="mailto:security@pysetu.com">security@pysetu.com</a>. Do not publicly disclose issues until
         we have had a reasonable opportunity to investigate and remediate.
       </p>
     </LegalPageShell>

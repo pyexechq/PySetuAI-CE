@@ -1,4 +1,4 @@
-const AUTH_COOKIE = "helixguard-token";
+const AUTH_COOKIE = "pysetu-token";
 const MAX_AGE_SECONDS = 60 * 60;
 
 export function setAuthCookie(token: string) {

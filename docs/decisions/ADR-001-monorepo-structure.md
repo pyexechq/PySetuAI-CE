@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-HelixGuard AI requires a frontend (Next.js), backend (FastAPI), shared documentation, and deployment configuration. We need to decide between monorepo and polyrepo approaches.
+PySetu AI requires a frontend (Next.js), backend (FastAPI), shared documentation, and deployment configuration. We need to decide between monorepo and polyrepo approaches.
 
 ## Decision
 

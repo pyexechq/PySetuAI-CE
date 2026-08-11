@@ -1,4 +1,4 @@
-# HelixGuard AI — Test Results
+# PySetu AI — Test Results
 
 **Test Cycle:** QA-002 (Live Test Cycle) — **IN PROGRESS**  
 **Started:** Aug 11, 2026

@@ -255,7 +255,7 @@ export function GovernanceGraphView() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="h-[520px] w-full helixguard-flow">
+          <div className="h-[520px] w-full pysetu-flow">
             <ReactFlow
               nodes={nodes}
               edges={edges}

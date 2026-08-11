@@ -10,7 +10,7 @@ from app.services.tenant_features_service import (
     feature_policy_for_api,
 )
 
-DEFAULT_PRODUCT_NAME = "HelixGuard AI"
+DEFAULT_PRODUCT_NAME = "PySetu AI"
 DEFAULT_TAGLINE = "Enterprise AI Control Plane"
 
 

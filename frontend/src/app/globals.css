@@ -92,21 +92,21 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-.helixguard-flow .react-flow__edge-path {
+.pysetu-flow .react-flow__edge-path {
   stroke: #94a3b8;
   stroke-width: 2;
 }
 
-.helixguard-flow .react-flow__edge.selected .react-flow__edge-path {
+.pysetu-flow .react-flow__edge.selected .react-flow__edge-path {
   stroke: var(--primary);
   stroke-width: 3;
 }
 
-.helixguard-flow .react-flow__edge-text {
+.pysetu-flow .react-flow__edge-text {
   fill: var(--foreground);
 }
 
-.helixguard-flow .react-flow__controls button {
+.pysetu-flow .react-flow__controls button {
   background: var(--card);
   border-color: var(--border);
   color: var(--foreground);

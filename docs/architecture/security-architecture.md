@@ -17,7 +17,7 @@ Six predefined roles with hierarchical permissions (see backend-architecture.md)
 
 Open Policy Agent (OPA) evaluates gateway ABAC rules after regex/DLP inspection:
 
-- Policy package: `helixguard.gateway` (`deploy/opa/policies/gateway.rego`)
+- Policy package: `pysetu.gateway` (`deploy/opa/policies/gateway.rego`)
 - Evaluated attributes: user role, auth type (JWT vs client key), policy bundle, routed model, PII/region, risk level, UTC hour
 - Config: `OPA_ENABLED`, `OPA_BASE_URL`, `OPA_FAIL_OPEN` (fail-open in dev, fail-closed in production)
 - Dry-run: `POST /api/v1/security/opa/evaluate`

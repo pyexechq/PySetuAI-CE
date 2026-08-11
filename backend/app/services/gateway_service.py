@@ -76,7 +76,7 @@ def _estimate_tokens(text: str) -> int:
     return max(1, len(text.split()))
 
 
-def _helixguard_meta(prepared: PreparedChat, **extra) -> dict:
+def _pysetu_meta(prepared: PreparedChat, **extra) -> dict:
     meta = {
         "inspection_action": prepared.ingress.action,
         "violations": [v.model_dump() for v in prepared.ingress.violations],
@@ -102,7 +102,7 @@ def _helixguard_meta(prepared: PreparedChat, **extra) -> dict:
 
 
 def _build_mock_response(model: str, prompt: str, inspection: InspectionResult) -> ChatCompletionResponse:
-    prefix = "[HelixGuard Mock] "
+    prefix = "[PySetu Mock] "
     if inspection.action == "redact":
         prefix += "Content was redacted before processing. "
     reply = (
@@ -121,7 +121,7 @@ def _build_mock_response(model: str, prompt: str, inspection: InspectionResult) 
             completion_tokens=completion_tokens,
             total_tokens=prompt_tokens + completion_tokens,
         ),
-        helixguard={
+        pysetu={
             "inspection_action": inspection.action,
             "violations": [v.model_dump() for v in inspection.violations],
             "upstream": "mock",
@@ -310,7 +310,7 @@ async def prepare_chat_request(
             details=detail_text,
             injection=is_injection_related_violation(violation_names, detail_text),
         )
-        return None, ingress, "Request blocked by HelixGuard policy engine."
+        return None, ingress, "Request blocked by PySetu policy engine."
 
     uag_trace.governance_actions.extend(["dlp", "policy_engine"])
 
@@ -360,7 +360,7 @@ async def prepare_chat_request(
             risk=ingress.risk,
             details=detail_text,
         )
-        return None, ingress, "Request blocked by HelixGuard ABAC policy (OPA)."
+        return None, ingress, "Request blocked by PySetu ABAC policy (OPA)."
 
     uag_trace.governance_actions.append("opa")
 
@@ -510,7 +510,7 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
                 completion_tokens=usage.get("completion_tokens", 0),
                 total_tokens=usage.get("total_tokens", 0),
             ),
-            helixguard=_helixguard_meta(prepared),
+            pysetu=_pysetu_meta(prepared),
         )
 
     if prepared.upstream == "gemini" and prepared.config.gemini_api_key and prepared.gemini_model:
@@ -532,7 +532,7 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
                 completion_tokens=completion_tokens,
                 total_tokens=prompt_tokens + completion_tokens,
             ),
-            helixguard=_helixguard_meta(prepared, gemini_model=gemini_model),
+            pysetu=_pysetu_meta(prepared, gemini_model=gemini_model),
         )
 
     if prepared.upstream == "ollama" and prepared.ollama_model:
@@ -560,12 +560,12 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
                 completion_tokens=usage.get("completion_tokens", _estimate_tokens(choice["message"]["content"])),
                 total_tokens=usage.get("total_tokens", 0),
             ),
-            helixguard=_helixguard_meta(prepared, ollama_model=prepared.ollama_model),
+            pysetu=_pysetu_meta(prepared, ollama_model=prepared.ollama_model),
         )
 
     mock = _build_mock_response(prepared.routed_model, prepared.combined, prepared.ingress)
-    mock.helixguard = _helixguard_meta(prepared)
-    mock.helixguard["routed_model"] = prepared.routed_model
+    mock.pysetu = _pysetu_meta(prepared)
+    mock.pysetu["routed_model"] = prepared.routed_model
     return mock
 
 
@@ -700,14 +700,14 @@ async def process_chat_completion(
     db: AsyncSession,
 ) -> tuple[dict | None, InspectionResult | None, str | None]:
     with tracer.start_as_current_span("gateway.chat_completion") as span:
-        span.set_attribute("helixguard.model", request.model)
-        span.set_attribute("helixguard.stream", bool(request.stream))
+        span.set_attribute("pysetu.model", request.model)
+        span.set_attribute("pysetu.stream", bool(request.stream))
         prepared, ingress, error = await prepare_chat_request(request, ctx, db)
         if error or prepared is None:
-            span.set_attribute("helixguard.result", "blocked" if ingress and not ingress.allowed else "error")
+            span.set_attribute("pysetu.result", "blocked" if ingress and not ingress.allowed else "error")
             return None, ingress, error
 
-        span.set_attribute("helixguard.upstream", prepared.upstream)
+        span.set_attribute("pysetu.upstream", prepared.upstream)
         started = time.perf_counter()
         try:
             response = await _execute_upstream(prepared, request)
@@ -724,7 +724,7 @@ async def process_chat_completion(
         bundle = await _load_bundle(db, ctx.policy_bundle_id)
         egress = await inspect_for_gateway(db, ctx.tenant_id, bundle, response.choices[0].message.content)
         if not egress.allowed:
-            span.set_attribute("helixguard.result", "egress_blocked")
+            span.set_attribute("pysetu.result", "egress_blocked")
             await _write_audit(
                 db,
                 ctx,
@@ -743,7 +743,7 @@ async def process_chat_completion(
                 risk=egress.risk,
                 details="Output blocked by egress policy",
             )
-            return None, egress, "Response blocked by HelixGuard egress inspection."
+            return None, egress, "Response blocked by PySetu egress inspection."
 
         await record_provider_request(db, ctx.tenant_id, prepared.routed_model, latency_ms, success=True)
 
@@ -797,7 +797,7 @@ async def process_chat_completion(
             ),
         )
         await db.commit()
-        span.set_attribute("helixguard.result", audit_status)
+        span.set_attribute("pysetu.result", audit_status)
         return serialize_gateway_response(
             prepared.client_response_protocol,
             response,

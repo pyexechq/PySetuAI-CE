@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Configure Vault AppRole for HelixGuard (local dev server).
+# Configure Vault AppRole for PySetu (local dev server).
 # Usage: docker compose exec vault sh /scripts/vault-setup-approle.sh
 # Or:    VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=dev-root-token ./scripts/vault-setup-approle.sh
 
@@ -11,28 +11,28 @@ export VAULT_ADDR VAULT_TOKEN
 
 vault secrets enable -path=secret kv-v2 2>/dev/null || true
 
-vault policy write helixguard-secrets - <<'EOF'
-path "secret/data/helixguard/*" {
+vault policy write pysetu-secrets - <<'EOF'
+path "secret/data/pysetu/*" {
   capabilities = ["create", "read", "update", "delete", "list"]
 }
-path "secret/metadata/helixguard/*" {
+path "secret/metadata/pysetu/*" {
   capabilities = ["list", "read", "delete"]
 }
 EOF
 
 vault auth enable approle 2>/dev/null || true
 
-vault write auth/approle/role/helixguard-api \
-  token_policies="helixguard-secrets" \
+vault write auth/approle/role/pysetu-api \
+  token_policies="pysetu-secrets" \
   token_ttl=1h \
   token_max_ttl=4h \
   secret_id_ttl=0
 
-ROLE_ID="$(vault read -field=role_id auth/approle/role/helixguard-api/role-id)"
-SECRET_ID="$(vault write -f -field=secret_id auth/approle/role/helixguard-api/secret-id)"
+ROLE_ID="$(vault read -field=role_id auth/approle/role/pysetu-api/role-id)"
+SECRET_ID="$(vault write -f -field=secret_id auth/approle/role/pysetu-api/secret-id)"
 
 echo ""
-echo "HelixGuard Vault AppRole configured."
+echo "PySetu Vault AppRole configured."
 echo "Set these in .env.docker (or backend environment):"
 echo "VAULT_ENABLED=true"
 echo "VAULT_AUTH_METHOD=approle"

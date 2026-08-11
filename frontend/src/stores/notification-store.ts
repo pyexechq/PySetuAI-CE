@@ -22,6 +22,6 @@ export const useNotificationStore = create<NotificationState>()(
       },
       clearRead: () => set({ readIds: [] }),
     }),
-    { name: "helixguard-notifications" }
+    { name: "pysetu-notifications" }
   )
 );

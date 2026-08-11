@@ -50,7 +50,7 @@
 | BL-039 | Run and stabilize full backend pytest suite (local + CI) | QA | — | Tests exist; prod Docker image has no pytest |
 | BL-040 | Production env template — rotate JWT secret, enforce Vault | Security | 5 — Done (S6-06) |
 | BL-041 | OIDC JIT provisioning toggle in Settings UI | Settings / Identity | 5c — Done (S6-05) |
-| BL-042 | OIDC IdP group → HelixGuard role mapping | Identity | 5c — Done (S6-07) |
+| BL-042 | OIDC IdP group → PySetu role mapping | Identity | 5c — Done (S6-07) |
 | BL-043 | SCIM user provisioning (optional) | Identity | 5c | Out of scope for Sprint 6 |
 | BL-044 | Remove demo credentials from production bundles | Security | 5d | Phase 5d in OIDC design |
 | BL-045 | Penetration test prep checklist + remediation backlog | Security | 5 | Pre-M5 gate |
@@ -170,7 +170,7 @@
 | — | Public legal pages (terms, privacy, cookies, trust) | Post-S6 |
 | — | Backend Ruff lint on full `app/` package in CI | S4-40 |
 | — | Air-gap offline bundle (deploy/airgap) | S4-36 / BL-032 |
-| — | Kubernetes Helm chart (deploy/helm/helixguard) | S4-35 / BL-031 |
+| — | Kubernetes Helm chart (deploy/helm/pysetu) | S4-35 / BL-031 |
 | — | ABAC / OPA gateway policy integration | S4-34 |
 | — | Audit log ingestion pipeline + Celery batch ingest | S4-33 / BL-020 |
 | — | Prompt injection detection + Security Center API | S4-32 / BL-023 |

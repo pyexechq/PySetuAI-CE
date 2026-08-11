@@ -311,7 +311,7 @@ async def build_metric_insight(
         return playbook
 
     prompt = (
-        "You are HelixGuard AI, an enterprise AI governance analyst. "
+        "You are PySetu AI, an enterprise AI governance analyst. "
         "Return ONLY JSON with keys summary (string), insights (array of 2-3 strings), "
         "recommended_actions (array of 2-3 strings). No markdown.\n\n"
         f"Metric: {METRIC_TITLES[key]}\n"
