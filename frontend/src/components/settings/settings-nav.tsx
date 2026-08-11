@@ -25,7 +25,7 @@ export function SettingsTabs() {
 
   return (
     <div
-      className="sticky top-0 z-20 rounded-xl border border-border/60 bg-card/90 p-2 shadow-sm backdrop-blur lg:hidden"
+      className="sticky top-0 z-20 rounded-xl border border-border/60 bg-card/90 p-2 shadow-sm backdrop-blur md:hidden"
       role="tablist"
       aria-label="Settings sections"
     >
@@ -47,36 +47,5 @@ export function SettingsTabs() {
         })}
       </div>
     </div>
-  );
-}
-
-export function SettingsSidebar() {
-  const pathname = usePathname();
-
-  return (
-    <nav
-      className="hidden rounded-xl border border-border/60 bg-card/50 p-2 lg:block"
-      aria-label="Settings sections"
-    >
-      <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Sections
-      </p>
-      <ul className="space-y-1">
-        {settingsNavItems.map(({ href, label, icon: Icon, description }) => {
-          const isActive = pathname === href || pathname.startsWith(`${href}/`);
-          return (
-            <li key={href}>
-              <Link href={href} className={navLinkClass(isActive)}>
-                <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{label}</p>
-                  <p className="text-xs opacity-80">{description}</p>
-                </div>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
   );
 }

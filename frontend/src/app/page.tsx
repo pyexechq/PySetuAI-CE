@@ -1,13 +1,5 @@
-import { AppShell } from "@/components/layout/app-shell";
-import { DashboardContent } from "@/components/dashboard/dashboard-content";
+import { HomePageRouter } from "@/components/marketing/home-page-router";
 
-export default function DashboardPage() {
-  return (
-    <AppShell
-      title="Executive Dashboard"
-      description="Real-time overview of AI governance, security, and compliance"
-    >
-      <DashboardContent />
-    </AppShell>
-  );
+export default function HomePage() {
+  return <HomePageRouter />;
 }

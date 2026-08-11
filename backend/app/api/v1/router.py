@@ -14,6 +14,7 @@ from app.schemas.auth import (
     DashboardMetricsResponse,
     LoginRequest,
     TenantBrandingPublicResponse,
+    TenantPublicSiteResponse,
     TenantResponse,
     TokenResponse,
     UserResponse,
@@ -24,6 +25,7 @@ from app.services.dashboard_service import build_dashboard_overview
 from app.services.oidc_auth_service import begin_oidc_login, complete_oidc_login
 from app.services.oidc_provider_service import list_public_providers, public_provider_dict
 from app.services.tenant_branding_service import public_branding_dict
+from app.services.tenant_site_service import resolve_public_site
 
 router = APIRouter()
 
@@ -87,6 +89,19 @@ async def get_tenant_branding(
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
     return TenantBrandingPublicResponse(**public_branding_dict(tenant))
+
+
+@router.get("/tenants/site-config", response_model=TenantPublicSiteResponse)
+async def get_tenant_site_config(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    subdomain: str | None = Query(default=None, max_length=100),
+    slug: str | None = Query(default=None, max_length=100),
+    host: str | None = Query(default=None, max_length=255),
+) -> TenantPublicSiteResponse:
+    site = await resolve_public_site(db, subdomain=subdomain, slug=slug, host=host)
+    if site is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant site not found")
+    return TenantPublicSiteResponse(**site)
 
 
 @router.get("/auth/oidc/providers", response_model=list[OidcPublicProviderResponse])

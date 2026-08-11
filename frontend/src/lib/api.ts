@@ -22,13 +22,34 @@ export class ApiError extends Error {
   }
 }
 
+function formatApiErrorDetail(detail: unknown, fallback: string): string {
+  if (typeof detail === "string" && detail.trim()) {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) {
+          return String((item as { msg: string }).msg);
+        }
+        return null;
+      })
+      .filter((item): item is string => Boolean(item));
+    if (messages.length > 0) return messages.join("; ");
+  }
+  return fallback;
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const text = await response.text().catch(() => response.statusText);
     let message = text;
     try {
-      const json = JSON.parse(text) as { error?: { message?: string }; detail?: string };
-      message = json.error?.message ?? json.detail ?? text;
+      const json = JSON.parse(text) as { error?: { message?: string }; detail?: unknown };
+      message =
+        json.error?.message ??
+        formatApiErrorDetail(json.detail, text || `Request failed (${response.status})`);
     } catch {
       // keep raw text
     }
@@ -180,6 +201,18 @@ export interface ApiPlatformConfig {
   platform_tenant_slug: string;
 }
 
+export interface ApiPublicSiteConfig {
+  slug: string;
+  name: string;
+  display_name: string;
+  logo_url: string | null;
+  brand_tagline: string;
+  subdomain: string;
+  entry_mode: "login_only" | "marketing_site";
+  login_path: string;
+  tenant_url: string;
+}
+
 export interface ApiPlatformTenant {
   id: string;
   name: string;
@@ -188,6 +221,9 @@ export interface ApiPlatformTenant {
   created_at: string | null;
   demo_data_loaded: boolean;
   admin_email: string | null;
+  subdomain: string;
+  entry_mode: "login_only" | "marketing_site";
+  tenant_url: string;
 }
 
 export interface ApiPlatformTenantCreateRequest {
@@ -198,11 +234,15 @@ export interface ApiPlatformTenantCreateRequest {
   admin_password: string;
   include_demo_data?: boolean;
   is_active?: boolean;
+  subdomain?: string;
+  entry_mode?: "login_only" | "marketing_site";
 }
 
 export interface ApiPlatformTenantUpdateRequest {
   name?: string;
   is_active?: boolean;
+  subdomain?: string;
+  entry_mode?: "login_only" | "marketing_site";
 }
 
 export interface ApiPlatformTenantProvisionResult {
@@ -250,6 +290,15 @@ export const api = {
 
   getPublicTenantBranding: (tenantSlug: string) =>
     apiFetch<ApiPublicTenantBranding>(`/tenants/branding/${encodeURIComponent(tenantSlug)}`),
+
+  resolvePublicSite: (params: { host?: string; subdomain?: string; slug?: string }) => {
+    const query = new URLSearchParams();
+    if (params.host) query.set("host", params.host);
+    if (params.subdomain) query.set("subdomain", params.subdomain);
+    if (params.slug) query.set("slug", params.slug);
+    const qs = query.toString();
+    return apiFetch<ApiPublicSiteConfig>(`/tenants/site-config${qs ? `?${qs}` : ""}`);
+  },
 
   listPublicOidcProviders: (tenantSlug: string) =>
     apiFetch<ApiPublicOidcProvider[]>(`/auth/oidc/providers?tenant_slug=${encodeURIComponent(tenantSlug)}`),

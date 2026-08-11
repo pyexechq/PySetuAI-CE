@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore, canAccessRoute } from "@/stores/auth-store";
 
-const PUBLIC_ROUTES = ["/login", "/platform/login"];
+const PUBLIC_ROUTES = ["/login", "/platform/login", "/terms", "/privacy", "/cookies", "/legal/security"];
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -17,6 +17,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   useEffect(() => {
     if (pathname.startsWith("/platform")) return;
+    if (pathname === "/" && !isAuthenticated) return;
     if (PUBLIC_ROUTES.includes(pathname)) return;
 
     if (!isAuthenticated) {
@@ -35,6 +36,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }, [isAuthenticated, user, pathname, router]);
 
   if (pathname.startsWith("/platform")) {
+    return <>{children}</>;
+  }
+
+  if (pathname === "/" && !isAuthenticated) {
     return <>{children}</>;
   }
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
-import { SettingsSidebar, SettingsTabs } from "@/components/settings/settings-nav";
+import { SettingsTabs } from "@/components/settings/settings-nav";
 import { SettingsSignOut } from "@/components/settings/settings-sections";
 import { settingsNavItems } from "@/config/settings-navigation";
 
@@ -20,12 +20,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     >
       <div className="mx-auto max-w-6xl space-y-4">
         <SettingsTabs />
-        <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <SettingsSidebar />
-          <div className="min-w-0 space-y-6">
-            {children}
-            <SettingsSignOut />
-          </div>
+        <div className="min-w-0 space-y-6">
+          {children}
+          <SettingsSignOut />
         </div>
       </div>
     </AppShell>

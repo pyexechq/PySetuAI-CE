@@ -2,7 +2,15 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getAuthCookieName } from "@/lib/auth-cookie";
 
-const PUBLIC_ROUTES = ["/login", "/auth/oidc/callback", "/platform/login"];
+const PUBLIC_ROUTES = [
+  "/login",
+  "/auth/oidc/callback",
+  "/platform/login",
+  "/terms",
+  "/privacy",
+  "/cookies",
+  "/legal/security",
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -14,6 +22,11 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get(getAuthCookieName())?.value;
   const isPublic = PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const isPlatformRoute = pathname === "/platform" || pathname.startsWith("/platform/");
+  const isMarketingHome = pathname === "/" && !token;
+
+  if (isMarketingHome) {
+    return NextResponse.next();
+  }
 
   if (isPlatformRoute) {
     if (!token && pathname !== "/platform/login" && !pathname.startsWith("/platform/login/")) {

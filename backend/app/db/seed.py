@@ -18,7 +18,7 @@ PLATFORM_TENANT = {
 }
 
 PLATFORM_ADMIN = {
-    "email": "platform@helixguard.local",
+    "email": "platform@helixguard.com",
     "name": "Platform Administrator",
     "password": "platform1234",
     "role": "platform_admin",
@@ -64,9 +64,17 @@ async def seed_demo_data() -> None:
         tenant = tenant_result.scalar_one_or_none()
 
         if tenant is None:
-            tenant = Tenant(name=DEMO_TENANT["name"], slug=DEMO_TENANT["slug"])
+            tenant = Tenant(
+                name=DEMO_TENANT["name"],
+                slug=DEMO_TENANT["slug"],
+                subdomain=DEMO_TENANT["slug"],
+                entry_mode="login_only",
+            )
             session.add(tenant)
             await session.flush()
+        else:
+            if not tenant.subdomain:
+                tenant.subdomain = DEMO_TENANT["slug"]
 
         for demo_user in DEMO_USERS:
             user_result = await session.execute(
@@ -108,15 +116,25 @@ async def seed_platform_admin() -> None:
             select(User).where(User.tenant_id == tenant.id, User.email == PLATFORM_ADMIN["email"])
         )
         if user_result.scalar_one_or_none() is None:
-            session.add(
-                User(
-                    tenant_id=tenant.id,
-                    email=PLATFORM_ADMIN["email"],
-                    name=PLATFORM_ADMIN["name"],
-                    hashed_password=get_password_hash(PLATFORM_ADMIN["password"]),
-                    role=PLATFORM_ADMIN["role"],
+            legacy_result = await session.execute(
+                select(User).where(
+                    User.tenant_id == tenant.id,
+                    User.email == "platform@helixguard.local",
                 )
             )
+            legacy_user = legacy_result.scalar_one_or_none()
+            if legacy_user is not None:
+                legacy_user.email = PLATFORM_ADMIN["email"]
+            else:
+                session.add(
+                    User(
+                        tenant_id=tenant.id,
+                        email=PLATFORM_ADMIN["email"],
+                        name=PLATFORM_ADMIN["name"],
+                        hashed_password=get_password_hash(PLATFORM_ADMIN["password"]),
+                        role=PLATFORM_ADMIN["role"],
+                    )
+                )
 
         await session.commit()
 

@@ -13,6 +13,11 @@ from app.core.security import get_password_hash
 from app.db.seed_governance import seed_access_for_tenant, seed_governance_for_tenant
 from app.models.governance import MCPServer
 from app.models.tenant import Tenant, User
+from app.services.tenant_site_service import (
+    tenant_public_url,
+    validate_entry_mode,
+    validate_subdomain,
+)
 
 RESERVED_TENANT_SLUGS = frozenset(
     {
@@ -78,6 +83,9 @@ def tenant_response_dict(
         "created_at": tenant.created_at.isoformat() if tenant.created_at else None,
         "demo_data_loaded": demo_data_loaded,
         "admin_email": admin_email,
+        "subdomain": tenant.subdomain or tenant.slug,
+        "entry_mode": tenant.entry_mode,
+        "tenant_url": tenant_public_url(tenant.subdomain or tenant.slug),
     }
 
 
@@ -108,6 +116,22 @@ async def get_customer_tenant(db: AsyncSession, tenant_id: uuid.UUID) -> dict | 
     return tenant_response_dict(tenant, demo_data_loaded=demo_loaded, admin_email=admin_email)
 
 
+async def _ensure_subdomain_available(
+    db: AsyncSession,
+    subdomain: str | None,
+    *,
+    exclude_tenant_id: uuid.UUID | None = None,
+) -> None:
+    if not subdomain:
+        return
+    query = select(Tenant.id).where(Tenant.subdomain == subdomain)
+    if exclude_tenant_id is not None:
+        query = query.where(Tenant.id != exclude_tenant_id)
+    existing = await db.execute(query)
+    if existing.scalar_one_or_none() is not None:
+        raise ValueError(f"Subdomain '{subdomain}' is already in use.")
+
+
 async def provision_tenant(
     db: AsyncSession,
     *,
@@ -118,16 +142,27 @@ async def provision_tenant(
     admin_password: str,
     include_demo_data: bool = False,
     is_active: bool = True,
+    subdomain: str | None = None,
+    entry_mode: str = "login_only",
 ) -> dict:
     validate_tenant_slug(slug)
     normalized_slug = normalize_slug(slug)
     normalized_email = admin_email.strip().lower()
+    normalized_entry_mode = validate_entry_mode(entry_mode)
+    normalized_subdomain = validate_subdomain(subdomain or normalized_slug, tenant_slug=normalized_slug)
 
     existing_slug = await db.execute(select(Tenant.id).where(func.lower(Tenant.slug) == normalized_slug))
     if existing_slug.scalar_one_or_none() is not None:
         raise ValueError(f"Tenant slug '{normalized_slug}' is already in use.")
+    await _ensure_subdomain_available(db, normalized_subdomain)
 
-    tenant = Tenant(name=name.strip(), slug=normalized_slug, is_active=is_active)
+    tenant = Tenant(
+        name=name.strip(),
+        slug=normalized_slug,
+        is_active=is_active,
+        subdomain=normalized_subdomain,
+        entry_mode=normalized_entry_mode,
+    )
     db.add(tenant)
     await db.flush()
 
@@ -196,6 +231,9 @@ async def update_customer_tenant(
     *,
     name: str | None = None,
     is_active: bool | None = None,
+    subdomain: str | None = None,
+    entry_mode: str | None = None,
+    clear_subdomain: bool = False,
 ) -> dict | None:
     platform_slug = normalize_slug(settings.platform_tenant_slug)
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id, Tenant.slug != platform_slug))
@@ -207,6 +245,14 @@ async def update_customer_tenant(
         tenant.name = name.strip()
     if is_active is not None:
         tenant.is_active = is_active
+    if entry_mode is not None:
+        tenant.entry_mode = validate_entry_mode(entry_mode)
+    if clear_subdomain:
+        tenant.subdomain = tenant.slug
+    elif subdomain is not None:
+        normalized_subdomain = validate_subdomain(subdomain, tenant_slug=tenant.slug)
+        await _ensure_subdomain_available(db, normalized_subdomain, exclude_tenant_id=tenant.id)
+        tenant.subdomain = normalized_subdomain
 
     await db.commit()
     await db.refresh(tenant)

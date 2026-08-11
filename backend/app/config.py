@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     deployment_mode: str = "saas"
     platform_portal_enabled: bool = True
     platform_tenant_slug: str = "platform"
+    app_base_domain: str = "localhost"
+    app_base_scheme: str = "http"
 
     rate_limit_enabled: bool = True
     rate_limit_auth_requests: int = 30

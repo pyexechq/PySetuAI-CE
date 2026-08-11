@@ -101,6 +101,8 @@ services:
       DEPLOYMENT_MODE: saas
       PLATFORM_PORTAL_ENABLED: "true"
       PLATFORM_TENANT_SLUG: platform
+      APP_BASE_DOMAIN: localhost
+      APP_BASE_SCHEME: http
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

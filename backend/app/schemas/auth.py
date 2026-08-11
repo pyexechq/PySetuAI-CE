@@ -37,6 +37,18 @@ class TenantBrandingPublicResponse(BaseModel):
     brand_tagline: str
 
 
+class TenantPublicSiteResponse(BaseModel):
+    slug: str
+    name: str
+    display_name: str
+    logo_url: str | None = None
+    brand_tagline: str
+    subdomain: str
+    entry_mode: str
+    login_path: str
+    tenant_url: str
+
+
 class DashboardMetricsResponse(BaseModel):
     total_requests: int
     blocked_requests: int

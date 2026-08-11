@@ -47,7 +47,7 @@ When `PLATFORM_PORTAL_ENABLED=false`, protected routes respond with **404**.
 
 | Portal | Email | Password | Tenant slug |
 |--------|-------|----------|-------------|
-| Platform | `platform@helixguard.local` | `platform1234` | `platform` |
+| Platform | `platform@helixguard.com` | `platform1234` | `platform` |
 | Demo customer | `admin@acme.com` | `demo1234` | `acme` |
 
 ## Docker Compose
@@ -74,5 +74,14 @@ PLATFORM_PORTAL_ENABLED: "false"
 | `/platform` | Tenant list, suspend/activate |
 | `/platform/tenants/new` | Provision tenant with optional demo data |
 | `/login` | Customer tenant application (unchanged) |
+
+## Tenant site configuration
+
+Platform admins set per-tenant:
+
+- **subdomain** — e.g. `acme` → `http://acme.localhost:3000` in dev
+- **entry_mode** — `login_only` (redirect to login) or `marketing_site` (branded landing + login modal)
+
+Public API: `GET /api/v1/tenants/site-config?host=acme.localhost:3000`
 
 Platform admins signing in through `/login` are redirected to `/platform`.
