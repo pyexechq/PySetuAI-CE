@@ -11,12 +11,14 @@ from app.models.governance import (
     SiemConnector,
 )
 from app.models.qa import QADefect, QATestCase, QATestCycle
-from app.models.tenant import Base, Tenant, User
+from app.models.tenant import Base, PlatformEmailTemplate, Tenant, TenantInvite, User
 from app.models.uag import UagModelMapping, UagTranslationEvent, UagTranslationPolicy
 
 __all__ = [
     "Base",
     "Tenant",
+    "TenantInvite",
+    "PlatformEmailTemplate",
     "User",
     "Policy",
     "PolicyBundle",

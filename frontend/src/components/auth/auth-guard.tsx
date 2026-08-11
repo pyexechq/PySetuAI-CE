@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore, canAccessRoute, canAccessTenantModule } from "@/stores/auth-store";
 import { useTenantStore } from "@/stores/tenant-store";
 
-const PUBLIC_ROUTES = ["/login", "/auth/oidc/callback", "/platform/login", "/terms", "/privacy", "/cookies", "/legal/security"];
+const PUBLIC_ROUTES = ["/login", "/accept-invite", "/auth/oidc/callback", "/platform/login", "/terms", "/privacy", "/cookies", "/legal/security"];
 
 interface AuthGuardProps {
   children: React.ReactNode;

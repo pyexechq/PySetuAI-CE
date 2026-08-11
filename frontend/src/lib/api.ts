@@ -305,7 +305,10 @@ export interface ApiPlatformTenantCreateRequest {
   slug: string;
   admin_email: string;
   admin_name: string;
-  admin_password: string;
+  admin_password?: string;
+  send_admin_invite?: boolean;
+  send_invite_email?: boolean;
+  invite_template_slug?: string;
   include_demo_data?: boolean;
   is_active?: boolean;
   subdomain?: string;
@@ -321,10 +324,127 @@ export interface ApiPlatformTenantUpdateRequest {
   feature_policy?: Partial<ApiTenantFeaturePolicy>;
 }
 
+export interface ApiPlatformTenantInvite {
+  id: string;
+  tenant_id: string;
+  email: string;
+  role: string;
+  expires_at: string | null;
+  accepted_at: string | null;
+  invite_url: string;
+  email_template_slug?: string | null;
+  email_sent?: boolean;
+  email_status?: string | null;
+  email_sent_at?: string | null;
+  email_reason?: string | null;
+}
+
+export interface ApiInviteEmailTemplate {
+  slug: string;
+  name: string;
+  description: string;
+  subject: string;
+  html_body: string;
+  text_body: string;
+  category: string;
+  is_builtin: boolean;
+  variables: string[];
+  updated_at: string | null;
+}
+
+export interface ApiInviteEmailPreview {
+  template_slug: string;
+  subject: string;
+  html_body: string;
+  text_body: string;
+}
+
 export interface ApiPlatformTenantProvisionResult {
   tenant: ApiPlatformTenant;
   demo_users: { email: string; name: string; role: string; password: string }[];
   message: string;
+  admin_invite?: ApiPlatformTenantInvite | null;
+}
+
+export interface ApiPlatformOpsDependency {
+  status: string;
+  error?: string | null;
+}
+
+export interface ApiPlatformOpsOverview {
+  generated_at: string;
+  status: string;
+  fleet: {
+    total_tenants: number;
+    active_tenants: number;
+    suspended_tenants: number;
+    llm_requests_today: number;
+    llm_blocked_today: number;
+    fleet_block_rate_pct: number;
+    audit_events_today: number;
+    avg_latency_ms: number;
+  };
+  dependencies: {
+    database: ApiPlatformOpsDependency;
+    opa: ApiPlatformOpsDependency;
+  };
+  tenants: {
+    id: string;
+    name: string;
+    slug: string;
+    is_active: boolean;
+    admin_email: string | null;
+    demo_data_loaded: boolean;
+    subdomain: string;
+    llm_requests_today: number;
+    llm_blocked_today: number;
+    block_rate_pct: number;
+    audit_events_today: number;
+    audit_blocked_today: number;
+    avg_latency_ms: number;
+    p95_latency_ms: number;
+  }[];
+}
+
+export interface ApiPlatformUsageOverview {
+  generated_at: string;
+  period_days: number;
+  fleet: {
+    total_tenants: number;
+    active_tenants: number;
+    llm_requests: number;
+    total_tokens: number;
+    prompt_tokens: number;
+    completion_tokens: number;
+    avg_tokens_per_request: number;
+  };
+  tenants: {
+    id: string;
+    name: string;
+    slug: string;
+    is_active: boolean;
+    admin_email: string | null;
+    llm_requests: number;
+    total_tokens: number;
+    prompt_tokens: number;
+    completion_tokens: number;
+    avg_tokens_per_request: number;
+  }[];
+}
+
+export interface ApiInvitePreview {
+  email: string;
+  role: string;
+  tenant_name: string;
+  tenant_slug: string;
+  expires_at: string;
+}
+
+export interface ApiAcceptInviteResult {
+  access_token: string;
+  token_type: string;
+  tenant_slug: string;
+  tenant_url: string;
 }
 
 export interface LoginPayload {
@@ -414,6 +534,66 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }, token),
+
+  getPlatformOpsOverview: (token: string) =>
+    apiFetch<ApiPlatformOpsOverview>("/platform/ops/overview", {}, token),
+
+  getPlatformUsageOverview: (token: string, days = 30) =>
+    apiFetch<ApiPlatformUsageOverview>(`/platform/usage/overview?days=${days}`, {}, token),
+
+  createPlatformTenantInvite: (
+    token: string,
+    tenantId: string,
+    body: { email: string; role?: string; admin_name?: string; template_slug?: string; send_email?: boolean }
+  ) =>
+    apiFetch<ApiPlatformTenantInvite>(`/platform/tenants/${tenantId}/invites`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  listInviteEmailTemplates: (token: string) =>
+    apiFetch<ApiInviteEmailTemplate[]>("/platform/invite-email/templates", {}, token),
+
+  updateInviteEmailTemplate: (
+    token: string,
+    slug: string,
+    body: { subject: string; html_body: string; text_body?: string }
+  ) =>
+    apiFetch<ApiInviteEmailTemplate>(`/platform/invite-email/templates/${slug}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  resetInviteEmailTemplate: (token: string, slug: string) =>
+    apiFetch<ApiInviteEmailTemplate>(`/platform/invite-email/templates/${slug}/reset`, {
+      method: "POST",
+    }, token),
+
+  previewInviteEmail: (
+    token: string,
+    body: {
+      template_slug: string;
+      tenant_name?: string;
+      admin_name?: string;
+      admin_email?: string;
+      invite_url?: string;
+      expires_at?: string;
+      tenant_url?: string;
+    }
+  ) =>
+    apiFetch<ApiInviteEmailPreview>("/platform/invite-email/preview", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  previewInvite: (inviteToken: string) =>
+    apiFetch<ApiInvitePreview>(`/auth/invite/${encodeURIComponent(inviteToken)}`),
+
+  acceptInvite: (body: { token: string; password: string; name?: string }) =>
+    apiFetch<ApiAcceptInviteResult>("/auth/accept-invite", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   listOidcProviders: (token: string) =>
     apiFetch<ApiOidcProvider[]>("/settings/oidc", {}, token),

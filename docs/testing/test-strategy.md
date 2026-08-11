@@ -162,7 +162,7 @@ A release may only be approved when:
 
 | Sprint | Deliverable |
 |--------|-------------|
-| S6-09 | Penetration test prep checklist |
+| S6-09 | Penetration test prep checklist | Done |
 | S7+ | pytest integration tests with testcontainers |
 | S7+ | Vitest unit tests for frontend stores/utils |
 | S8+ | Playwright E2E for auth + dashboard + policy CRUD |

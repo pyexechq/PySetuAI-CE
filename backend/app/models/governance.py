@@ -54,6 +54,7 @@ class AuditLog(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     risk: Mapped[str] = mapped_column(String(20), default="low")
     details: Mapped[str] = mapped_column(Text, default="")
+    usage_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     source: Mapped[str] = mapped_column(String(64), default="internal", index=True)
     external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

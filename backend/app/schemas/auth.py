@@ -55,6 +55,27 @@ class TenantPublicSiteResponse(BaseModel):
     tenant_url: str
 
 
+class InvitePreviewResponse(BaseModel):
+    email: str
+    role: str
+    tenant_name: str
+    tenant_slug: str
+    expires_at: str
+
+
+class AcceptInviteRequest(BaseModel):
+    token: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(..., min_length=8, max_length=128)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+
+
+class AcceptInviteResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    tenant_slug: str
+    tenant_url: str
+
+
 class DashboardMetricsResponse(BaseModel):
     total_requests: int
     blocked_requests: int

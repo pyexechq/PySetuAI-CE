@@ -4,6 +4,7 @@ import { getAuthCookieName } from "@/lib/auth-cookie";
 
 const PUBLIC_ROUTES = [
   "/login",
+  "/accept-invite",
   "/auth/oidc/callback",
   "/platform/login",
   "/terms",

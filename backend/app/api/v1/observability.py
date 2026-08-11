@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.date_range import default_last_n_days, parse_date_range
 from app.core.rbac import USE_STUDIO, VIEW_AUDIT_LOGS, require_any_permission
 from app.db.session import get_db
-from app.models.governance import AuditLog
+from app.models.governance import AuditLog, LLMProvider
 from app.models.tenant import User
 from app.schemas.governance import ObservabilityOverviewResponse, TraceSpanResponse, TraceSummaryResponse
 
@@ -106,14 +106,25 @@ async def observability_overview(
     allowed = allowed_result.scalar() or 0
     review = review_result.scalar() or 0
 
+    latency_result = await db.execute(
+        select(func.avg(LLMProvider.avg_latency_ms), func.max(LLMProvider.avg_latency_ms)).where(
+            LLMProvider.tenant_id == tenant_id,
+            LLMProvider.is_active.is_(True),
+            LLMProvider.total_requests > 0,
+        )
+    )
+    avg_latency_raw, max_latency_raw = latency_result.one()
+    avg_latency_ms = int(avg_latency_raw or 0)
+    p95_latency_ms = int(max_latency_raw or 0) if max_latency_raw else int(avg_latency_ms * 1.35) if avg_latency_ms else 0
+
     return ObservabilityOverviewResponse(
         total_events_today=total,
         allowed_today=allowed,
         blocked_today=blocked,
         under_review_today=review,
         block_rate=round((blocked / total * 100) if total else 0.0, 1),
-        avg_latency_ms=842 if total else 0,
-        p95_latency_ms=1240 if total else 0,
+        avg_latency_ms=avg_latency_ms,
+        p95_latency_ms=p95_latency_ms,
         error_rate=round((blocked / total * 100) if total else 0.0, 1),
         by_action=[{"action": row[0], "count": row[1]} for row in action_rows.all()],
         by_risk=[{"risk": row[0], "count": row[1]} for row in risk_rows.all()],

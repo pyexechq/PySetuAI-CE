@@ -30,6 +30,7 @@ from app.core.telemetry import setup_telemetry
 from app.db.seed import seed_demo_data, seed_platform_admin
 from app.db.seed_governance import seed_access_data, seed_governance_data, seed_uag_data
 from app.services.vault_service import assert_production_security, load_jwt_secret_from_vault
+from app.services.health_service import build_dependency_status
 
 
 @asynccontextmanager
@@ -106,8 +107,9 @@ async def root() -> dict[str, str]:
 
 @app.get("/health")
 async def health_check(request: Request):
+    dependency_status = await build_dependency_status()
     payload = {
-        "status": "healthy",
+        "status": dependency_status["status"],
         "service": settings.app_name,
         "version": settings.app_version,
         "otel_enabled": str(settings.otel_enabled).lower(),
@@ -115,11 +117,14 @@ async def health_check(request: Request):
         "api": settings.api_prefix,
         "docs": "/docs",
         "ui": settings.frontend_url,
+        "dependencies": dependency_status["dependencies"],
     }
 
     accept = request.headers.get("accept", "")
     if "text/html" in accept and "application/json" not in accept.split(",")[0]:
         status_color = "#22c55e" if payload["status"] == "healthy" else "#f97316"
+        if payload["status"] == "unhealthy":
+            status_color = "#ef4444"
         otel_label = "Enabled" if payload["otel_enabled"] == "true" else "Disabled"
         html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -193,6 +198,8 @@ async def health_check(request: Request):
     <p class="subtitle">API health check</p>
     <dl>
       <div class="row"><dt>Version</dt><dd>{payload["version"]}</dd></div>
+      <div class="row"><dt>Database</dt><dd>{payload["dependencies"]["database"]["status"]}</dd></div>
+      <div class="row"><dt>OPA</dt><dd>{payload["dependencies"]["opa"]["status"]}</dd></div>
       <div class="row"><dt>OpenTelemetry</dt><dd>{otel_label}</dd></div>
       <div class="row"><dt>API prefix</dt><dd>{payload["api"]}</dd></div>
     </dl>

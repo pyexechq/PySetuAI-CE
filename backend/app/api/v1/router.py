@@ -11,7 +11,10 @@ from app.core.security import create_access_token, verify_password
 from app.db.session import get_db
 from app.models.tenant import Tenant, User
 from app.schemas.auth import (
+    AcceptInviteRequest,
+    AcceptInviteResponse,
     DashboardMetricsResponse,
+    InvitePreviewResponse,
     LoginRequest,
     TenantBrandingPublicResponse,
     TenantPublicSiteResponse,
@@ -27,6 +30,7 @@ from app.services.oidc_auth_service import begin_oidc_login, complete_oidc_login
 from app.services.oidc_provider_service import list_public_providers, public_provider_dict
 from app.services.tenant_branding_service import public_branding_dict
 from app.services.tenant_features_service import feature_flags_for_api, feature_policy_for_api
+from app.services.tenant_invite_service import accept_tenant_invite, get_invite_preview
 from app.services.tenant_site_service import resolve_public_site
 
 router = APIRouter()
@@ -54,6 +58,34 @@ async def login(payload: LoginRequest, db: Annotated[AsyncSession, Depends(get_d
 
     token = create_access_token(subject=str(user.id), tenant_id=str(user.tenant_id), role=user.role)
     return TokenResponse(access_token=token)
+
+
+@router.get("/auth/invite/{token}", response_model=InvitePreviewResponse)
+async def preview_invite(token: str, db: Annotated[AsyncSession, Depends(get_db)]) -> InvitePreviewResponse:
+    try:
+        preview = await get_invite_preview(db, token)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if preview is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found")
+    return InvitePreviewResponse(**preview)
+
+
+@router.post("/auth/accept-invite", response_model=AcceptInviteResponse)
+async def accept_invite(
+    payload: AcceptInviteRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AcceptInviteResponse:
+    try:
+        result = await accept_tenant_invite(
+            db,
+            token=payload.token,
+            password=payload.password,
+            name=payload.name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return AcceptInviteResponse(**result)
 
 
 @router.get("/auth/me", response_model=UserResponse)

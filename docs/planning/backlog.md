@@ -58,16 +58,16 @@
 | BL-047 | SAML 2.0 support | Identity | 6+ | Deferred from Phase 5 |
 | BL-048 | Istio service mesh integration | DevOps | 6+ | Deferred from Phase 5 |
 
-## Phase 6 — Enterprise Operations (planned)
+## Phase 6 — Enterprise Operations
 
-| ID | Item | Module | Phase | Notes |
-|----|------|--------|-------|-------|
-| BL-050 | LLM Router dynamic rule CRUD backend | LLM Router | 6 | Roadmap Phase 2 gap |
-| BL-051 | MCP live trust/risk scoring backend | MCP Governance | 6 | Roadmap Phase 2 gap |
-| BL-052 | Compliance framework live scoring engine | Compliance | 6 | Roadmap Phase 3 gap |
-| BL-053 | Platform billing / usage metering hooks | Platform | 6 | Prerequisite for BL-056, BL-072 |
-| BL-054 | Tenant self-service onboarding workflow | Platform | 6 | Extends platform portal |
-| BL-055 | SLA / uptime dashboards for operators | Observability | 6 | Enterprise ops |
+| ID | Item | Module | Phase | Status |
+|----|------|--------|-------|--------|
+| BL-050 | LLM Router dynamic rule CRUD backend | LLM Router | 6 | Done |
+| BL-051 | MCP live trust/risk scoring backend | MCP Governance | 6 | Done |
+| BL-052 | Compliance framework live scoring engine | Compliance | 6 | Done |
+| BL-053 | Platform billing / usage metering hooks | Platform | 6 | Done (audit `usage_metadata`; billing UI deferred) |
+| BL-054 | Tenant self-service onboarding workflow | Platform | 6 | Done |
+| BL-055 | SLA / uptime dashboards for operators | Observability | 6 | Done |
 
 ## Phase 7 — Gateway Pipeline Parity (planned)
 

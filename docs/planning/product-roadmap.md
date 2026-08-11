@@ -71,19 +71,18 @@ Build a commercial-grade Enterprise AI Control Plane competing with OpenRouter E
 - [x] OIDC JIT toggle in Settings UI (S6-05 / BL-041)
 - [x] Production JWT rotation guide + env template (S6-06 / BL-040)
 - [x] OIDC group mapping in Settings UI (S6-07 / BL-042)
-- [ ] Penetration test prep & remediation (S6-09)
+- [x] Penetration test prep checklist (S6-09) — [penetration-test-prep.md](../security/penetration-test-prep.md)
 
-## Phase 6 — Enterprise Operations (in progress / planned)
+## Phase 6 — Enterprise Operations (complete)
 
 - [x] Universal AI Gateway v1 (protocol translation, Compatibility Center, admin) — M7
 - [x] Monitoring hub consolidation + UI overlap cleanup
-- [x] Compliance remediation + dedicated compliance API
-- [ ] LLM Router dynamic rule CRUD backend (BL-050)
-- [ ] MCP live trust/risk scoring backend (BL-051)
-- [ ] Compliance framework live scoring polish (BL-052)
-- [ ] Platform onboarding polish + usage hooks (BL-054 / BL-053)
-- [ ] Operator SLA / health dashboards (BL-055)
-- [ ] Wire alert webhooks to gateway events (BL-075 — DEF-004)
+- [x] LLM Router dynamic rule CRUD backend (BL-050)
+- [x] MCP live trust/risk scoring backend (BL-051)
+- [x] Compliance framework live scoring (BL-052)
+- [x] Platform onboarding + invite emails + usage hooks (BL-054 / BL-053)
+- [x] Operator SLA / health dashboards (BL-055)
+- [x] Wire alert webhooks to gateway events (BL-075)
 
 ## Phase 7 — Gateway Pipeline Parity (planned)
 

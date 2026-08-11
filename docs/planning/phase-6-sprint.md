@@ -1,62 +1,54 @@
 # Phase 6 Sprint — Enterprise Operations & Module Backend
 
-**Sprint:** 7 (Phase 6 kickoff)  
-**Dates:** Nov 3 – Dec 14, 2026 (planned)  
+**Sprint:** 7 (Phase 6)  
+**Dates:** Aug 2026  
 **Goal:** Close Phase 2/3 backend gaps, extend platform operations, prepare for M5 production gate  
-**Status:** **Planning** — not started; Phase 5 wrap-up (S6-05–S6-09) runs first
+**Status:** **Complete** (Aug 11, 2026)
 
 > Phase 5 completion: [phase-5-sprint.md](./phase-5-sprint.md)
 
-## Prerequisites (finish Phase 5 first)
+## Prerequisites (Phase 5 wrap-up)
 
 | ID | Task | Status |
 |----|------|--------|
-| S6-05 | OIDC JIT provisioning toggle in Settings UI | Next |
+| S6-05 | OIDC JIT provisioning toggle in Settings UI | Done |
 | S6-06 | Production env template + JWT rotation | Done |
-| S6-07 | OIDC group → role mapping | Planned |
+| S6-07 | OIDC group → role mapping | Done |
 | S6-08 | Remove demo credentials from prod bundles | Planned |
-| S6-09 | Penetration test prep | Planned |
+| S6-09 | Penetration test prep | Done — [penetration-test-prep.md](../security/penetration-test-prep.md) |
 
-## Sprint 7 backlog (draft)
+## Sprint 7 deliverables
 
-| ID | Task | Owner | Status | Backlog |
-|----|------|-------|--------|---------|
-| S7-01 | LLM Router dynamic rule CRUD API + UI wiring | Full Stack | Planned | BL-050 |
-| S7-02 | MCP trust/risk scoring backend (live metrics) | Backend | Planned | BL-051 |
-| S7-03 | Compliance framework live scoring engine | Backend | Planned | BL-052 |
-| S7-04 | Platform tenant onboarding polish (invite flow, docs) | Full Stack | Planned | BL-054 |
-| S7-05 | Operator SLA / health dashboard | Full Stack | Planned | BL-055 |
+| ID | Task | Status | Backlog |
+|----|------|--------|---------|
+| S7-01 | LLM Router dynamic rule CRUD API + UI wiring | Done | BL-050 |
+| S7-02 | MCP trust/risk scoring backend (live metrics) | Done | BL-051 |
+| S7-03 | Compliance framework live scoring engine | Done | BL-052 |
+| S7-04 | Platform tenant onboarding polish (invite flow, docs) | Done | BL-054 |
+| S7-05 | Operator SLA / health dashboard | Done | BL-055 |
+| S7-06 | Usage metering hooks on gateway audit logs | Done | BL-053 |
+| S7-07 | Customizable admin invite email templates | Done | BL-054 |
 
-## Phase 6 themes
+## Phase 6 themes (delivered)
 
-1. **Module backend completion** — replace remaining mock/placeholder API paths (LLM Router, MCP scoring, Compliance scoring).
-2. **Platform operations** — extend SaaS portal beyond provision CRUD (onboarding, usage hooks).
-3. **Production gate** — pen-test remediation, no demo secrets in prod, CI test stability (BL-038–BL-039, BL-045).
+1. **Module backend completion** — LLM Router CRUD, MCP live scoring, Compliance live scoring.
+2. **Platform operations** — tenant invites, email templates, ops/usage dashboards, feature entitlements.
+3. **Production gate prep** — pen-test checklist, health probes (DB + OPA), real observability latency.
 
-## Out of scope (Phase 6)
+## Key docs & routes
 
-- SAML 2.0 (BL-047)
-- SCIM (BL-043) — unless pulled forward from Phase 5c
-- Full billing/invoicing (BL-053) — metering hooks only in S7; invoicing deferred
-- Gateway parity items BL-056+ — see [phase-7-sprint.md](./phase-7-sprint.md)
+- Onboarding: [tenant-onboarding.md](../platform/tenant-onboarding.md)
+- Platform portal: `/platform`, `/platform/ops`, `/platform/tenants/new`
+- Accept invite: `/accept-invite?token=…`
+- APIs: `/platform/ops/overview`, `/platform/usage/overview`, `/platform/invite-email/*`
 
-## Follow-on phases (parity)
+## Out of scope (deferred)
 
-| Phase | Doc | Milestone |
-|-------|-----|-----------|
-| 7 — Pipeline parity | [phase-7-sprint.md](./phase-7-sprint.md) | M8 |
-| 8 — Prompt & cost | [phase-8-sprint.md](./phase-8-sprint.md) | M9 |
-| 9–10 — MCP & security | [phase-9-10-sprint.md](./phase-9-10-sprint.md) | M10, M11 |
-| Full matrix | [gateway-parity-roadmap.md](./gateway-parity-roadmap.md) | — |
+- SAML 2.0 (BL-047), SCIM (BL-043), full billing/invoicing (BL-053 billing UI)
+- Gateway parity BL-056+ — see [phase-7-sprint.md](./phase-7-sprint.md)
 
-## Milestone target
+## Milestone
 
-| Milestone | Target | Dependency |
-|-----------|--------|------------|
-| M5: Production Ready | Sprint 10 | Phase 5 complete + S7 module backends + pen-test pass |
-
-## Open decisions
-
-1. Prioritize S7-01 (LLM Router) vs S7-03 (Compliance scoring) first?
-2. Pull SCIM (BL-043) into Phase 6 or keep deferred?
-3. Billing metering (BL-053) — required before first commercial pilot?
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| M5: Production Ready | In progress | Phase 6 complete; pen-test execution + BL-038 remote remain |

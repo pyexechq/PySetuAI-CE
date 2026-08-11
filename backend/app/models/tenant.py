@@ -49,6 +49,37 @@ class User(Base):
     tenant: Mapped["Tenant"] = relationship(back_populates="users")
 
 
+class TenantInvite(Base):
+    __tablename__ = "tenant_invites"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(50), nullable=False, default="tenant_admin")
+    token: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    invited_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    email_template_slug: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_delivery_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PlatformEmailTemplate(Base):
+    __tablename__ = "platform_email_templates"
+
+    slug: Mapped[str] = mapped_column(String(100), primary_key=True)
+    category: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    subject: Mapped[str] = mapped_column(String(512), nullable=False)
+    html_body: Mapped[str] = mapped_column(Text, nullable=False)
+    text_body: Mapped[str] = mapped_column(Text, nullable=False)
+    is_builtin: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class TenantOidcProvider(Base):
     __tablename__ = "tenant_oidc_providers"
 

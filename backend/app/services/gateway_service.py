@@ -137,6 +137,8 @@ async def _write_audit(
     status: str,
     risk: str,
     details: str,
+    *,
+    usage_metadata: dict | None = None,
 ) -> None:
     trace_id = current_trace_id()
     audit_details = f"trace_id={trace_id}; {details}" if trace_id else details
@@ -154,8 +156,31 @@ async def _write_audit(
             status=status,
             risk=risk,
             details=audit_details,
+            usage_metadata=usage_metadata,
         )
     )
+
+
+def _build_usage_metadata(
+    ctx: GatewayContext,
+    *,
+    model: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+    total_tokens: int,
+    latency_ms: int | None = None,
+) -> dict:
+    return {
+        "model": model,
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total_tokens,
+        "auth_type": "client_key" if ctx.client_api_key_id else "jwt",
+        "client_api_key_id": str(ctx.client_api_key_id) if ctx.client_api_key_id else None,
+        "client_api_key_name": ctx.client_api_key_name,
+        "user_id": str(ctx.user.id) if ctx.user else None,
+        "latency_ms": latency_ms,
+    }
 
 
 async def _dispatch_gateway_block_alert(
@@ -762,6 +787,14 @@ async def process_chat_completion(
             audit_status,
             prepared.ingress.risk,
             audit_details,
+            usage_metadata=_build_usage_metadata(
+                ctx,
+                model=prepared.routed_model,
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                total_tokens=response.usage.total_tokens,
+                latency_ms=latency_ms,
+            ),
         )
         await db.commit()
         span.set_attribute("helixguard.result", audit_status)

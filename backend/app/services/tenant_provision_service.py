@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import secrets
 import uuid
 
 from sqlalchemy import func, select
@@ -14,6 +15,12 @@ from app.core.security import get_password_hash
 from app.db.seed_governance import seed_access_for_tenant, seed_governance_for_tenant
 from app.models.governance import MCPServer
 from app.models.tenant import Tenant, User
+from app.services.tenant_features_service import (
+    apply_platform_feature_updates,
+    feature_flags_for_api,
+    feature_policy_for_api,
+)
+from app.services.tenant_invite_service import create_tenant_invite
 from app.services.tenant_site_service import (
     tenant_public_url,
     validate_entry_mode,
@@ -87,6 +94,8 @@ def tenant_response_dict(
         "subdomain": tenant.subdomain or tenant.slug,
         "entry_mode": tenant.entry_mode,
         "tenant_url": tenant_public_url(tenant.subdomain or tenant.slug),
+        "features": feature_flags_for_api(tenant),
+        "feature_policy": feature_policy_for_api(tenant),
     }
 
 
@@ -145,12 +154,22 @@ async def provision_tenant(
     is_active: bool = True,
     subdomain: str | None = None,
     entry_mode: str = "login_only",
+    send_admin_invite: bool = False,
+    send_invite_email: bool = True,
+    invite_template_slug: str = "professional_welcome",
 ) -> dict:
     validate_tenant_slug(slug)
     normalized_slug = normalize_slug(slug)
     normalized_email = admin_email.strip().lower()
     normalized_entry_mode = validate_entry_mode(entry_mode)
     normalized_subdomain = validate_subdomain(subdomain or normalized_slug, tenant_slug=normalized_slug)
+
+    if send_admin_invite:
+        effective_password = secrets.token_urlsafe(24)
+    elif not admin_password:
+        raise ValueError("Admin password is required unless send_admin_invite is enabled.")
+    else:
+        effective_password = admin_password
 
     existing_slug = await db.execute(select(Tenant.id).where(func.lower(Tenant.slug) == normalized_slug))
     if existing_slug.scalar_one_or_none() is not None:
@@ -172,23 +191,25 @@ async def provision_tenant(
             tenant_id=tenant.id,
             email=normalized_email,
             name=admin_name.strip(),
-            hashed_password=get_password_hash(admin_password),
+            hashed_password=get_password_hash(effective_password),
             role="tenant_admin",
         )
     )
 
-    demo_users: list[dict[str, str]] = [
-        {
-            "email": normalized_email,
-            "name": admin_name.strip(),
-            "role": "tenant_admin",
-            **(
-                {"password": admin_password}
-                if include_password_in_provision_response()
-                else {}
-            ),
-        }
-    ]
+    demo_users: list[dict[str, str]] = []
+    if not send_admin_invite:
+        demo_users.append(
+            {
+                "email": normalized_email,
+                "name": admin_name.strip(),
+                "role": "tenant_admin",
+                **(
+                    {"password": effective_password}
+                    if include_password_in_provision_response()
+                    else {}
+                ),
+            }
+        )
 
     if include_demo_data:
         domain = f"{normalized_slug}.demo.local"
@@ -199,7 +220,7 @@ async def provision_tenant(
                     tenant_id=tenant.id,
                     email=email,
                     name=display_name,
-                    hashed_password=get_password_hash(admin_password),
+                    hashed_password=get_password_hash(effective_password),
                     role=role,
                 )
             )
@@ -209,24 +230,48 @@ async def provision_tenant(
                 "role": role,
             }
             if include_password_in_provision_response():
-                user_entry["password"] = admin_password
+                user_entry["password"] = effective_password
             demo_users.append(user_entry)
 
         await seed_governance_for_tenant(db, tenant.id)
         await seed_access_for_tenant(db, tenant.id)
 
+    admin_invite = None
+    if send_admin_invite:
+        admin_invite = await create_tenant_invite(
+            db,
+            tenant=tenant,
+            email=normalized_email,
+            role="tenant_admin",
+            admin_name=admin_name.strip(),
+            template_slug=invite_template_slug,
+            send_email=send_invite_email,
+        )
+
     await db.commit()
     await db.refresh(tenant)
 
     demo_loaded = include_demo_data or await tenant_has_demo_data(db, tenant.id)
+    message = "Tenant provisioned."
+    if include_demo_data:
+        message = "Tenant provisioned with demo data."
+    elif send_admin_invite and admin_invite:
+        if admin_invite.get("email_sent"):
+            message = "Tenant provisioned and admin invite email sent."
+        elif admin_invite.get("email_status") == "smtp_disabled":
+            message = "Tenant provisioned. SMTP is disabled — copy the invite link below."
+        else:
+            message = "Tenant provisioned. Share the admin invite link to complete onboarding."
+
     return {
         "tenant": tenant_response_dict(
             tenant,
             demo_data_loaded=demo_loaded,
             admin_email=normalized_email,
         ),
-        "demo_users": redact_demo_users(demo_users) if include_demo_data else [],
-        "message": "Tenant provisioned with demo data." if include_demo_data else "Tenant provisioned.",
+        "demo_users": redact_demo_users(demo_users) if include_demo_data else demo_users,
+        "message": message,
+        "admin_invite": admin_invite,
     }
 
 
@@ -239,6 +284,8 @@ async def update_customer_tenant(
     subdomain: str | None = None,
     entry_mode: str | None = None,
     clear_subdomain: bool = False,
+    features: dict[str, bool | None] | None = None,
+    feature_policy: dict[str, dict[str, bool | None] | None] | None = None,
 ) -> dict | None:
     platform_slug = normalize_slug(settings.platform_tenant_slug)
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id, Tenant.slug != platform_slug))
@@ -258,6 +305,14 @@ async def update_customer_tenant(
         normalized_subdomain = validate_subdomain(subdomain, tenant_slug=tenant.slug)
         await _ensure_subdomain_available(db, normalized_subdomain, exclude_tenant_id=tenant.id)
         tenant.subdomain = normalized_subdomain
+
+    if features:
+        tenant_editable: dict[str, bool | None] = {}
+        if feature_policy:
+            for key, entry in feature_policy.items():
+                if isinstance(entry, dict) and "tenant_editable" in entry:
+                    tenant_editable[key] = entry.get("tenant_editable")
+        apply_platform_feature_updates(tenant, features, tenant_editable=tenant_editable or None)
 
     await db.commit()
     await db.refresh(tenant)

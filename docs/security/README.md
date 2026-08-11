@@ -47,4 +47,4 @@ See also: [Security Architecture](../architecture/security-architecture.md)
 - [ ] RBAC on all API routes (implemented)
 - [ ] Remove demo credentials from bundles (S6-08)
 - [ ] Run dependency vulnerability scan
-- [ ] Penetration testing (S6-09)
+- [ ] Penetration test execution & remediation (checklist ready — [penetration-test-prep.md](./penetration-test-prep.md))
