@@ -40,7 +40,83 @@
 | BL-036 | Executive reporting PDF templates | Reports | 4 — Done (S4-02) |
 | BL-031 | Kubernetes Helm chart | DevOps | 5 — Done (S4-35) |
 | BL-032 | Air-gap offline bundle | DevOps | 5 — Done (S4-36) |
-| BL-033 | Vault integration for secrets | Security | 5 |
+| BL-033 | Vault integration for secrets | Security | 5 — Done (S6-01) |
+
+## P4 — Ops & Release (backlog)
+
+| ID | Item | Module | Phase | Notes |
+|----|------|--------|-------|-------|
+| BL-038 | Configure Git remote and push `main` | DevOps | — | Repo is local-only today |
+| BL-039 | Run and stabilize full backend pytest suite (local + CI) | QA | — | Tests exist; prod Docker image has no pytest |
+| BL-040 | Production env template — rotate JWT secret, enforce Vault | Security | 5 — Done (S6-06) |
+| BL-041 | OIDC JIT provisioning toggle in Settings UI | Settings / Identity | 5c — Done (S6-05) |
+| BL-042 | OIDC IdP group → HelixGuard role mapping | Identity | 5c — Done (S6-07) |
+| BL-043 | SCIM user provisioning (optional) | Identity | 5c | Out of scope for Sprint 6 |
+| BL-044 | Remove demo credentials from production bundles | Security | 5d | Phase 5d in OIDC design |
+| BL-045 | Penetration test prep checklist + remediation backlog | Security | 5 | Pre-M5 gate |
+| BL-046 | Update stale progress docs and roadmap milestones | Docs | — | `daily-progress.md`, roadmap checkboxes |
+| BL-047 | SAML 2.0 support | Identity | 6+ | Deferred from Phase 5 |
+| BL-048 | Istio service mesh integration | DevOps | 6+ | Deferred from Phase 5 |
+
+## Phase 6 — Enterprise Operations (planned)
+
+| ID | Item | Module | Phase | Notes |
+|----|------|--------|-------|-------|
+| BL-050 | LLM Router dynamic rule CRUD backend | LLM Router | 6 | Roadmap Phase 2 gap |
+| BL-051 | MCP live trust/risk scoring backend | MCP Governance | 6 | Roadmap Phase 2 gap |
+| BL-052 | Compliance framework live scoring engine | Compliance | 6 | Roadmap Phase 3 gap |
+| BL-053 | Platform billing / usage metering hooks | Platform | 6 | Prerequisite for BL-056, BL-072 |
+| BL-054 | Tenant self-service onboarding workflow | Platform | 6 | Extends platform portal |
+| BL-055 | SLA / uptime dashboards for operators | Observability | 6 | Enterprise ops |
+
+## Phase 7 — Gateway Pipeline Parity (planned)
+
+> Full matrix: [gateway-parity-roadmap.md](./gateway-parity-roadmap.md)
+
+| ID | Item | Module | Phase | Notes |
+|----|------|--------|-------|-------|
+| BL-056 | AI traffic rate limits + token budgets (tenant/team/model) | Gateway | 7 | Req/min/hr/day; Redis counters |
+| BL-057 | Per-user / per-team usage metering & attribution | Platform / Gateway | 7 | API key + OIDC subject tagging |
+| BL-058 | Domain allowlists (login + API client origins) | Identity | 7 | Tenant policy in Settings |
+| BL-059 | Response-path guardrails (egress scan parity) | Gateway / Security | 7 | Extend UAG response flow |
+| BL-060 | Routing groups — alias-as-model, weighted failover | LLM Router | 7 | Depends BL-050 |
+| BL-077 | Regional routing (US/India, Bedrock, Vertex, vLLM) | LLM Router / UAG | 7–10 | Spike in Sprint 9; GA Sprint 14 |
+
+## Phase 8 — Prompt Lifecycle & Cost Optimization (planned)
+
+| ID | Item | Module | Phase | Notes |
+|----|------|--------|-------|-------|
+| BL-061 | Prompt store — versions, templates, enforce mode | Gateway / Studio | 8 | Central prompt registry |
+| BL-062 | Custom intents — trainable content classifiers | Security / Policy | 8 | MVP: rule + embedding hybrid |
+| BL-063 | Token saving — JSON→TOON / payload compression | Gateway | 8 | Opt-in per route; preserve responses |
+| BL-064 | Dynamic tool calling — relevant MCP tools only | MCP Governance | 8 | Tool ranking + token KPI |
+
+## Phase 9 — MCP Platform & Deep Observability (planned)
+
+| ID | Item | Module | Phase | Notes |
+|----|------|--------|-------|-------|
+| BL-065 | MCP multiplex — single gateway URL | MCP Governance | 9 | Zero agent config change story |
+| BL-066 | MCP catalog — curated library + one-click install | MCP Governance | 9 | Custom MCP via transport URL |
+| BL-067 | MCP OAuth auth mediation / token broker | MCP Governance | 9 | Vault-backed credential broker |
+| BL-068 | Tool risk taxonomy (read/write/destructive) | MCP Governance | 9 | Auto-hide disabled tools |
+| BL-069 | Agent auto-detection + per-agent MCP toggles | MCP Governance | 9 | Claude/OpenAI/Gemini agents |
+| BL-070 | Self-service MCP / AI portal | MCP Governance | 9 | End-user browse + connect |
+| BL-071 | Web search MCP + enterprise URL filtering | MCP Governance | 9 | Zscaler/FortiGate/Cisco hooks |
+| BL-072 | Per-user/team/model token & cost analytics | Observability | 9 | Depends BL-057 |
+| BL-073 | Full request/response log store | Audit Explorer | 9 | Retention + search + export |
+| BL-074 | OTel-native trace replay | Observability | 9 | Stage-by-stage debug UI |
+| BL-075 | Wire alert webhooks to gateway events | Security | 6–9 | Fixes DEF-004; blocks/budget/latency |
+| BL-076 | Telemetry facade API (`/telemetry/*`) | Backend | 9 | Dashboard/Monitoring single source |
+
+## Phase 10 — Enterprise Security Parity (planned)
+
+| ID | Item | Module | Phase | Notes |
+|----|------|--------|-------|-------|
+| BL-078 | Gateway SLA metrics — p99 overhead, uptime, pooling | Observability | 10 | Operator-facing |
+| BL-079 | Endpoint agent — TLS inspect + DLP (macOS/Windows) | Security | 10+ | Optional separate deliverable |
+| BL-080 | Red team testing suite | Security / QA | 10 | Adversarial campaigns + reports |
+| BL-081 | Claude.ai compliance API sync | Compliance | 10 | Orgs, users, chats, DLP |
+| BL-082 | PHI / PCI / financial classifiers | Data Protection | 10 | Extend BL-014 |
 
 ## Delivered (reference)
 
@@ -88,6 +164,10 @@
 | — | Vault JWT bootstrap + status API | S6-01 / BL-033 |
 | — | OIDC provider admin CRUD (Phase 5a) | S6-02 |
 | — | OIDC PKCE login + callback JWT issuance | S6-03 |
+| — | Auth rate limiting on login/token endpoints | S6-04 |
+| — | Platform tenant management portal (SaaS) | Post-S6 |
+| — | Product marketing site + tenant subdomain entry modes | Post-S6 |
+| — | Public legal pages (terms, privacy, cookies, trust) | Post-S6 |
 | — | Backend Ruff lint on full `app/` package in CI | S4-40 |
 | — | Air-gap offline bundle (deploy/airgap) | S4-36 / BL-032 |
 | — | Kubernetes Helm chart (deploy/helm/helixguard) | S4-35 / BL-031 |
@@ -98,4 +178,6 @@
 | — | Compliance evidence snapshots + export | S4-30 |
 | — | Notification engine (sanitized alerts) | S4 |
 | — | Tenant integration settings API | Phase 2 |
-| — | Governance graph + observability APIs | Phase 2 |
+| — | Universal AI Gateway v1 + Compatibility Center | Aug 2026 / M7 |
+| — | Monitoring hub + UI overlap consolidation | Aug 2026 |
+| — | Compliance remediation API + dedicated compliance fetch | Aug 2026 |

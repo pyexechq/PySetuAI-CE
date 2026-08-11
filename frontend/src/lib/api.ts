@@ -162,7 +162,21 @@ export interface ApiDashboardOverview {
   traffic: { date: string; total_requests: number; blocked_requests: number }[];
   risk_distribution: { level: string; count: number; percentage: number }[];
   top_threats: { name: string; count: number }[];
-  llm_usage: { model: string; percentage: number; requests: number }[];
+  llm_usage: {
+    model: string;
+    percentage: number;
+    requests: number;
+    total_tokens: number;
+    avg_tokens_per_request: number;
+    cost_usd: number;
+  }[];
+  llm_usage_summary?: {
+    total_tokens: number;
+    token_utilization_pct: number;
+    avg_burn_usd_per_day: number;
+    total_cost_usd: number;
+    monthly_token_quota: number;
+  };
   mcp_activity: { server: string; total_calls: number; blocked: number; risk: string }[];
   top_policies: { rank: number; name: string; requests: number; violations: number; enforcement: string }[];
   top_agents: { rank: number; name: string; requests: number; success_rate: number; avg_latency: number }[];
@@ -1476,6 +1490,8 @@ export interface ApiGatewayStatus {
   blocked_today: number;
   endpoints: string[];
   proxy_mode?: string;
+  opa_enabled?: boolean;
+  opa_available?: boolean;
 }
 
 export interface ChatCompletionResponse {

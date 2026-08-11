@@ -3,9 +3,10 @@
 import { HelpCircle, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { DateRangePicker } from "@/components/layout/date-range-picker";
 import { NotificationCenter } from "@/components/layout/notification-center";
+import { PlatformStatusBadge } from "@/components/layout/platform-status-badge";
 
 interface HeaderProps {
   title: string;
@@ -16,7 +17,8 @@ export function Header({ title, description }: HeaderProps) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <header className="relative z-50 flex h-16 shrink-0 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-sm">
+    <TooltipProvider delayDuration={200}>
+    <header className="relative z-40 flex h-16 shrink-0 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-sm">
       <div>
         <h1 className="text-lg font-semibold text-foreground">{title}</h1>
         {description && (
@@ -39,10 +41,9 @@ export function Header({ title, description }: HeaderProps) {
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
         </Button>
-        <Badge variant="secondary" className="hidden sm:inline-flex">
-          Live
-        </Badge>
+        <PlatformStatusBadge />
       </div>
     </header>
+    </TooltipProvider>
   );
 }

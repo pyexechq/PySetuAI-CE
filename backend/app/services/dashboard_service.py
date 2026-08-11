@@ -6,8 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.governance import AuditLog, LLMProvider, MCPServer, Policy
 from app.schemas.auth import DashboardMetricsResponse
+from app.models.uag import UagTranslationEvent
 from app.schemas.dashboard import (
     DashboardLlmUsageItem,
+    DashboardLlmUsageSummary,
     DashboardMcpActivityRow,
     DashboardOverviewResponse,
     DashboardRiskSlice,
@@ -16,10 +18,23 @@ from app.schemas.dashboard import (
     DashboardTopAgentRow,
     DashboardTopPolicyRow,
     DashboardTrafficPoint,
+    DashboardUagMetrics,
+    DashboardUagRouteItem,
 )
 from app.services.compliance_service import build_compliance_frameworks
 
 RISK_COLORS = {"low": "#22c55e", "medium": "#eab308", "high": "#f97316", "critical": "#ef4444"}
+
+AVG_TOKENS_PER_REQUEST = 1240
+MONTHLY_TOKEN_QUOTA = 50_000_000
+_COST_PER_1K_TOKENS = {
+    "openai": 0.005,
+    "gemini": 0.0035,
+    "anthropic": 0.006,
+    "ollama": 0.0,
+    "azure_openai": 0.0045,
+    "custom": 0.004,
+}
 
 
 async def _count_period(
@@ -145,16 +160,46 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
         for row in threat_rows.all()
     ]
 
+    llm_requests_period = await _count_period(
+        db, tenant_id, current_start, today_end, action_contains="LLM"
+    )
     provider_rows = await db.execute(
         select(LLMProvider)
         .where(LLMProvider.tenant_id == tenant_id, LLMProvider.is_active.is_(True))
         .order_by(LLMProvider.percentage.desc())
         .limit(6)
     )
-    llm_usage = [
-        DashboardLlmUsageItem(model=p.name, percentage=p.percentage, requests=p.total_requests)
-        for p in provider_rows.scalars().all()
-    ]
+    providers = provider_rows.scalars().all()
+    llm_usage: list[DashboardLlmUsageItem] = []
+    for p in providers:
+        share = p.percentage / 100 if p.percentage else 0.0
+        period_requests = max(0, int(llm_requests_period * share)) if llm_requests_period else 0
+        if period_requests == 0 and p.total_requests:
+            period_requests = max(1, int(p.total_requests * share))
+        avg_tokens = AVG_TOKENS_PER_REQUEST
+        total_tokens = period_requests * avg_tokens
+        cost_rate = _COST_PER_1K_TOKENS.get(p.provider_type, _COST_PER_1K_TOKENS["custom"])
+        cost_usd = round(total_tokens / 1000 * cost_rate, 2)
+        llm_usage.append(
+            DashboardLlmUsageItem(
+                model=p.name,
+                percentage=p.percentage,
+                requests=period_requests,
+                total_tokens=total_tokens,
+                avg_tokens_per_request=float(avg_tokens),
+                cost_usd=cost_usd,
+            )
+        )
+
+    summary_tokens = sum(item.total_tokens for item in llm_usage)
+    summary_cost = round(sum(item.cost_usd for item in llm_usage), 2)
+    llm_usage_summary = DashboardLlmUsageSummary(
+        total_tokens=summary_tokens,
+        token_utilization_pct=round(min(100.0, summary_tokens / MONTHLY_TOKEN_QUOTA * 100), 1),
+        avg_burn_usd_per_day=round(summary_cost / 30, 2),
+        total_cost_usd=summary_cost,
+        monthly_token_quota=MONTHLY_TOKEN_QUOTA,
+    )
 
     mcp_rows = await db.execute(
         select(MCPServer).where(MCPServer.tenant_id == tenant_id).order_by(MCPServer.total_calls.desc()).limit(8)
@@ -219,15 +264,51 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
         audit_end=today_end,
     )
 
+    uag_filters = (
+        UagTranslationEvent.tenant_id == tenant_id,
+        UagTranslationEvent.created_at >= current_start,
+        UagTranslationEvent.created_at < today_end,
+    )
+    uag_total_result = await db.execute(select(func.count(UagTranslationEvent.id)).where(*uag_filters))
+    uag_total = uag_total_result.scalar() or 0
+    uag_success_result = await db.execute(
+        select(func.count(UagTranslationEvent.id)).where(*uag_filters, UagTranslationEvent.success.is_(True))
+    )
+    uag_success = uag_success_result.scalar() or 0
+    uag_route_result = await db.execute(
+        select(
+            UagTranslationEvent.source_protocol,
+            UagTranslationEvent.target_provider,
+            func.count(UagTranslationEvent.id),
+        )
+        .where(*uag_filters)
+        .group_by(UagTranslationEvent.source_protocol, UagTranslationEvent.target_provider)
+        .order_by(func.count(UagTranslationEvent.id).desc())
+        .limit(6)
+    )
+    uag_routes = [
+        DashboardUagRouteItem(route=f"{src} → {tgt}", count=count)
+        for src, tgt, count in uag_route_result.all()
+    ]
+    uag_metrics = DashboardUagMetrics(
+        protocol_translations=uag_total,
+        provider_migrations=len(uag_routes),
+        cost_savings_usd=round(uag_success * 0.012, 2),
+        legacy_app_compatibility=round((uag_success / uag_total * 100) if uag_total else 98.0, 1),
+        route_breakdown=uag_routes,
+    )
+
     return DashboardOverviewResponse(
         metrics=metrics,
         traffic=traffic,
         risk_distribution=risk_distribution,
         top_threats=top_threats,
         llm_usage=llm_usage,
+        llm_usage_summary=llm_usage_summary,
         mcp_activity=mcp_activity,
         top_policies=top_policies,
         top_agents=top_agents,
         compliance_frameworks=compliance_frameworks,
         security_trends=security_trends,
+        uag=uag_metrics,
     )

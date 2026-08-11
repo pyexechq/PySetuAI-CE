@@ -52,6 +52,7 @@ export function DashboardContent() {
 
   async function openMetricInsight(metricKey: DashboardMetricKey) {
     if (!token) return;
+    (document.activeElement as HTMLElement | null)?.blur();
     setActiveMetric(metricKey);
     setInsightLoading(true);
     setInsight(null);
@@ -134,7 +135,7 @@ export function DashboardContent() {
           <TopAgentsTable data={data.top_agents} />
         </div>
 
-        <LlmUsageChart data={data.llm_usage} />
+        <LlmUsageChart data={data.llm_usage} summary={data.llm_usage_summary} />
 
         <McpActivityTable data={data.mcp_activity} />
 

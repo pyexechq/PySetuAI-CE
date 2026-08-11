@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 from app.schemas.auth import DashboardMetricsResponse
@@ -24,6 +26,17 @@ class DashboardLlmUsageItem(BaseModel):
     model: str
     percentage: float
     requests: int
+    total_tokens: int = 0
+    avg_tokens_per_request: float = 0.0
+    cost_usd: float = 0.0
+
+
+class DashboardLlmUsageSummary(BaseModel):
+    total_tokens: int = 0
+    token_utilization_pct: float = 0.0
+    avg_burn_usd_per_day: float = 0.0
+    total_cost_usd: float = 0.0
+    monthly_token_quota: int = 50_000_000
 
 
 class DashboardMcpActivityRow(BaseModel):
@@ -77,14 +90,39 @@ class DashboardSecurityTrendPoint(BaseModel):
     under_review: int
 
 
+class DashboardUagRouteItem(BaseModel):
+    route: str
+    count: int
+
+
+class DashboardUagMetrics(BaseModel):
+    protocol_translations: int
+    provider_migrations: int
+    cost_savings_usd: float
+    legacy_app_compatibility: float
+    route_breakdown: list[DashboardUagRouteItem] = []
+
+
+class DashboardMetricInsightResponse(BaseModel):
+    metric_key: str
+    title: str
+    summary: str
+    insights: list[str]
+    recommended_actions: list[str]
+    ai_generated: bool = False
+    generated_at: datetime
+
+
 class DashboardOverviewResponse(BaseModel):
     metrics: DashboardMetricsResponse
     traffic: list[DashboardTrafficPoint]
     risk_distribution: list[DashboardRiskSlice]
     top_threats: list[DashboardThreatItem]
     llm_usage: list[DashboardLlmUsageItem]
+    llm_usage_summary: DashboardLlmUsageSummary | None = None
     mcp_activity: list[DashboardMcpActivityRow]
     top_policies: list[DashboardTopPolicyRow]
     top_agents: list[DashboardTopAgentRow]
     compliance_frameworks: list[DashboardComplianceFramework]
     security_trends: list[DashboardSecurityTrendPoint]
+    uag: DashboardUagMetrics | None = None

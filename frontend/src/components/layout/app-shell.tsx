@@ -13,7 +13,7 @@ export function AppShell({ children, title, description }: AppShellProps) {
       <Sidebar />
       <div className="flex min-h-0 flex-1 flex-col">
         <Header title={title} description={description} />
-        <main className="relative z-0 min-h-0 flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="relative min-h-0 flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   );
