@@ -65,8 +65,8 @@ export function MonitoringTracesTab() {
                     </div>
                     <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" asChild>
                       <Link
-                        href={`/audit-explorer?q=${encodeURIComponent(trace.trace_id)}`}
-                        title="Search Audit Explorer for this trace"
+                        href={`/audit-explorer?audit_id=${encodeURIComponent(trace.id)}`}
+                        title="Open this event in Audit Explorer"
                       >
                         <ExternalLink className="h-3 w-3" />
                         Audit Explorer

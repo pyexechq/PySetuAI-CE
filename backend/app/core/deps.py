@@ -12,6 +12,8 @@ from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.tenant import Tenant, User
 
+from app.services.tenant_features_service import is_feature_enabled
+
 security = HTTPBearer(auto_error=False)
 
 
@@ -49,3 +51,36 @@ async def get_current_tenant(
     if not current_user.tenant.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant is inactive")
     return current_user.tenant
+
+
+def require_tenant_feature(feature_key: str, *, label: str | None = None):
+    async def _require(
+        current_user: Annotated[User, Depends(get_current_user)],
+    ) -> User:
+        if not is_feature_enabled(current_user.tenant, feature_key):
+            display = label or feature_key.replace("_", " ").title()
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"{display} is disabled for this tenant",
+            )
+        return current_user
+
+    return _require
+
+
+require_qa_dashboard_enabled = require_tenant_feature("qa_dashboard", label="QA Dashboard")
+require_compatibility_center = require_tenant_feature("compatibility_center", label="Compatibility Center")
+require_governance_sandbox = require_tenant_feature("governance_sandbox", label="Governance Sandbox")
+require_reports = require_tenant_feature("reports", label="Reports")
+
+
+async def require_uag_simulator(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    tenant = current_user.tenant
+    if is_feature_enabled(tenant, "governance_sandbox") or is_feature_enabled(tenant, "compatibility_center"):
+        return current_user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Governance Sandbox and Compatibility Center are disabled for this tenant",
+    )

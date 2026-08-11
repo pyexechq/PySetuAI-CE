@@ -551,9 +551,10 @@ export const api = {
   invokeMcpServerTool: (token: string, serverId: string, body: ApiMcpToolInvokeRequest) =>
     apiFetch<ApiMcpToolInvokeResponse>(`/mcp/servers/${serverId}/tools/invoke`, { method: "POST", body: JSON.stringify(body) }, token),
 
-  getAuditLogs: (token: string, params?: { search?: string; status?: string; since?: string; limit?: number; from_date?: string; to_date?: string }) => {
+  getAuditLogs: (token: string, params?: { search?: string; status?: string; since?: string; limit?: number; from_date?: string; to_date?: string; audit_id?: string }) => {
     const query = new URLSearchParams();
     if (params?.search) query.set("search", params.search);
+    if (params?.audit_id) query.set("audit_id", params.audit_id);
     if (params?.status) query.set("status", params.status);
     if (params?.since) query.set("since", params.since);
     if (params?.limit) query.set("limit", String(params.limit));
@@ -622,6 +623,12 @@ export const api = {
 
   savePolicyRules: (token: string, policyId: string, body: ApiPolicyRulesSaveRequest) =>
     apiFetch<ApiPolicyRule[]>(`/policies/${policyId}/rules`, { method: "PUT", body: JSON.stringify(body) }, token),
+
+  getPolicyConditionHelp: (token: string) =>
+    apiFetch<ApiPolicyConditionHelpExample[]>("/policies/condition-help", {}, token),
+
+  assistPolicyBuilding: (token: string, body: ApiPolicyAssistRequest) =>
+    apiFetch<ApiPolicyAssistResponse>("/policies/assist", { method: "POST", body: JSON.stringify(body) }, token),
 
   getPolicyGraphLinks: (token: string, nodeId?: string) => {
     const query = nodeId ? `?node_id=${encodeURIComponent(nodeId)}` : "";
@@ -856,6 +863,23 @@ export const api = {
     }
   ) =>
     apiFetch<ApiIntegrationSettings>("/settings/integrations", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  getAiAssistSettings: (token: string) =>
+    apiFetch<ApiAiAssistSettings>("/settings/ai-assist", {}, token),
+
+  updateAiAssistSettings: (
+    token: string,
+    body: {
+      enabled?: boolean;
+      provider?: "openai" | "gemini";
+      model?: string;
+      api_key?: string;
+    },
+  ) =>
+    apiFetch<ApiAiAssistSettings>("/settings/ai-assist", {
       method: "PUT",
       body: JSON.stringify(body),
     }, token),
@@ -1279,6 +1303,38 @@ export interface ApiPolicyRule {
   enabled: boolean;
 }
 
+export interface ApiPolicyConditionHelpExample {
+  title: string;
+  condition: string;
+  description: string;
+  action: string;
+  severity: string;
+}
+
+export interface ApiPolicyRuleSuggestion {
+  id: string;
+  name: string;
+  condition: string;
+  action: string;
+  severity: string;
+  enabled: boolean;
+  rationale: string;
+}
+
+export interface ApiPolicyAssistRequest {
+  goal?: string;
+  policy_name?: string | null;
+  existing_rule_names?: string[];
+}
+
+export interface ApiPolicyAssistResponse {
+  summary: string;
+  suggestions: ApiPolicyRuleSuggestion[];
+  condition_help: ApiPolicyConditionHelpExample[];
+  ai_enhanced?: boolean;
+  ai_assist_available?: boolean;
+}
+
 export interface ApiPolicyGraphLink {
   policy_id: string;
   policy_name: string;
@@ -1618,6 +1674,17 @@ export interface ApiIntegrationSettings {
   secrets_backend: string;
   vault_auth_method: string | null;
   env_fallback_note: string;
+}
+
+export interface ApiAiAssistSettings {
+  enabled: boolean;
+  provider: "openai" | "gemini";
+  model: string;
+  api_key_set: boolean;
+  api_key_masked: string | null;
+  available: boolean;
+  features: string[];
+  air_gap_mode: boolean;
 }
 
 export interface ApiOrganizationSettings {

@@ -6,7 +6,7 @@
 | KI-003 | No database migrations applied yet | Medium | Backend | Resolved |
 | KI-002 | Auth uses client-side guard only (no middleware) | Low | Auth | Mitigated — Next.js middleware added |
 | KI-004 | Module pages use mock data (no backend APIs) | Expected | All Modules | Open — Phase 2 |
-| KI-005 | JWT secret uses dev default | High | Security | Open — must change before production |
+| KI-005 | JWT secret uses dev default | High | Security | Mitigated — prod guard + rotation guide (S6-06); set secret before deploy |
 | KI-006 | RBAC enforced client-side only | Medium | Auth | Mitigated — backend RBAC module, API permission checks, sidebar nav filtering, Settings user management UI |
 | KI-007 | Recharts Pie label TypeScript warnings possible | Low | Dashboard | Monitoring |
 | KI-009 | Port 8000 may be occupied by another local service | Low | DevOps | Open — use `--port 8001` or stop conflicting process |
@@ -14,7 +14,7 @@
 ## Resolution Plan
 
 - KI-003: Address in Sprint 1 remaining task (Alembic)
-- KI-005: Vault integration planned for Phase 5
+- KI-005: Vault integration planned for Phase 5 — **Mitigated** (S6-01 + S6-06 rotation runbook)
 - KI-002: Next.js middleware planned for Phase 1 completion
 - KI-008: React Flow integration planned for Phase 2
 

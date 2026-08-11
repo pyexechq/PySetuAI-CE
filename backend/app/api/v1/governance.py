@@ -36,6 +36,9 @@ from app.schemas.governance import (
     MCPServerUpdateRequest,
     McpToolInvokeRequest,
     McpToolInvokeResponse,
+    PolicyAssistRequest,
+    PolicyAssistResponse,
+    PolicyConditionHelpExample,
     PolicyCreateRequest,
     PolicyGraphLinkResponse,
     PolicyRuleResponse,
@@ -379,6 +382,33 @@ async def save_policy_rules(
     return [PolicyRuleResponse(**rule) for rule in policy.rules]
 
 
+@router.get("/policies/condition-help", response_model=list[PolicyConditionHelpExample])
+async def get_policy_condition_help(
+    current_user: Annotated[User, Depends(_require_policy_access)],
+) -> list[PolicyConditionHelpExample]:
+    from app.services.policy_assist_service import list_condition_help_examples
+
+    return list_condition_help_examples()
+
+
+@router.post("/policies/assist", response_model=PolicyAssistResponse)
+async def assist_policy_building(
+    payload: PolicyAssistRequest,
+    current_user: Annotated[User, Depends(_require_policy_access)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> PolicyAssistResponse:
+    from app.services.policy_assist_service import suggest_policy_rules_with_ai
+
+    result = await suggest_policy_rules_with_ai(
+        db,
+        current_user.tenant_id,
+        goal=payload.goal,
+        policy_name=payload.policy_name,
+        existing_rule_names=payload.existing_rule_names,
+    )
+    return PolicyAssistResponse(**result)
+
+
 @router.post("/policies/seed-starter-rules", response_model=dict)
 async def seed_starter_policy_rules(
     current_user: Annotated[User, Depends(_require_policy_admin)],
@@ -719,6 +749,7 @@ async def list_audit_logs(
     current_user: Annotated[User, Depends(_require_audit)],
     db: Annotated[AsyncSession, Depends(get_db)],
     search: str | None = Query(None),
+    audit_id: str | None = Query(None, description="Exact audit log UUID"),
     status: str | None = Query(None),
     since: str | None = Query(None, description="Return entries after this timestamp (YYYY-MM-DD HH:MM:SS)"),
     from_date: str | None = Query(None, description="Inclusive start date (YYYY-MM-DD)"),
@@ -743,6 +774,14 @@ async def list_audit_logs(
     )
     if status and status != "all":
         query = query.where(AuditLog.status == status)
+    if audit_id:
+        try:
+            query = query.where(AuditLog.id == uuid.UUID(audit_id.strip()))
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="audit_id must be a valid UUID",
+            ) from exc
     if search:
         term = f"%{search.strip()}%"
         query = query.where(
@@ -1125,8 +1164,9 @@ async def get_gateway_status(
         blocked_today=max(blocked, 0),
         endpoints=[
             "/v1/chat/completions",
-            "/api/v1/v1/chat/completions",
+            "/api/v1/chat/completions",
             "/v1/models",
+            "/api/v1/models",
             "/v1beta/models/{model}:generateContent",
         ],
         proxy_mode=config.upstream,

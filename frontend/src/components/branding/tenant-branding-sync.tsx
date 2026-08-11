@@ -26,6 +26,9 @@ export function TenantBrandingSync() {
       displayName: data.display_name,
       logoUrl: data.logo_url,
       brandTagline: data.brand_tagline,
+      qaDashboardEnabled: data.qa_dashboard_enabled,
+      features: data.features,
+      featurePolicy: data.feature_policy,
     });
   }, [data, setTenant]);
 

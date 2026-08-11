@@ -20,6 +20,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { insertPolicyNode, PolicyCreateModal } from "@/components/policy-studio/policy-create-modal";
 import { PolicyFlowCanvas } from "@/components/policy-studio/policy-flow-canvas";
+import { PolicyAiHelper } from "@/components/policy-studio/policy-ai-helper";
+import {
+  PolicyConditionHelpButton,
+  type PolicyConditionHelpExample,
+} from "@/components/policy-studio/policy-condition-help";
 import { useAuthStore } from "@/stores/auth-store";
 
 type PolicyViewMode = "list" | "flow";
@@ -111,9 +116,22 @@ function PolicyRuleEditorModal({
           </div>
 
           <div className="space-y-2">
-            <label className={labelClass} htmlFor="rule-condition">
-              Condition
-            </label>
+            <div className="flex items-center gap-1.5">
+              <label className={labelClass} htmlFor="rule-condition">
+                Condition
+              </label>
+              <PolicyConditionHelpButton
+                onApplyExample={(example: PolicyConditionHelpExample) => {
+                  setDraft((prev) => ({
+                    ...prev,
+                    condition: example.condition,
+                    action: example.action,
+                    severity: example.severity as PolicyRule["severity"],
+                    name: prev.name.trim() || example.title,
+                  }));
+                }}
+              />
+            </div>
             <textarea
               id="rule-condition"
               value={draft.condition}
@@ -468,6 +486,12 @@ export function PolicyStudioLayout() {
     }
   }
 
+  function handleApplyAiSuggestion(rule: PolicyRule) {
+    setAddedRules((prev) => [...prev, rule]);
+    setSelectedRuleId(rule.id);
+    setSaveNotice("Suggested rule added. Click Save Changes to persist.");
+  }
+
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-4">
       <Card className="w-72 shrink-0 border-border/60 bg-card/50">
@@ -670,6 +694,16 @@ export function PolicyStudioLayout() {
           )}
         </CardContent>
       </Card>
+
+      {activePolicyId && (
+        <PolicyAiHelper
+          token={token}
+          policyName={selectedPolicy?.label}
+          existingRules={displayRules}
+          canEdit={canEdit}
+          onApplySuggestion={handleApplyAiSuggestion}
+        />
+      )}
 
       {editingRule && (
         <PolicyRuleEditorModal

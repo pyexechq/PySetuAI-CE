@@ -26,6 +26,11 @@ DISCOVERY_CACHE: dict[str, dict[str, Any]] = {}
 JWKS_CACHE: dict[str, dict[str, Any]] = {}
 
 
+def is_oidc_jit_provision_enabled(tenant: Tenant) -> bool:
+    """Return True when SSO may auto-create users for this tenant."""
+    return tenant.oidc_jit_provision_enabled
+
+
 @dataclass
 class OidcAuthorizeResult:
     authorization_url: str
@@ -374,7 +379,9 @@ async def _resolve_oidc_user(
         await db.refresh(user)
         return user
 
-    if not settings.oidc_jit_provision_default:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tenant_result.scalar_one()
+    if not is_oidc_jit_provision_enabled(tenant):
         raise ValueError("User is not provisioned for SSO login")
 
     user = User(

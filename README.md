@@ -110,6 +110,15 @@ helm upgrade --install helixguard ./deploy/helm/helixguard \
 
 The chart deploys backend, frontend, Celery worker/beat, PostgreSQL, Redis, OPA (with ABAC Rego policies), optional Ingress, and backend HPA.
 
+### Production hardening
+
+Before any non-dev deployment:
+
+1. Copy [`.env.production.example`](.env.production.example) and fill secrets (never commit).
+2. Generate or Vault-bootstrap JWT: [docs/security/jwt-secret-rotation.md](docs/security/jwt-secret-rotation.md)
+3. Set `DEBUG=false`, enable Vault, and use strong database passwords.
+4. Run `./scripts/generate-jwt-secret.sh` or `./scripts/vault-bootstrap-jwt-secret.sh`
+
 ### Air-gap (offline)
 
 For isolated environments with no cloud LLM access:

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,11 +11,16 @@ from app.db.session import get_db
 from app.models.governance import TenantIntegration
 from app.models.tenant import Tenant, User
 from app.schemas.settings import (
+    AiAssistSettingsResponse,
+    AiAssistSettingsUpdate,
+    IdentitySettingsResponse,
+    IdentitySettingsUpdate,
     IntegrationSettingsResponse,
     IntegrationSettingsUpdate,
     OrganizationSettingsResponse,
     OrganizationSettingsUpdate,
 )
+from app.services.ai_assist_config_service import ai_assist_status, update_ai_assist_settings
 from app.services.integration_service import get_or_create_integration, mask_secret, resolve_gateway_config
 from app.services.secrets_service import (
     GEMINI_SECRET,
@@ -110,6 +115,34 @@ async def update_integrations(
     return await _integration_response(db, current_user.tenant_id, row, config)
 
 
+@router.get("/settings/ai-assist", response_model=AiAssistSettingsResponse)
+async def get_ai_assist_settings(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AiAssistSettingsResponse:
+    return AiAssistSettingsResponse(**await ai_assist_status(db, current_user.tenant_id))
+
+
+@router.put("/settings/ai-assist", response_model=AiAssistSettingsResponse)
+async def update_ai_assist_settings_route(
+    payload: AiAssistSettingsUpdate,
+    current_user: Annotated[User, Depends(_require_org_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AiAssistSettingsResponse:
+    try:
+        status_payload = await update_ai_assist_settings(
+            db,
+            current_user.tenant_id,
+            enabled=payload.enabled,
+            provider=payload.provider,
+            model=payload.model,
+            api_key=payload.api_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return AiAssistSettingsResponse(**status_payload)
+
+
 @router.get("/settings/organization", response_model=OrganizationSettingsResponse)
 async def get_organization_settings(
     current_user: Annotated[User, Depends(get_current_user)],
@@ -128,5 +161,41 @@ async def update_organization_settings(
 ) -> OrganizationSettingsResponse:
     result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
     tenant = result.scalar_one()
-    updated = await update_tenant_branding(db, tenant, payload.model_dump(exclude_unset=True))
+    try:
+        updated = await update_tenant_branding(db, tenant, payload.model_dump(exclude_unset=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     return OrganizationSettingsResponse(**branding_dict(updated))
+
+
+@router.get("/settings/identity", response_model=IdentitySettingsResponse)
+async def get_identity_settings(
+    current_user: Annotated[User, Depends(_require_org_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> IdentitySettingsResponse:
+    result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = result.scalar_one()
+    return IdentitySettingsResponse(
+        oidc_jit_provision_enabled=tenant.oidc_jit_provision_enabled,
+        platform_jit_default=settings.oidc_jit_provision_default,
+    )
+
+
+@router.put("/settings/identity", response_model=IdentitySettingsResponse)
+async def update_identity_settings(
+    payload: IdentitySettingsUpdate,
+    current_user: Annotated[User, Depends(_require_org_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> IdentitySettingsResponse:
+    result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = result.scalar_one()
+
+    if payload.oidc_jit_provision_enabled is not None:
+        tenant.oidc_jit_provision_enabled = payload.oidc_jit_provision_enabled
+
+    await db.commit()
+    await db.refresh(tenant)
+    return IdentitySettingsResponse(
+        oidc_jit_provision_enabled=tenant.oidc_jit_provision_enabled,
+        platform_jit_default=settings.oidc_jit_provision_default,
+    )

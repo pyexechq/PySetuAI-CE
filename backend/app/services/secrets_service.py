@@ -16,6 +16,7 @@ from app.services.integration_service import mask_secret
 
 OPENAI_SECRET = "openai_api_key"
 GEMINI_SECRET = "gemini_api_key"
+AI_ASSIST_SECRET = "ai_assist_api_key"
 
 _vault_token_cache: dict[str, float | str | None] = {
     "token": None,
@@ -88,7 +89,14 @@ def _get_vault_client():
 def _vault_read(path: str) -> str | None:
     client = _get_vault_client()
     mount = settings.vault_mount_path.strip("/")
-    response = client.secrets.kv.v2.read_secret_version(path=path, mount_point=mount, raise_on_deleted_version=False)
+    try:
+        response = client.secrets.kv.v2.read_secret_version(
+            path=path, mount_point=mount, raise_on_deleted_version=False
+        )
+    except Exception as exc:
+        if type(exc).__name__ == "InvalidPath" or "not found" in str(exc).lower():
+            return None
+        raise
     data = response.get("data", {}).get("data", {})
     value = data.get("value")
     return value if isinstance(value, str) and value else None

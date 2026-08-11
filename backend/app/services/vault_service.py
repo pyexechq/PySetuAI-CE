@@ -12,7 +12,9 @@ JWT_SECRET_VAULT_PATH = "helixguard/platform/jwt_secret"
 INSECURE_JWT_SECRETS = frozenset(
     {
         "change-me-in-production-use-vault",
+        "change-me-in-production",
         "dev-secret-change-in-production",
+        "airgap-change-me-before-production",
         "",
     }
 )

@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
+import uuid
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -15,6 +16,18 @@ from app.schemas.governance import ObservabilityOverviewResponse, TraceSpanRespo
 router = APIRouter()
 
 _require_observability = require_any_permission(USE_STUDIO, VIEW_AUDIT_LOGS)
+
+
+def extract_trace_id(details: str | None, log_id: uuid.UUID | str) -> str:
+    """Pull OpenTelemetry trace id from audit details regardless of field order."""
+    text = details or ""
+    marker = "trace_id="
+    if marker in text:
+        fragment = text.split(marker, 1)[1]
+        trace_id = fragment.split(";", 1)[0].strip()
+        if trace_id:
+            return trace_id
+    return f"trace-{str(log_id)[:8]}"
 
 
 def _resolve_range(from_date: str | None, to_date: str | None) -> tuple[datetime, datetime]:
@@ -131,10 +144,7 @@ async def observability_traces(
     traces: list[TraceSummaryResponse] = []
 
     for log in logs:
-        trace_id = None
-        if log.details.startswith("trace_id="):
-            trace_id = log.details.split(";", 1)[0].replace("trace_id=", "").strip()
-        trace_id = trace_id or f"trace-{str(log.id)[:8]}"
+        trace_id = extract_trace_id(log.details, log.id)
         duration = 120 + (hash(str(log.id)) % 800)
         spans = [
             TraceSpanResponse(

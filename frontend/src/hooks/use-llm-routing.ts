@@ -5,6 +5,9 @@ import { api } from "@/lib/api";
 import type { RoutingModel, RoutingRule } from "@/lib/mock-data";
 import { useAuthStore } from "@/stores/auth-store";
 
+const EMPTY_MODELS: RoutingModel[] = [];
+const EMPTY_RULES: RoutingRule[] = [];
+
 const modelColors: Record<string, string> = {
   "GPT-4o": "#3b82f6",
   "Gemini 1.5 Pro": "#8b5cf6",
@@ -68,8 +71,8 @@ export function useLlmRouting() {
   }
 
   return {
-    models: modelsQuery.data ?? [],
-    rules: rulesQuery.data ?? [],
+    models: modelsQuery.data ?? EMPTY_MODELS,
+    rules: rulesQuery.data ?? EMPTY_RULES,
     isLoading: modelsQuery.isLoading || rulesQuery.isLoading,
     invalidateProviders,
     invalidateRules,

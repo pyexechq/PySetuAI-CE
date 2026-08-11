@@ -40,10 +40,12 @@ export function AuditExplorerView() {
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const from = useDateRangeStore((s) => s.from);
   const to = useDateRangeStore((s) => s.to);
+  const auditIdParam = searchParams.get("audit_id")?.trim() || undefined;
   const { data: logs = [], recentIds, isFetching, dataUpdatedAt } = useAuditLogs(
     search,
     statusFilter,
-    live
+    live,
+    auditIdParam
   );
 
   const { data: ingestSources = [] } = useQuery({
@@ -56,6 +58,8 @@ export function AuditExplorerView() {
   const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
 
   useEffect(() => {
+    const auditId = searchParams.get("audit_id")?.trim();
+    if (auditId) return;
     const q = searchParams.get("q")?.trim();
     if (q) {
       setSearch(q);

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.date_range import parse_date_range
+from app.core.deps import require_reports
 from app.core.rbac import VIEW_COMPLIANCE, require_permission, require_roles
 from app.db.session import get_db
 from app.models.governance import AuditLog, ReportDefinition
@@ -43,7 +44,7 @@ from app.services.report_service import (
     report_public_id,
 )
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_reports)])
 
 _require_compliance = require_permission(VIEW_COMPLIANCE)
 _require_report_admin = require_roles("tenant_admin", "platform_admin")

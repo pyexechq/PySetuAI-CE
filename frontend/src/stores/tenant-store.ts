@@ -1,4 +1,10 @@
 import { create } from "zustand";
+import {
+  DEFAULT_TENANT_FEATURES,
+  type TenantFeaturePolicy,
+  type TenantFeatures,
+  resolveTenantFeatures,
+} from "@/lib/tenant-features";
 
 export interface Tenant {
   id: string;
@@ -7,6 +13,9 @@ export interface Tenant {
   displayName?: string;
   logoUrl?: string | null;
   brandTagline?: string;
+  qaDashboardEnabled?: boolean;
+  features?: TenantFeatures;
+  featurePolicy?: TenantFeaturePolicy;
 }
 
 interface TenantState {
@@ -21,6 +30,8 @@ const DEFAULT_TENANT: Tenant = {
   slug: "acme",
   displayName: "Acme Corporation",
   brandTagline: "Enterprise AI Control Plane",
+  qaDashboardEnabled: true,
+  features: DEFAULT_TENANT_FEATURES,
 };
 
 export const useTenantStore = create<TenantState>((set) => ({
@@ -32,6 +43,9 @@ export const useTenantStore = create<TenantState>((set) => ({
         ...tenant,
         displayName: tenant.displayName ?? tenant.name,
         brandTagline: tenant.brandTagline ?? "Enterprise AI Control Plane",
+        features: resolveTenantFeatures(tenant.features, tenant.qaDashboardEnabled),
+        qaDashboardEnabled: resolveTenantFeatures(tenant.features, tenant.qaDashboardEnabled).qa_dashboard,
+        featurePolicy: tenant.featurePolicy,
       },
     }),
 }));

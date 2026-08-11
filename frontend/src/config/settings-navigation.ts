@@ -1,8 +1,10 @@
 import {
+  ArrowRightLeft,
   Building2,
   KeyRound,
   Layers,
   Shield,
+  Sparkles,
   Sun,
   Users,
   type LucideIcon,
@@ -30,6 +32,20 @@ export const settingsNavItems: SettingsNavItem[] = [
     href: "/settings/integrations",
     icon: KeyRound,
     description: "OpenAI, Gemini, Ollama, and alert webhooks",
+  },
+  {
+    id: "ai-assist",
+    label: "AI Assist",
+    href: "/settings/ai-assist",
+    icon: Sparkles,
+    description: "Platform-wide AI key for Policy Studio, Compliance, and insights",
+  },
+  {
+    id: "uag",
+    label: "Universal AI Gateway",
+    href: "/settings/uag",
+    icon: ArrowRightLeft,
+    description: "Provider mappings and translation policies",
   },
   {
     id: "identity",

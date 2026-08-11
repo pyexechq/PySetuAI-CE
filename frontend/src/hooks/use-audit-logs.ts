@@ -29,7 +29,7 @@ function mapLog(log: {
   };
 }
 
-export function useAuditLogs(search?: string, status?: string, live = true) {
+export function useAuditLogs(search?: string, status?: string, live = true, auditId?: string) {
   const token = useAuthStore((s) => s.token);
   const from = useDateRangeStore((s) => s.from);
   const to = useDateRangeStore((s) => s.to);
@@ -37,11 +37,12 @@ export function useAuditLogs(search?: string, status?: string, live = true) {
   const [recentIds, setRecentIds] = useState<Set<string>>(new Set());
 
   const query = useQuery({
-    queryKey: ["audit-logs", token, search, status, from, to],
+    queryKey: ["audit-logs", token, search, status, auditId, from, to],
     queryFn: () =>
       api
         .getAuditLogs(token!, {
-          search,
+          search: auditId ? undefined : search,
+          audit_id: auditId,
           status: status === "all" ? undefined : status,
           from_date: from,
           to_date: to,
@@ -77,7 +78,7 @@ export function useAuditLogs(search?: string, status?: string, live = true) {
 
   useEffect(() => {
     knownIdsRef.current = new Set();
-  }, [search, status, token, from, to]);
+  }, [search, status, auditId, token, from, to]);
 
   return {
     ...query,

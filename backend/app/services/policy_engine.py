@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.telemetry import current_trace_id, get_tracer
 from app.schemas.openai import InspectionResult, PolicyViolation
 from app.services.policy_bundle_service import get_tenant_default_bundle, load_bundle_rules
+from app.services.injection_detection_service import scan_content
 
 tracer = get_tracer(__name__)
 
@@ -16,6 +17,10 @@ INJECTION_PATTERNS = [
     for p in [
         r"ignore\s+(all\s+)?previous\s+instructions",
         r"disregard\s+(your\s+)?(system\s+)?prompt",
+        r"(reveal|show|print|repeat|output|display)\s+(me\s+)?(your\s+)?(system\s+)?(prompt|instructions)",
+        r"forget\s+(all\s+)?(your\s+)?(rules|instructions|guidelines)",
+        r"bypass\s+(your\s+)?(restrictions|rules|guardrails|filters)",
+        r"(developer|god|sudo|unrestricted|admin)\s+mode",
         r"jailbreak",
         r"you\s+are\s+now\s+dan",
     ]
@@ -71,6 +76,8 @@ def _condition_matches(
     contains_match = re.match(r"""prompt\.contains\(['"](.+?)['"]\)""", cond)
     if contains_match:
         needle = contains_match.group(1).lower()
+        if needle == "ignore previous":
+            return bool(re.search(r"ignore\s+(all\s+)?previous", lower)), None
         return needle in lower, None
 
     matches_match = re.match(r"content\.matches\(/(.+)/\)", cond)
@@ -159,6 +166,38 @@ def _evaluate_rules(content: str, rules: list, *, context: dict | None = None) -
     return InspectionResult(allowed=True, violations=violations, risk="low")
 
 
+RISK_RANK = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+
+
+def _merge_threat_scan(content: str, result: InspectionResult) -> InspectionResult:
+    """Apply shared threat catalog on gateway ingress (covers bundle rule gaps)."""
+    threat = scan_content(content)
+    if not threat.detected or threat.recommended_action != "block":
+        return result
+
+    violations = list(result.violations)
+    seen = {(v.rule_name, v.detail) for v in violations}
+    for match in threat.matches:
+        key = (match.name, match.detail)
+        if key in seen:
+            continue
+        seen.add(key)
+        violations.append(
+            PolicyViolation(
+                rule_name=match.name,
+                action="Block",
+                severity=match.severity,
+                detail=match.detail,
+            )
+        )
+
+    highest = max(
+        [result.risk, threat.highest_severity],
+        key=lambda level: RISK_RANK.get(level, 0),
+    )
+    return InspectionResult(allowed=False, action="block", violations=violations, risk=highest)
+
+
 def inspect_content(content: str) -> InspectionResult:
     with tracer.start_as_current_span("policy.inspect") as span:
         span.set_attribute("helixguard.content_length", len(content))
@@ -194,8 +233,11 @@ async def inspect_for_gateway(
     context: dict | None = None,
 ) -> InspectionResult:
     if bundle is not None:
-        return await inspect_content_for_bundle(db, tenant_id, bundle, content, context=context)
-    default_bundle = await get_tenant_default_bundle(db, tenant_id)
-    if default_bundle is not None:
-        return await inspect_content_for_bundle(db, tenant_id, default_bundle, content, context=context)
-    return inspect_content(content)
+        result = await inspect_content_for_bundle(db, tenant_id, bundle, content, context=context)
+    else:
+        default_bundle = await get_tenant_default_bundle(db, tenant_id)
+        if default_bundle is not None:
+            result = await inspect_content_for_bundle(db, tenant_id, default_bundle, content, context=context)
+        else:
+            result = inspect_content(content)
+    return _merge_threat_scan(content, result)

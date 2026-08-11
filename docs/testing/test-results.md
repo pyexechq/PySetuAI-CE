@@ -1,0 +1,155 @@
+# HelixGuard AI — Test Results
+
+**Test Cycle:** QA-002 (Live Test Cycle) — **IN PROGRESS**  
+**Started:** Aug 11, 2026
+
+See QA Dashboard at `/qa-dashboard` for live status.
+
+### QA-002 Progress (automated + baseline)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | ~80%+ (after pytest sync) |
+| pytest (local) | 57 passed, 1 failed |
+| Open defects | 6 (2 S1, 4 S2) |
+| Release decision | **pending / not approved** |
+
+---
+
+**Test Cycle:** QA-001  
+**Date:** Aug 11, 2026  
+**Environment:** Local (Windows 10, Python 3.12.10, Node.js/Next.js 16.3.0)  
+**Executed By:** Principal QA & Validation Agent
+
+---
+
+## Summary (QA-001 baseline)
+
+| Category | Total | Pass | Fail | Blocked | Not Tested |
+|----------|-------|------|------|---------|------------|
+| Backend unit tests | 44 | 44 | 0 | 0 | — |
+| Frontend build | 1 | 1 | 0 | 0 | — |
+| Feature validation (matrix) | 72 | 28 | 5 | 4 | 35 |
+| Security tests | 21 | 6 | 1 | 1 | 13 |
+| Performance tests | 4 | 0 | 0 | 0 | 4 |
+
+**Overall cycle result:** **INCOMPLETE** — significant gaps in integration, E2E, and performance testing.
+
+---
+
+## Automated Test Results
+
+### Backend — pytest
+
+```
+Platform: win32 — Python 3.12.10, pytest 9.1.1
+Collected: 44 items
+Result: 44 passed in 2.03s
+Exit code: 0
+```
+
+| Test File | Tests | Result |
+|-----------|-------|--------|
+| test_alert_webhooks.py | 2 | PASS |
+| test_dashboard_trends.py | 3 | PASS |
+| test_oidc_auth.py | 3 | PASS |
+| test_opa_service.py | 1 | PASS |
+| test_platform_tenants.py | 8 | PASS |
+| test_policy_engine.py | 5 | PASS |
+| test_rate_limit.py | 4 | PASS |
+| test_security_scan.py | 3 | PASS |
+| test_siem_export.py | 4 | PASS |
+| test_tenant_branding.py | 5 | PASS |
+| test_tenant_site.py | 3 | PASS |
+| test_vault_oidc.py | 3 | PASS |
+
+### Frontend — next build
+
+```
+Next.js 16.3.0 (Turbopack)
+Compiled successfully in 7.5s
+TypeScript: finished in 15.5s
+33 static/dynamic routes generated
+Exit code: 0
+```
+
+Warnings (non-blocking):
+- `middleware` file convention deprecated (Next.js 16 migration to proxy)
+- package-lock.json outside git repo root
+
+---
+
+## Feature Validation Results (QA-001)
+
+### Passed (verified via code review + unit tests + build)
+
+- Policy engine: region/PII conditions, injection blocking, audit status normalization
+- Security scan: injection detection, exfiltration detection, safe text allowance
+- Rate limiting: auth path inclusion, forwarded IP, allow/block thresholds
+- OIDC: PKCE generation, role mapping from groups
+- SIEM export: CEF, NDJSON, Elastic bulk format correctness
+- Tenant branding: display name resolution, public branding shape
+- Tenant site: subdomain extraction, entry mode validation
+- Vault/OIDC config: role mapping validation, insecure JWT secret detection
+- Alert webhooks: Slack/ServiceNow payload construction
+- Dashboard trends: percent change calculations
+- Platform tenant slug validation
+- All 33 frontend routes compile and render
+- ~120 backend API endpoints registered with RBAC guards
+- JWT tenant_id mismatch rejection in `get_current_user`
+- Frontend auth: middleware + AuthGuard + RBAC route matrix
+
+### Failed
+
+| ID | Module | Finding |
+|----|--------|---------|
+| MCP-005 | MCP Governance | Tool invoke has no policy gate — `invoke_mcp_server_tool` calls `invoke_mcp_tool` directly without policy evaluation |
+| MCP-009 | MCP Governance | No audit log entry created on MCP tool invoke |
+| STU-005 | Studio | MCP Simulator uses client-side mock, not live `tools/invoke` API |
+| SEC-007 | Security Center | Alert webhooks have CRUD + manual test only; no auto-dispatch on policy violations |
+| AUTHZ-* / MT-* | Multi-Tenant | No integration tests for cross-tenant isolation despite app-layer scoping |
+
+### Blocked
+
+| ID | Module | Reason |
+|----|--------|--------|
+| LLM-006–009 | LLM Router | `gateway_mock_mode=True` default; no upstream API keys configured |
+| AUTH-005 | Authentication | MFA not implemented |
+| SEC-005 | Security Center | `opa_enabled=False`, `opa_fail_open=True` by default |
+
+### Not Tested (deferred to QA-002+)
+
+- Dashboard date range filters, export, empty state, performance
+- Policy cloning, versioning, flow canvas edge cases
+- LLM model failover, cost routing, live upstream verification
+- Audit search/filter/export manual verification
+- Compliance evidence accuracy
+- Full auth flow (login/logout/session expiry/OIDC)
+- RBAC privilege escalation attempts
+- Performance benchmarks (dashboard, API, policy eval, search)
+
+---
+
+## Documentation vs Implementation Gaps
+
+| Document | Documented State | Actual State | Verdict |
+|----------|-----------------|--------------|---------|
+| docs/testing/README.md | "No automated tests yet" | 44 pytest tests passing | **Doc stale** |
+| docs/handoffs/security-agent.md | "No rate limiting, no RBAC on API" | Rate limiting + RBAC implemented | **Doc stale** |
+| docs/handoffs/backend-agent.md | "Stub endpoints, no DB" | Full CRUD, migrations, 120 endpoints | **Doc stale** |
+| docs/progress/known-issues.md KI-004 | "Module pages use mock data" | Live API wired | **Resolved, doc stale** |
+| docs/progress/known-issues.md KI-005 | "JWT secret dev default" | Vault integration done (S6-01), prod guard added | **Partially resolved** |
+| docs/api/README.md | Lists only 4 endpoints | ~120 endpoints implemented | **Doc stale** |
+| docs/security/README.md checklist | Rate limiting unchecked | Implemented (S6-04) | **Doc stale** |
+
+---
+
+## Evidence Artifacts
+
+| Artifact | Location |
+|----------|----------|
+| pytest output | This document (Aug 11, 2026 run) |
+| next build output | This document (Aug 11, 2026 run) |
+| Defect log | [defect-log.md](./defect-log.md) |
+| Security findings | [security-findings.md](./security-findings.md) |
+| Release readiness | [release-readiness.md](./release-readiness.md) |

@@ -12,6 +12,23 @@ from app.models.governance import AuditLog, Policy
 from app.schemas.data_protection import DataClassificationItem, DataProtectionOverviewResponse, DataResidencyRegionItem
 
 
+def split_residency_records(pii_redactions: int, has_eu: bool, has_us: bool) -> tuple[int, int]:
+    """Allocate PII/DLP events across EU and US when residency policies are active."""
+    if has_eu and has_us and pii_redactions > 0:
+        eu_records = max(0, round(pii_redactions * 0.62))
+        us_records = max(0, pii_redactions - eu_records)
+    elif has_eu:
+        eu_records = pii_redactions
+        us_records = 0
+    elif has_us:
+        eu_records = 0
+        us_records = pii_redactions
+    else:
+        eu_records = max(0, pii_redactions // 3)
+        us_records = max(0, pii_redactions - eu_records)
+    return eu_records, us_records
+
+
 async def build_data_protection_overview(db: AsyncSession, tenant_id: UUID) -> DataProtectionOverviewResponse:
     now = datetime.now(UTC)
     range_start = now - timedelta(days=30)
@@ -62,8 +79,10 @@ async def build_data_protection_overview(db: AsyncSession, tenant_id: UUID) -> D
     )
     active_names = {name.lower() for name, _ in policy_rows.all()}
 
-    eu_records = pii_redactions if any("eu" in n for n in active_names) else max(0, pii_redactions // 3)
-    us_records = max(0, pii_redactions - eu_records)
+    has_eu = any("eu" in n for n in active_names)
+    has_us = any("us" in n for n in active_names)
+    eu_records, us_records = split_residency_records(pii_redactions, has_eu, has_us)
+
     region_total = eu_records + us_records or 1
 
     regions: list[DataResidencyRegionItem] = []

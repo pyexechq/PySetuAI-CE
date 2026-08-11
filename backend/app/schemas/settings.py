@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from app.schemas.tenant_features import TenantFeaturePolicyResponse, TenantFeaturesResponse
+
 
 class IntegrationSettingsResponse(BaseModel):
     openai_api_key_set: bool
@@ -39,6 +41,9 @@ class OrganizationSettingsResponse(BaseModel):
     brand_tagline: str
     default_product_name: str = "HelixGuard AI"
     default_tagline: str = "Enterprise AI Control Plane"
+    qa_dashboard_enabled: bool = True
+    features: TenantFeaturesResponse = Field(default_factory=TenantFeaturesResponse)
+    feature_policy: TenantFeaturePolicyResponse = Field(default_factory=TenantFeaturePolicyResponse)
 
 
 class OrganizationSettingsUpdate(BaseModel):
@@ -46,3 +51,32 @@ class OrganizationSettingsUpdate(BaseModel):
     display_name: str | None = Field(default=None, max_length=255)
     logo_url: str | None = Field(default=None, max_length=1024)
     brand_tagline: str | None = Field(default=None, max_length=255)
+    qa_dashboard_enabled: bool | None = None
+    features: TenantFeaturesResponse | None = None
+
+
+class IdentitySettingsResponse(BaseModel):
+    oidc_jit_provision_enabled: bool
+    platform_jit_default: bool = False
+
+
+class IdentitySettingsUpdate(BaseModel):
+    oidc_jit_provision_enabled: bool | None = None
+
+
+class AiAssistSettingsResponse(BaseModel):
+    enabled: bool
+    provider: str
+    model: str
+    api_key_set: bool
+    api_key_masked: str | None = None
+    available: bool
+    features: list[str]
+    air_gap_mode: bool = False
+
+
+class AiAssistSettingsUpdate(BaseModel):
+    enabled: bool | None = None
+    provider: str | None = Field(None, description="openai or gemini")
+    model: str | None = None
+    api_key: str | None = Field(None, description="Set to empty string to clear")

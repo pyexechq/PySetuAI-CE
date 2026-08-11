@@ -4,8 +4,8 @@ import { StudioView } from "@/components/studio/studio-view";
 export default function StudioPage() {
   return (
     <AppShell
-      title="Studio"
-      description="Sandbox for prompt testing, policy dry-runs, and MCP tool simulation"
+      title="Governance Sandbox"
+      description="Sandbox for prompt testing, policy dry-runs, translation simulation, and MCP tool calls"
     >
       <StudioView />
     </AppShell>

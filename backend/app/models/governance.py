@@ -179,6 +179,10 @@ class TenantIntegration(Base):
     ollama_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     ollama_base_url: Mapped[str] = mapped_column(String(512), default="http://localhost:11434")
     ollama_default_model: Mapped[str] = mapped_column(String(255), default="llama3.2")
+    ai_assist_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    ai_assist_provider: Mapped[str] = mapped_column(String(32), default="openai")
+    ai_assist_model: Mapped[str] = mapped_column(String(255), default="gpt-4o-mini")
+    ai_assist_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

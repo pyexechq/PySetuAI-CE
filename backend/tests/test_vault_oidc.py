@@ -20,4 +20,6 @@ def test_normalize_role_mapping_rejects_unknown_role() -> None:
 def test_insecure_jwt_secret_detects_defaults() -> None:
     assert is_insecure_jwt_secret("dev-secret-change-in-production")
     assert is_insecure_jwt_secret("change-me-in-production-use-vault")
+    assert is_insecure_jwt_secret("change-me-in-production")
+    assert is_insecure_jwt_secret("airgap-change-me-before-production")
     assert not is_insecure_jwt_secret("a-secure-random-production-secret-value")

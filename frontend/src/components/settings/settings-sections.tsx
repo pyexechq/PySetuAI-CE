@@ -4,13 +4,14 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { Building2, Loader2, LogOut, Moon, Save, Sun } from "lucide-react";
+import { Building2, ClipboardCheck, Loader2, LogOut, Moon, Save, Sun } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { BrandingLogo } from "@/components/branding/branding-logo";
 import { api, type ApiOrganizationSettings } from "@/lib/api";
+import { FEATURE_NAV_LABELS, type TenantFeatures } from "@/lib/tenant-features";
 import { useAuthStore } from "@/stores/auth-store";
 import { tenantBrandName, useTenantStore } from "@/stores/tenant-store";
 
@@ -71,6 +72,7 @@ export function OrganizationSettings() {
       </Card>
 
       <WhiteLabelSettingsForm key={data.id + data.display_name + (data.logo_url ?? "")} settings={data} canEdit={canEdit} />
+      <ModuleVisibilitySettings settings={data} />
     </div>
   );
 }
@@ -108,6 +110,9 @@ function WhiteLabelSettingsForm({
         displayName: updated.display_name,
         logoUrl: updated.logo_url,
         brandTagline: updated.brand_tagline,
+        qaDashboardEnabled: updated.qa_dashboard_enabled,
+        features: updated.features,
+        featurePolicy: updated.feature_policy,
       });
     },
   });
@@ -182,6 +187,45 @@ function WhiteLabelSettingsForm({
         ) : (
           <p className="text-xs text-muted-foreground">Tenant Admin role required to edit white-label settings.</p>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ModuleVisibilitySettings({ settings }: { settings: ApiOrganizationSettings }) {
+  const featureKeys = Object.keys(FEATURE_NAV_LABELS) as (keyof TenantFeatures)[];
+
+  return (
+    <Card className="border-border/60 bg-card/50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ClipboardCheck className="h-4 w-4" />
+          Module visibility
+        </CardTitle>
+        <CardDescription>
+          Optional modules enabled for your tenant. Only your SaaS or platform operator can change these
+          entitlements.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {featureKeys.map((key) => (
+          <div
+            key={key}
+            className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-3"
+          >
+            <span>
+              <span className="block text-sm font-medium">{FEATURE_NAV_LABELS[key].label}</span>
+              <span className="block text-xs text-muted-foreground">{FEATURE_NAV_LABELS[key].description}</span>
+              <span className="mt-1 block text-xs text-amber-600">Managed by platform operator</span>
+            </span>
+            <Badge variant={settings.features[key] ? "success" : "secondary"}>
+              {settings.features[key] ? "Enabled" : "Disabled"}
+            </Badge>
+          </div>
+        ))}
+        <p className="text-xs text-muted-foreground">
+          Contact your SaaS operator or sign in to the platform admin portal to request module changes.
+        </p>
       </CardContent>
     </Card>
   );

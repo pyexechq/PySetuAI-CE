@@ -52,6 +52,50 @@ THREAT_RULES: tuple[ThreatRule, ...] = (
         pattern=re.compile(r"disregard\s+(your\s+)?(system\s+)?prompt", re.IGNORECASE),
     ),
     ThreatRule(
+        id="inj-reveal-prompt",
+        name="Reveal system prompt",
+        category="prompt_injection",
+        severity="critical",
+        pattern=re.compile(
+            r"(reveal|show|print|repeat|output|display)\s+(me\s+)?(your\s+)?(system\s+)?(prompt|instructions)",
+            re.IGNORECASE,
+        ),
+    ),
+    ThreatRule(
+        id="inj-forget-rules",
+        name="Forget safety rules",
+        category="prompt_injection",
+        severity="critical",
+        pattern=re.compile(r"forget\s+(all\s+)?(your\s+)?(rules|instructions|guidelines)", re.IGNORECASE),
+    ),
+    ThreatRule(
+        id="inj-bypass",
+        name="Bypass restrictions",
+        category="prompt_injection",
+        severity="high",
+        pattern=re.compile(r"bypass\s+(your\s+)?(restrictions|rules|guardrails|filters)", re.IGNORECASE),
+    ),
+    ThreatRule(
+        id="inj-unrestricted",
+        name="Unrestricted mode request",
+        category="prompt_injection",
+        severity="high",
+        pattern=re.compile(
+            r"(developer|god|sudo|unrestricted|admin)\s+mode|no\s+(restrictions|rules|limits)",
+            re.IGNORECASE,
+        ),
+    ),
+    ThreatRule(
+        id="inj-roleplay-escape",
+        name="Act without restrictions",
+        category="prompt_injection",
+        severity="high",
+        pattern=re.compile(
+            r"act\s+as\s+(if\s+)?(you\s+)?(have|had)\s+no\s+(restrictions|rules|limits|guardrails)",
+            re.IGNORECASE,
+        ),
+    ),
+    ThreatRule(
         id="jb-dan",
         name="DAN jailbreak",
         category="jailbreak",

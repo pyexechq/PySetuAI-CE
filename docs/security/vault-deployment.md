@@ -93,5 +93,21 @@ Configure the backend with `VAULT_AUTH_METHOD=approle`, `VAULT_ROLE_ID`, and `VA
 ## Related
 
 - BL-033 in `docs/planning/backlog.md`
+- [JWT secret rotation](./jwt-secret-rotation.md)
+- [Production env template](../../.env.production.example)
 - `backend/app/services/secrets_service.py`
 - `docs/architecture/security-architecture.md`
+
+### Platform JWT signing key
+
+| Secret | Vault path |
+|--------|------------|
+| JWT signing key | `helixguard/platform/jwt_secret` |
+
+Bootstrap locally:
+
+```bash
+docker compose exec vault sh /scripts/vault-bootstrap-jwt-secret.sh
+```
+
+When `VAULT_ENABLED=true` and `DEBUG=false`, the API loads this path on startup instead of `JWT_SECRET_KEY`. See [jwt-secret-rotation.md](./jwt-secret-rotation.md) for rotation runbook.

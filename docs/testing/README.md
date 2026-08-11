@@ -1,50 +1,96 @@
-# Testing Strategy
+# Testing Documentation
+
+**Last Updated:** Aug 11, 2026  
+**Owner:** Principal QA & Validation Agent
+
+---
 
 ## Current State
 
-Phase 1 foundation — no automated tests yet. Manual verification via dev server and build.
+HelixGuard AI has **44 backend unit tests** (all passing) and **frontend production build verification**. Integration, E2E, and performance testing are not yet implemented. See [test-strategy.md](./test-strategy.md) for the full testing approach.
 
-## Planned Test Layers
+### Test Results Summary (QA-001)
+
+| Suite | Result |
+|-------|--------|
+| Backend pytest (44 tests) | **44/44 pass** |
+| Frontend `next build` (33 routes) | **Pass** |
+| Integration tests | Not implemented |
+| E2E tests | Not implemented |
+| Performance tests | Not measured |
+
+**Release status:** NOT APPROVED — see [release-readiness.md](./release-readiness.md)
+
+---
+
+## Testing Documents
+
+| Document | Purpose |
+|----------|---------|
+| [test-strategy.md](./test-strategy.md) | Overall QA approach, test pyramid, tooling |
+| [test-plan.md](./test-plan.md) | Feature validation matrix, security test plan |
+| [test-results.md](./test-results.md) | Cycle QA-001 execution results |
+| [defect-log.md](./defect-log.md) | 18 open defects (2 S1, 5 S2) |
+| [regression-report.md](./regression-report.md) | Initial regression baseline |
+| [security-findings.md](./security-findings.md) | 12 security findings |
+| [performance-report.md](./performance-report.md) | Performance targets (not yet measured) |
+| [release-readiness.md](./release-readiness.md) | Release gate assessment |
+
+---
+
+## Test Layers
+
+### Backend (pytest)
+
+| Type | Tool | Scope | Status |
+|------|------|-------|--------|
+| Unit | pytest | Policy engine, security scan, rate limit, OIDC, SIEM, branding | **44 tests passing** |
+| Integration | pytest + httpx | API endpoints, auth, tenant isolation | **Not implemented** |
+| Database | pytest + testcontainers | CRUD, tenant isolation | **Not implemented** |
+
+Run tests:
+
+```bash
+cd backend
+python -m pytest tests/ -v
+```
 
 ### Frontend
 
-| Type | Tool | Scope |
-|------|------|-------|
-| Unit | Vitest | Utils, stores, formatters |
-| Component | Vitest + Testing Library | UI components, dashboard widgets |
-| E2E | Playwright | Navigation, dashboard rendering, theme toggle |
+| Type | Tool | Scope | Status |
+|------|------|-------|--------|
+| Build | next build | All 33 routes compile | **Passing** |
+| Unit | Vitest | Utils, stores, formatters | Not implemented |
+| Component | Vitest + Testing Library | UI components | Not implemented |
+| E2E | Playwright | Auth, navigation, modules | Not implemented |
 
-### Backend
+Run build:
 
-| Type | Tool | Scope |
-|------|------|-------|
-| Unit | pytest | Security utils, schemas |
-| Integration | pytest + httpx | API endpoints, auth flow |
-| Database | pytest + testcontainers | Model CRUD, tenant isolation |
+```bash
+cd frontend
+npm run build
+```
 
-## Test Plan — Phase 1 Completion
-
-- [ ] Frontend builds without errors (`npm run build`)
-- [ ] Backend starts and health check returns 200
-- [ ] All 14 routes render without crash
-- [ ] Theme toggle works in light and dark mode
-- [ ] Sidebar navigation links route correctly
-- [ ] Dashboard charts render with mock data
-
-## Test Plan — Phase 2
-
-- [ ] Login flow end-to-end
-- [ ] JWT token validation on protected routes
-- [ ] Tenant isolation (user A cannot access tenant B data)
-- [ ] Policy CRUD operations
-- [ ] LLM routing rule evaluation
+---
 
 ## CI Pipeline (Planned)
 
 ```yaml
 # GitHub Actions
 - lint (eslint, ruff)
-- build (next build, no tests yet)
-- test (pytest, vitest — when added)
+- build (next build)
+- test (pytest — 44 tests)
 - docker compose build
+# Future:
+- integration (pytest + testcontainers)
+- e2e (playwright)
+- performance (k6)
 ```
+
+Tracked as BL-039 (stabilize pytest in CI/local).
+
+---
+
+## QA Handoff
+
+See [docs/handoffs/qa-agent.md](../handoffs/qa-agent.md) for the latest QA cycle report.

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { RoutingModel } from "@/lib/mock-data";
+import type { McpServer } from "@/lib/types/domain";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -8,8 +10,6 @@ import {
   Background,
   Controls,
   MarkerType,
-  useNodesState,
-  useEdgesState,
   type Node,
   type Edge,
 } from "@xyflow/react";
@@ -28,6 +28,9 @@ import { usePolicyGraphLinks } from "@/hooks/use-policy-graph-links";
 import { policyStudioUrl } from "@/lib/policy-graph-map";
 import { Button } from "@/components/ui/button";
 
+const EMPTY_NODE_IDS: string[] = [];
+const EMPTY_MCP_SERVERS: McpServer[] = [];
+
 const nodeTypes = { governance: GovernanceNode };
 const modelColors = ["#3b82f6", "#8b5cf6", "#f97316", "#22c55e", "#6366f1"];
 const edgeStyle = { stroke: "#94a3b8", strokeWidth: 2 };
@@ -36,7 +39,7 @@ const modelEdgeStyle = { stroke: "#6366f1", strokeWidth: 2, strokeDasharray: "6 
 function buildFlowGraph(
   mcpStatus: string | undefined,
   gatewayMode: string | undefined,
-  models: { model: string; successRate: number }[],
+  models: Pick<RoutingModel, "model" | "successRate">[],
   highlightNodeId: string | null,
   bundleHighlightIds: string[] = []
 ): { nodes: Node<GovernanceNodeData>[]; edges: Edge[] } {
@@ -125,7 +128,8 @@ export function GovernanceGraphView() {
   const nodeFromUrl = searchParams.get("node");
   const policyFromUrl = searchParams.get("policy");
   const token = useAuthStore((s) => s.token);
-  const { data: mcpServers = [] } = useMcpServers();
+  const { data: mcpServersData } = useMcpServers();
+  const mcpServers = mcpServersData ?? EMPTY_MCP_SERVERS;
   const { models } = useLlmRouting();
   const [manualNodeId, setManualNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
@@ -148,7 +152,7 @@ export function GovernanceGraphView() {
       setSelectedBindingId(ingressBindings[0].id);
     }
   }, [ingressBindings, selectedBindingId]);
-  const bundleHighlightIds = selectedBinding?.graph_node_ids ?? [];
+  const bundleHighlightIds = selectedBinding?.graph_node_ids ?? EMPTY_NODE_IDS;
 
   const bindingPolicies =
     selectedBinding && activeNodeId
@@ -174,19 +178,10 @@ export function GovernanceGraphView() {
       ? "degraded"
       : "healthy";
 
-  const graph = useMemo(
+  const { nodes, edges } = useMemo(
     () => buildFlowGraph(mcpAggregate, gatewayStatus?.proxy_mode, models, activeNodeId, bundleHighlightIds),
     [mcpAggregate, gatewayStatus?.proxy_mode, models, activeNodeId, bundleHighlightIds]
   );
-
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
-
-  useEffect(() => {
-    setNodes(graph.nodes);
-    setEdges(graph.edges);
-  }, [graph, setNodes, setEdges]);
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
   const selectedEdge = edges.find((e) => e.id === selectedEdgeId) ?? null;
@@ -264,8 +259,6 @@ export function GovernanceGraphView() {
             <ReactFlow
               nodes={nodes}
               edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
               onNodeClick={onNodeClick}
               onEdgeClick={onEdgeClick}
               onPaneClick={() => {
@@ -273,6 +266,9 @@ export function GovernanceGraphView() {
                 setSelectedEdgeId(null);
               }}
               nodeTypes={nodeTypes}
+              nodesDraggable={false}
+              nodesConnectable={false}
+              elementsSelectable={false}
               fitView
               fitViewOptions={{ padding: 0.2 }}
               minZoom={0.35}

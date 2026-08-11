@@ -1,19 +1,33 @@
 # Frontend Agent Handoff
 
-**Last Updated:** Aug 10, 2026
+**Last Updated:** Aug 11, 2026
 
-## Work Completed
+## Work Completed (UAG)
 
-- Initialized Next.js 16 frontend with TypeScript, Tailwind CSS v4, App Router
-- Built shadcn/ui component library (Button, Card, Badge, Avatar, Separator)
-- Created enterprise AppShell with collapsible Sidebar and Header
-- Implemented Executive Dashboard with 8 KPI cards, traffic chart, risk donut, top policies/agents tables, threats list, LLM usage pie, MCP activity table, compliance posture
-- Added light/dark theme toggle
-- Created Zustand stores for auth and tenant context with RBAC route access map
-- Implemented rich UI for 9 mockup modules (Policy Studio, Governance Graph, LLM Router, MCP Governance, Audit Explorer, Data Protection, Compliance Center, Security Analytics, Settings)
-- Added login page with JWT auth flow and AuthGuard route protection
-- Added `lib/api.ts` fetch wrapper and `useDashboardMetrics` TanStack Query hook
-- Configured TanStack Query and next-themes providers
+- **Compatibility Center** at `/compatibility-center` — model mappings, stats, compatibility scores, provider translation policies
+- **Studio Translation Simulator** tab — preview OpenAI → canonical → translated request pipeline
+- **Dashboard UAG KPIs** — protocol translations, provider migrations, cost savings, legacy compatibility + route chart
+- **Audit Explorer translation trace** — row selection shows source protocol → governance → target provider pipeline
+- Navigation entry and RBAC route for `security_admin`
+- API client methods: `listUagMappings`, `createUagMapping`, `deleteUagMapping`, `getUagStats`, `simulateUagTranslation`, `listUagPolicies`, `createUagPolicy`
+
+## Key Files
+
+```text
+frontend/src/app/compatibility-center/page.tsx
+frontend/src/components/compatibility-center/compatibility-center-view.tsx
+frontend/src/components/studio/uag-translation-simulator.tsx
+frontend/src/components/dashboard/uag-translation-chart.tsx
+frontend/src/components/audit-explorer/translation-trace-panel.tsx
+frontend/src/lib/uag-trace.ts
+```
+
+## Next Recommended Tasks
+
+1. Policy edit/delete UI for translation policies
+2. Cost savings KPI wired to real billing data when available
+3. S6-08: strip demo credentials from production frontend bundles
+
 
 ## Files Modified
 

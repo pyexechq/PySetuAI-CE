@@ -56,6 +56,9 @@ export default function OidcCallbackPage() {
           displayName: org.display_name,
           logoUrl: org.logo_url,
           brandTagline: org.brand_tagline,
+          qaDashboardEnabled: org.qa_dashboard_enabled,
+          features: org.features,
+          featurePolicy: org.feature_policy,
         });
         router.replace("/");
       } catch (err) {

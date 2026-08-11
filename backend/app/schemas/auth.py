@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class TokenResponse(BaseModel):
@@ -20,6 +20,9 @@ class UserResponse(BaseModel):
     tenant_id: str
 
 
+from app.schemas.tenant_features import TenantFeaturePolicyResponse, TenantFeaturesResponse
+
+
 class TenantResponse(BaseModel):
     id: str
     name: str
@@ -27,6 +30,9 @@ class TenantResponse(BaseModel):
     display_name: str | None = None
     logo_url: str | None = None
     brand_tagline: str | None = None
+    qa_dashboard_enabled: bool = True
+    features: TenantFeaturesResponse = Field(default_factory=TenantFeaturesResponse)
+    feature_policy: TenantFeaturePolicyResponse = Field(default_factory=TenantFeaturePolicyResponse)
 
 
 class TenantBrandingPublicResponse(BaseModel):

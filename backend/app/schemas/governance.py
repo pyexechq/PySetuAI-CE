@@ -142,6 +142,38 @@ class PolicyRulesSaveRequest(BaseModel):
     rules: list[PolicyRuleUpdateRequest]
 
 
+class PolicyConditionHelpExample(BaseModel):
+    title: str
+    condition: str
+    description: str
+    action: str = "Block"
+    severity: str = "high"
+
+
+class PolicyRuleSuggestionResponse(BaseModel):
+    id: str
+    name: str
+    condition: str
+    action: str
+    severity: str
+    enabled: bool = True
+    rationale: str
+
+
+class PolicyAssistRequest(BaseModel):
+    goal: str = ""
+    policy_name: str | None = None
+    existing_rule_names: list[str] = []
+
+
+class PolicyAssistResponse(BaseModel):
+    summary: str
+    suggestions: list[PolicyRuleSuggestionResponse]
+    condition_help: list[PolicyConditionHelpExample]
+    ai_enhanced: bool = False
+    ai_assist_available: bool = False
+
+
 class AuditLogResponse(BaseModel):
     id: str
     timestamp: str

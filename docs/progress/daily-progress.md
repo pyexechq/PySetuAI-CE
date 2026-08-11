@@ -1,39 +1,34 @@
-# Daily Progress — Aug 10, 2026 (Update 2)
+# Daily Progress — Aug 11, 2026
 
 ## Completed Today
 
-- Alembic initial migration (`001_initial`) for tenants and users tables
-- Async SQLAlchemy session layer with FastAPI dependency injection
-- Real JWT authentication against PostgreSQL (login validates tenant + credentials)
-- Protected API routes: `/auth/me`, `/tenants/current`, `/dashboard/metrics`
-- Demo seed data: Acme tenant with admin, security, and auditor users
-- Next.js middleware for server-side route protection via auth cookie
-- Login form now requires live API (no silent demo fallback)
-- Docker entrypoint runs migrations + seed on startup
-- Verified auth flow end-to-end (login → me → dashboard metrics)
+- Sprint 6 (Phase 5) closed: Vault JWT bootstrap, OIDC admin + PKCE login, auth rate limiting
+- Platform tenant management portal (SaaS provisioning, subdomain, entry mode)
+- Product marketing site with feature heroes, legal footer, and public policy pages
+- Tenant subdomain routing (`login_only` vs `marketing_site`)
+- Git commit `224fb65` on `main` (working tree clean)
+- Planning docs updated: backlog, phase-5/6 sprints, roadmap, current sprint
 
 ## Demo Credentials
 
-| Email | Password | Role |
-|-------|----------|------|
-| admin@acme.com | demo1234 | tenant_admin |
-| security@acme.com | demo1234 | security_admin |
-| auditor@acme.com | demo1234 | auditor |
-
-Tenant slug: `acme`
+| Email | Password | Role / Notes |
+|-------|----------|--------------|
+| admin@acme.com | demo1234 | tenant_admin (tenant: acme) |
+| platform@helixguard.com | platform1234 | platform_admin (tenant: platform) |
 
 ## Blockers
 
 None
 
-## Next Actions
+## Next Development Focus
 
-1. Phase 2 backend APIs for Policy, MCP, Audit modules
-2. React Flow interactive Governance Graph
-3. Wire remaining placeholder routes (AI Gateway, Observability, Studio)
+**Phase 5 — S6-07:** OIDC IdP group → HelixGuard role mapping UI/API  
+Completed today: S6-05 JIT toggle, S6-06 production env + JWT rotation guide
 
-## Docker Deployment (Aug 10)
+See [current-sprint.md](../planning/current-sprint.md).
 
-- Full stack deployable via `docker compose --env-file .env.docker up --build -d`
-- Services: frontend :3000, backend :8001, postgres :5432, redis :6379
-- Backend runs migrations + seed on container start
+## Ops Backlog (non-blocking)
+
+- BL-038 Git remote + push
+- BL-039 pytest stabilization in CI
+- BL-046 keep progress docs current

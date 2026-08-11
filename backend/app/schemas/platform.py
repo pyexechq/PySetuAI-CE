@@ -1,5 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 
+from app.schemas.tenant_features import TenantFeaturePolicyResponse, TenantFeaturesResponse
+
 
 class PlatformConfigResponse(BaseModel):
     enabled: bool
@@ -24,6 +26,8 @@ class PlatformTenantUpdateRequest(BaseModel):
     is_active: bool | None = None
     subdomain: str | None = Field(default=None, min_length=2, max_length=100, pattern=r"^[a-z0-9]([a-z0-9-]{0,98}[a-z0-9])?$")
     entry_mode: str | None = Field(default=None, pattern=r"^(login_only|marketing_site)$")
+    features: TenantFeaturesResponse | None = None
+    feature_policy: TenantFeaturePolicyResponse | None = None
 
 
 class PlatformTenantResponse(BaseModel):
@@ -37,6 +41,8 @@ class PlatformTenantResponse(BaseModel):
     subdomain: str
     entry_mode: str
     tenant_url: str
+    features: TenantFeaturesResponse
+    feature_policy: TenantFeaturePolicyResponse
 
 
 class PlatformTenantProvisionResponse(BaseModel):

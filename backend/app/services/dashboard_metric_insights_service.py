@@ -11,9 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.dashboard import DashboardMetricInsightResponse, DashboardOverviewResponse
 from app.schemas.openai import ChatMessage
+from app.services.ai_assist_config_service import complete_ai_assist, resolve_ai_assist_config
 from app.services.dashboard_service import build_dashboard_overview
-from app.services.gemini_client import GeminiError, call_gemini
-from app.services.integration_service import resolve_gateway_config
 
 METRIC_KEYS = frozenset(
     {
@@ -307,8 +306,8 @@ async def build_metric_insight(
     snapshot = _metric_snapshot(key, overview)
     playbook = _playbook_insight(key, overview)
 
-    config = await resolve_gateway_config(db, tenant_id)
-    if not config.gemini_api_key:
+    config = await resolve_ai_assist_config(db, tenant_id)
+    if not config.available:
         return playbook
 
     prompt = (
@@ -322,24 +321,25 @@ async def build_metric_insight(
     )
 
     try:
-        text, _ = await call_gemini(
-            config.gemini_default_model,
+        text, ok = await complete_ai_assist(
+            config,
             [ChatMessage(role="user", content=prompt)],
-            config.gemini_api_key,
+            temperature=0.3,
         )
-        parsed = _parse_ai_insights(text)
-        if parsed:
-            summary, insights, actions = parsed
-            return DashboardMetricInsightResponse(
-                metric_key=key,
-                title=METRIC_TITLES[key],
-                summary=summary,
-                insights=insights,
-                recommended_actions=actions,
-                ai_generated=True,
-                generated_at=datetime.now(UTC),
-            )
-    except GeminiError:
+        if ok and text:
+            parsed = _parse_ai_insights(text)
+            if parsed:
+                summary, insights, actions = parsed
+                return DashboardMetricInsightResponse(
+                    metric_key=key,
+                    title=METRIC_TITLES[key],
+                    summary=summary,
+                    insights=insights,
+                    recommended_actions=actions,
+                    ai_generated=True,
+                    generated_at=datetime.now(UTC),
+                )
+    except Exception:
         pass
 
     return playbook

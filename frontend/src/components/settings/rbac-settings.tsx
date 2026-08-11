@@ -23,7 +23,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   manage_policies: "Manage policies",
   view_audit_logs: "View audit logs",
   manage_mcp: "Manage MCP servers",
-  use_studio: "Use Studio",
+  use_studio: "Use Governance Sandbox",
   view_compliance: "View compliance",
   manage_llm_providers: "Manage LLM providers",
 };

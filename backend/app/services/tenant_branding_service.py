@@ -5,6 +5,10 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tenant import Tenant
+from app.services.tenant_features_service import (
+    feature_flags_for_api,
+    feature_policy_for_api,
+)
 
 DEFAULT_PRODUCT_NAME = "HelixGuard AI"
 DEFAULT_TAGLINE = "Enterprise AI Control Plane"
@@ -23,6 +27,8 @@ def resolve_tagline(tenant: Tenant) -> str:
 
 
 def branding_dict(tenant: Tenant) -> dict:
+    flags = feature_flags_for_api(tenant)
+    policy = feature_policy_for_api(tenant)
     return {
         "id": str(tenant.id),
         "name": tenant.name,
@@ -32,6 +38,9 @@ def branding_dict(tenant: Tenant) -> dict:
         "brand_tagline": resolve_tagline(tenant),
         "default_product_name": DEFAULT_PRODUCT_NAME,
         "default_tagline": DEFAULT_TAGLINE,
+        "qa_dashboard_enabled": flags["qa_dashboard"],
+        "features": flags,
+        "feature_policy": policy,
     }
 
 
@@ -57,6 +66,10 @@ async def update_tenant_branding(db: AsyncSession, tenant: Tenant, data: dict) -
     if "brand_tagline" in data:
         value = data["brand_tagline"]
         tenant.brand_tagline = str(value).strip()[:255] if value and str(value).strip() else None
+    if "qa_dashboard_enabled" in data and data["qa_dashboard_enabled"] is not None:
+        raise ValueError("Module visibility is managed by the platform operator")
+    if data.get("features") is not None:
+        raise ValueError("Module visibility is managed by the platform operator")
     await db.commit()
     await db.refresh(tenant)
     return tenant

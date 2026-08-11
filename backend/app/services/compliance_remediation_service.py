@@ -10,10 +10,9 @@ from datetime import UTC, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.dashboard import DashboardComplianceControl, DashboardComplianceFramework
-from app.schemas.openai import ChatMessage
+from app.services.ai_assist_config_service import complete_ai_assist, resolve_ai_assist_config
 from app.services.compliance_snapshot_service import load_live_frameworks
-from app.services.gemini_client import GeminiError, call_gemini
-from app.services.integration_service import resolve_gateway_config
+from app.schemas.openai import ChatMessage
 
 FRAMEWORK_SLUGS: dict[str, str] = {
     "gdpr": "GDPR",
@@ -165,7 +164,7 @@ async def build_remediation_plan(
     if mode != "ai":
         raise ValueError("mode must be 'manual' or 'ai'")
 
-    config = await resolve_gateway_config(db, tenant_id)
+    ai_config = await resolve_ai_assist_config(db, tenant_id)
     prompt = (
         "You are a GRC engineer helping remediate HelixGuard AI compliance gaps. "
         "Return ONLY a JSON array of 4-6 short imperative steps (strings), no markdown.\n\n"
@@ -182,24 +181,17 @@ async def build_remediation_plan(
     steps: list[str] = []
     summary = f"AI remediation plan for {control.title} under {framework.name}."
 
-    if config.gemini_api_key:
-        try:
-            text, _ = await call_gemini(
-                config.gemini_default_model,
-                [ChatMessage(role="user", content=prompt)],
-                config.gemini_api_key,
-            )
-            parsed = _parse_ai_steps(text)
-            if parsed:
-                steps = parsed
-                ai_generated = True
-                summary = f"AI-generated remediation plan for {control.title}."
-        except GeminiError:
-            pass
+    text, ok = await complete_ai_assist(ai_config, [ChatMessage(role="user", content=prompt)], temperature=0.3)
+    if ok and text:
+        parsed = _parse_ai_steps(text)
+        if parsed:
+            steps = parsed
+            ai_generated = True
+            summary = f"AI-generated remediation plan for {control.title}."
 
     if not steps:
         steps = _template_ai_steps(control, framework)
-        summary = f"Structured remediation plan for {control.title} (LLM unavailable — using HelixGuard playbook)."
+        summary = f"Structured remediation plan for {control.title} (AI Assist unavailable — using HelixGuard playbook)."
 
     return {
         "control_id": control.id,

@@ -22,7 +22,7 @@ POLICY_RULES = [
     {
         "id": "r2",
         "name": "Block system prompt override",
-        "condition": "prompt.contains('ignore previous')",
+        "condition": "content.matches(/ignore\\s+(all\\s+)?previous\\s+instructions/i)",
         "action": "Block",
         "severity": "critical",
         "enabled": True,
@@ -138,9 +138,33 @@ JAILBREAK_RULES = [
     {
         "id": "jb-r2",
         "name": "Block instruction override",
-        "condition": "prompt.contains('ignore previous')",
+        "condition": "content.matches(/ignore\\s+(all\\s+)?previous\\s+instructions/i)",
         "action": "Block",
         "severity": "critical",
+        "enabled": True,
+    },
+    {
+        "id": "jb-r3",
+        "name": "Block system prompt reveal",
+        "condition": "content.matches(/(reveal|show|print|repeat|output|display)\\s+(me\\s+)?(your\\s+)?(system\\s+)?(prompt|instructions)/i)",
+        "action": "Block",
+        "severity": "critical",
+        "enabled": True,
+    },
+    {
+        "id": "jb-r4",
+        "name": "Block unrestricted mode",
+        "condition": "content.matches(/(developer|god|sudo|unrestricted|admin)\\s+mode/i)",
+        "action": "Block",
+        "severity": "high",
+        "enabled": True,
+    },
+    {
+        "id": "jb-r5",
+        "name": "Block safety rule bypass",
+        "condition": "content.matches(/(forget\\s+(all\\s+)?(your\\s+)?(rules|instructions|guidelines)|bypass\\s+(your\\s+)?(restrictions|rules|guardrails|filters))/i)",
+        "action": "Block",
+        "severity": "high",
         "enabled": True,
     },
 ]
