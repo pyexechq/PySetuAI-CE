@@ -16,6 +16,7 @@ from app.api.v1.notifications import router as notifications_router
 from app.api.v1.observability import router as observability_router
 from app.api.v1.oidc import router as oidc_router
 from app.api.v1.platform import router as platform_router
+from app.api.v1.qa import router as qa_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.router import router as auth_router
 from app.api.v1.security import router as security_router
@@ -79,6 +80,7 @@ app.include_router(uag_router, prefix=settings.api_prefix)
 app.include_router(users_router, prefix=settings.api_prefix)
 app.include_router(reports_router, prefix=settings.api_prefix)
 app.include_router(compliance_router, prefix=settings.api_prefix)
+app.include_router(qa_router, prefix=settings.api_prefix)
 app.include_router(security_router, prefix=settings.api_prefix)
 app.include_router(data_protection_router, prefix=settings.api_prefix)
 app.include_router(notifications_router, prefix=settings.api_prefix)

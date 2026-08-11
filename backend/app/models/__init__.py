@@ -10,6 +10,7 @@ from app.models.governance import (
     RoutingRule,
     SiemConnector,
 )
+from app.models.qa import QADefect, QATestCase, QATestCycle
 from app.models.tenant import Base, Tenant, User
 from app.models.uag import UagModelMapping, UagTranslationEvent, UagTranslationPolicy
 
@@ -27,6 +28,9 @@ __all__ = [
     "LLMProvider",
     "RoutingRule",
     "ReportDefinition",
+    "QATestCycle",
+    "QATestCase",
+    "QADefect",
     "UagModelMapping",
     "UagTranslationPolicy",
     "UagTranslationEvent",
