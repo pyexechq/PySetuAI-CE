@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     platform_portal_enabled: bool = True
     platform_tenant_slug: str = "platform"
 
+    rate_limit_enabled: bool = True
+    rate_limit_auth_requests: int = 30
+    rate_limit_login_requests: int = 10
+    rate_limit_window_seconds: int = 60
+
     vault_enabled: bool = False
     vault_addr: str = "http://localhost:8200"
     vault_auth_method: str = "token"

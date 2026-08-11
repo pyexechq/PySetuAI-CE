@@ -21,6 +21,7 @@ from app.api.v1.security import router as security_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.users import router as users_router
 from app.config import settings
+from app.core.rate_limit import AuthRateLimitMiddleware
 from app.core.security import get_jwt_secret, set_jwt_secret_override
 from app.core.telemetry import setup_telemetry
 from app.db.seed import seed_demo_data, seed_platform_admin
@@ -60,6 +61,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(AuthRateLimitMiddleware)
 
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(platform_router, prefix=settings.api_prefix)

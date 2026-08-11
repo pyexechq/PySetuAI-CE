@@ -60,6 +60,6 @@ Framework tracking for GDPR, HIPAA, SOC2, ISO27001, NIST built into Compliance C
 ## Known Security Debt
 
 - JWT secret uses dev default (KI-005)
-- No rate limiting yet
+- Redis-backed rate limiting on auth endpoints (S6-04)
 - No RBAC enforcement on API routes yet
 - No audit logging of auth events yet

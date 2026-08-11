@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   Building2,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mainNavItems } from "@/config/navigation";
@@ -17,16 +18,23 @@ import { TenantBrandingSync } from "@/components/branding/tenant-branding-sync";
 import { tenantBrandName, tenantBrandTagline, useTenantStore } from "@/stores/tenant-store";
 import { useAuthStore, canAccessRoute } from "@/stores/auth-store";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 const SETTINGS_ROOT = "/settings";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { currentTenant } = useTenantStore();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(pathname.startsWith(SETTINGS_ROOT));
+
+  function handleLogout() {
+    logout();
+    router.replace("/login");
+  }
 
   useEffect(() => {
     if (pathname.startsWith(SETTINGS_ROOT)) {
@@ -162,9 +170,9 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-border p-3">
-        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
-          <Avatar>
+      <div className="shrink-0 border-t border-border p-3">
+        <div className={cn("flex items-center gap-2", collapsed && "flex-col")}>
+          <Avatar className="shrink-0">
             <AvatarFallback className="bg-primary/20 text-primary">
               {user?.name?.charAt(0) ?? "A"}
             </AvatarFallback>
@@ -177,6 +185,21 @@ export function Sidebar() {
               </p>
             </div>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size={collapsed ? "icon" : "sm"}
+            onClick={handleLogout}
+            title="Sign out"
+            aria-label="Sign out"
+            className={cn(
+              "shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive",
+              !collapsed && "gap-1.5"
+            )}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Sign out</span>}
+          </Button>
         </div>
         <Separator className="my-3" />
         <button

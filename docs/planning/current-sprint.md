@@ -13,7 +13,7 @@
 | S6-01 | Vault production mode (JWT from Vault, status API) | Backend | Done |
 | S6-02 | OIDC provider admin CRUD (Phase 5a — no login yet) | Full Stack | Done |
 | S6-03 | OIDC login callback + JWT issuance (Phase 5b) | Backend | Done |
-| S6-04 | Production JWT guard + rate limiting spike | Backend | Planned |
+| S6-04 | Production JWT guard + rate limiting spike | Backend | Done |
 
 ## Phase 4 / Sprint 5 Recap (Complete)
 
@@ -21,6 +21,6 @@ All S5 items done — see [phase-4-sprint.md](./phase-4-sprint.md).
 
 ## Next Actions
 
-1. Rate limiting spike (S6-04)
-2. Optional: OIDC JIT provisioning toggle in Settings UI
-3. Update product roadmap milestones
+1. Optional: OIDC JIT provisioning toggle in Settings UI
+2. Update product roadmap milestones
+3. Phase 6 planning
