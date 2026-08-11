@@ -1,0 +1,12 @@
+{{- if .Values.opa.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "helixguard.fullname" . }}-opa-policies
+  labels:
+    {{- $ctx := dict "component" "opa" "Values" .Values "Chart" .Chart "Release" .Release }}
+    {{- include "helixguard.componentLabels" $ctx | nindent 4 }}
+data:
+  gateway.rego: |
+{{ .Files.Get "files/gateway.rego" | indent 4 }}
+{{- end }}

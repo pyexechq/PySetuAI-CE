@@ -1,0 +1,72 @@
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { clearAuthCookie, setAuthCookie } from "@/lib/auth-cookie";
+import { isJwtExpired } from "@/lib/session";
+
+export type UserRole =
+  | "platform_admin"
+  | "tenant_admin"
+  | "security_admin"
+  | "compliance_officer"
+  | "auditor"
+  | "developer";
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  tenantId: string;
+}
+
+interface AuthState {
+  user: AuthUser | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  login: (user: AuthUser, token: string) => void;
+  logout: () => void;
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      login: (user, token) => {
+        setAuthCookie(token);
+        set({ user, token, isAuthenticated: true });
+      },
+      logout: () => {
+        clearAuthCookie();
+        set({ user: null, token: null, isAuthenticated: false });
+      },
+    }),
+    {
+      name: "helixguard-auth",
+      onRehydrateStorage: () => (state) => {
+        if (!state?.token) return;
+        if (isJwtExpired(state.token)) {
+          useAuthStore.getState().logout();
+          return;
+        }
+        setAuthCookie(state.token);
+      },
+    }
+  )
+);
+
+export const roleRouteAccess: Record<UserRole, string[]> = {
+  platform_admin: ["*"],
+  tenant_admin: ["*"],
+  security_admin: ["/", "/ai-gateway", "/mcp-governance", "/llm-router", "/policy-studio", "/governance-graph", "/data-protection", "/observability", "/security", "/audit-explorer", "/settings"],
+  compliance_officer: ["/", "/compliance", "/audit-explorer", "/data-protection", "/reports", "/settings"],
+  auditor: ["/", "/audit-explorer", "/compliance", "/reports", "/security"],
+  developer: ["/", "/studio", "/llm-router", "/policy-studio", "/governance-graph", "/observability", "/settings"],
+};
+
+export function canAccessRoute(role: UserRole, path: string): boolean {
+  const allowed = roleRouteAccess[role];
+  if (allowed.includes("*")) return true;
+  return allowed.some((route) => path === route || path.startsWith(`${route}/`));
+}

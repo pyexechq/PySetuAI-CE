@@ -1,0 +1,45 @@
+HelixGuard AI has been deployed.
+
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+Components:
+{{- if .Values.postgresql.enabled }}
+  PostgreSQL: {{ include "helixguard.fullname" . }}-postgresql:5432
+{{- end }}
+{{- if .Values.redis.enabled }}
+  Redis: {{ include "helixguard.fullname" . }}-redis:6379
+{{- end }}
+{{- if .Values.opa.enabled }}
+  OPA: {{ include "helixguard.fullname" . }}-opa:8181
+{{- end }}
+  Backend: {{ include "helixguard.fullname" . }}-backend:8000
+  Frontend: {{ include "helixguard.fullname" . }}-frontend:3000
+
+{{- if .Values.ingress.enabled }}
+
+Ingress host: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}
+  UI:        http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}/
+  API:       http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}/api/v1
+  Gateway:   http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}/v1/chat/completions
+  Health:    http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}/health
+{{- else }}
+
+Port-forward (local access):
+  kubectl port-forward svc/{{ include "helixguard.fullname" . }}-frontend 3000:3000
+  kubectl port-forward svc/{{ include "helixguard.fullname" . }}-backend 8001:8000
+{{- end }}
+
+Build images before install:
+  docker build -t {{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }} ./backend
+  docker build -t {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }} \
+    --build-arg NEXT_PUBLIC_API_URL={{ .Values.ingress.publicApiUrl | default (printf "http://%s/api/v1" .Values.ingress.host) }} ./frontend
+
+Production checklist:
+  1. Set secrets.jwtSecretKey and postgresql.auth.password (or use secrets.existingSecret)
+  2. Set config.opaFailOpen=false
+  3. Set config.corsOrigins and config.frontendUrl to your public URL
+  4. Disable bundled PostgreSQL/Redis and point to managed services if needed
+  5. Enable ingress TLS
+
+Demo login (after seed): admin@acme.com / demo1234 / tenant acme

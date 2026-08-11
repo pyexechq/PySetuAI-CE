@@ -1,0 +1,13 @@
+apiVersion: v2
+name: helixguard
+description: HelixGuard AI — Enterprise AI Governance and Control Plane
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ai-governance
+  - llm-gateway
+  - policy-engine
+  - mcp
+maintainers:
+  - name: HelixGuard Team

@@ -1,0 +1,57 @@
+{{- if .Values.redis.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "helixguard.fullname" . }}-redis
+  labels:
+    {{- $ctx := dict "component" "redis" "Values" .Values "Chart" .Chart "Release" .Release }}
+    {{- include "helixguard.componentLabels" $ctx | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+  selector:
+    {{- $ctx := dict "component" "redis" "Values" .Values "Chart" .Chart "Release" .Release }}
+    {{- include "helixguard.componentSelectorLabels" $ctx | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "helixguard.fullname" . }}-redis
+  labels:
+    {{- $ctx := dict "component" "redis" "Values" .Values "Chart" .Chart "Release" .Release }}
+    {{- include "helixguard.componentLabels" $ctx | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- $ctx := dict "component" "redis" "Values" .Values "Chart" .Chart "Release" .Release }}
+      {{- include "helixguard.componentSelectorLabels" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- $ctx := dict "component" "redis" "Values" .Values "Chart" .Chart "Release" .Release }}
+        {{- include "helixguard.componentSelectorLabels" $ctx | nindent 8 }}
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            tcpSocket:
+              port: redis
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: redis
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+{{- end }}

@@ -1,0 +1,177 @@
+# Default values for helixguard.
+# See deploy/helm/helixguard/values-minikube.yaml for a local cluster profile.
+
+nameOverride: ""
+fullnameOverride: ""
+
+global:
+  imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  host: helixguard.local
+  tls: []
+  # Public API URL baked into the frontend image at build time.
+  publicApiUrl: http://helixguard.local/api/v1
+
+backend:
+  replicaCount: 2
+  image:
+    repository: helixguard/backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 75
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: helixguard/frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+celery:
+  worker:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  beat:
+    enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  auth:
+    username: helixguard
+    password: changeme-in-production
+    database: helixguard
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # When disabled, set external.host and credentials below.
+  external:
+    host: ""
+    port: 5432
+
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  external:
+    url: ""
+
+opa:
+  enabled: true
+  image:
+    repository: openpolicyagent/opa
+    tag: "0.68.0"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Application configuration (non-secret).
+config:
+  debug: "false"
+  corsOrigins: '["http://localhost:3000"]'
+  frontendUrl: http://localhost:3000
+  gatewayMockMode: "false"
+  ollamaEnabled: "false"
+  ollamaBaseUrl: http://host.docker.internal:11434
+  ollamaDefaultModel: llama3.2
+  geminiDefaultModel: gemini-1.5-pro
+  opaEnabled: "true"
+  opaFailOpen: "false"
+  opaPolicyPath: helixguard/gateway/decision
+  otelEnabled: "true"
+  smtpEnabled: "false"
+  smtpHost: ""
+  smtpPort: "587"
+  smtpFrom: helixguard@example.com
+  smtpUseTls: "true"
+  vaultEnabled: "false"
+  vaultAddr: ""
+  llmRebalanceScheduleEnabled: "true"
+  llmRebalanceCronHour: "2"
+  llmRebalanceCronMinute: "0"
+  airGapMode: "false"
+
+# Secrets — override in production via --set-file or external Secret manager.
+secrets:
+  create: true
+  existingSecret: ""
+  jwtSecretKey: dev-secret-change-in-production
+  openaiApiKey: ""
+  geminiApiKey: ""
+  vaultToken: ""
+
+seed:
+  enabled: true

@@ -1,0 +1,189 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: helixguard
+      POSTGRES_PASSWORD: helixguard
+      POSTGRES_DB: helixguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helixguard -d helixguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+
+  vault:
+    image: hashicorp/vault:1.17
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    command: server -dev -dev-root-token-id=dev-root-token
+    volumes:
+      - ./scripts:/scripts:ro
+    healthcheck:
+      test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  opa:
+    image: openpolicyagent/opa:0.68.0
+    ports:
+      - "8181:8181"
+    command:
+      - "run"
+      - "--server"
+      - "--log-level=info"
+      - "/policies"
+    volumes:
+      - ./deploy/opa/policies:/policies:ro
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    ports:
+      - "${BACKEND_PORT:-8001}:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://helixguard:helixguard@postgres:5432/helixguard
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: dev-secret-change-in-production
+      DEBUG: "true"
+      CORS_ORIGINS: '["http://localhost:3000"]'
+      FRONTEND_URL: http://localhost:3000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_DEFAULT_MODEL: ${GEMINI_DEFAULT_MODEL:-gemini-1.5-pro}
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-true}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_DEFAULT_MODEL: ${OLLAMA_DEFAULT_MODEL:-llama3.2}
+      SMTP_ENABLED: ${SMTP_ENABLED:-true}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-helixguard@acme.com}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      VAULT_ENABLED: ${VAULT_ENABLED:-false}
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
+      VAULT_AUTH_METHOD: ${VAULT_AUTH_METHOD:-token}
+      VAULT_TOKEN: ${VAULT_TOKEN:-dev-root-token}
+      VAULT_ROLE_ID: ${VAULT_ROLE_ID:-}
+      VAULT_SECRET_ID: ${VAULT_SECRET_ID:-}
+      VAULT_MOUNT_PATH: ${VAULT_MOUNT_PATH:-secret}
+      LLM_REBALANCE_SCHEDULE_ENABLED: ${LLM_REBALANCE_SCHEDULE_ENABLED:-true}
+      LLM_REBALANCE_CRON_HOUR: ${LLM_REBALANCE_CRON_HOUR:-2}
+      LLM_REBALANCE_CRON_MINUTE: ${LLM_REBALANCE_CRON_MINUTE:-0}
+      OPA_ENABLED: ${OPA_ENABLED:-true}
+      OPA_BASE_URL: ${OPA_BASE_URL:-http://opa:8181}
+      OPA_FAIL_OPEN: ${OPA_FAIL_OPEN:-true}
+      OIDC_ENABLED: ${OIDC_ENABLED:-true}
+      OIDC_JIT_PROVISION_DEFAULT: ${OIDC_JIT_PROVISION_DEFAULT:-false}
+      DEPLOYMENT_MODE: saas
+      PLATFORM_PORTAL_ENABLED: "true"
+      PLATFORM_TENANT_SLUG: platform
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      vault:
+        condition: service_healthy
+      opa:
+        condition: service_started
+    restart: unless-stopped
+
+  celery-worker:
+    build: ./backend
+    command: celery -A app.worker.celery_app worker --loglevel=info
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.worker.celery_app inspect ping -d celery@$$HOSTNAME -t 5 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    environment:
+      DATABASE_URL: postgresql+asyncpg://helixguard:helixguard@postgres:5432/helixguard
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: dev-secret-change-in-production
+      DEBUG: "true"
+      SMTP_ENABLED: ${SMTP_ENABLED:-true}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-helixguard@acme.com}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      LLM_REBALANCE_SCHEDULE_ENABLED: ${LLM_REBALANCE_SCHEDULE_ENABLED:-true}
+      LLM_REBALANCE_CRON_HOUR: ${LLM_REBALANCE_CRON_HOUR:-2}
+      LLM_REBALANCE_CRON_MINUTE: ${LLM_REBALANCE_CRON_MINUTE:-0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  celery-beat:
+    build: ./backend
+    command: celery -A app.worker.celery_app beat --loglevel=info
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /proc/1/cmdline && grep -q beat /proc/1/cmdline"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    environment:
+      DATABASE_URL: postgresql+asyncpg://helixguard:helixguard@postgres:5432/helixguard
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: dev-secret-change-in-production
+      DEBUG: "true"
+      LLM_REBALANCE_SCHEDULE_ENABLED: ${LLM_REBALANCE_SCHEDULE_ENABLED:-true}
+      LLM_REBALANCE_CRON_HOUR: ${LLM_REBALANCE_CRON_HOUR:-2}
+      LLM_REBALANCE_CRON_MINUTE: ${LLM_REBALANCE_CRON_MINUTE:-0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      celery-worker:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8001/api/v1}
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8001/api/v1}
+      INTERNAL_API_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

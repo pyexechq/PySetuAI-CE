@@ -1,0 +1,45 @@
+{
+  "name": "helixguard-airgap",
+  "version": "0.1.0",
+  "description": "HelixGuard AI offline installation bundle",
+  "created_at": "",
+  "images_archive": "helixguard-images.tar",
+  "sha256": "",
+  "components": {
+    "backend": "FastAPI control plane + AI gateway",
+    "frontend": "Next.js admin UI",
+    "postgresql": "16-alpine",
+    "redis": "7-alpine",
+    "opa": "0.68.0 — ABAC policy engine",
+    "ollama": "0.5.4 — local LLM inference",
+    "vault": "1.17 — dev secrets (optional)",
+    "celery": "Report scheduler + audit batch worker"
+  },
+  "requirements": {
+    "docker": ">= 24",
+    "docker_compose": ">= 2",
+    "disk_gb": 20,
+    "ram_gb": 8
+  },
+  "install": {
+    "linux": "./install.sh",
+    "windows": ".\\install.ps1"
+  },
+  "post_install": [
+    "install.ps1 / install.sh auto-imports models/ollama-models.tar.gz when bundled",
+    "Otherwise: docker compose -f docker-compose.airgap.yml exec ollama ollama pull llama3.2",
+    "Open http://localhost:3000 and sign in with admin@acme.com / demo1234"
+  ],
+  "ollama_models": {
+    "optional": true,
+    "bundle_flag_windows": ".\\deploy\\airgap\\bundle.ps1 -OllamaModels llama3.2",
+    "bundle_flag_linux": "OLLAMA_MODELS=llama3.2 ./deploy/airgap/bundle.sh 0.1.0",
+    "export_script": "deploy/airgap/export-ollama-models.ps1",
+    "import_script": "deploy/airgap/import-ollama-models.ps1"
+  },
+  "security_notes": [
+    "Change JWT_SECRET_KEY and POSTGRES_PASSWORD before production use",
+    "AIR_GAP_MODE disables cloud LLM upstreams",
+    "OPA_FAIL_OPEN is false in the air-gap compose profile"
+  ]
+}

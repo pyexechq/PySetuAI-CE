@@ -1,0 +1,97 @@
+# Hashicorp Vault Deployment Guide
+
+HelixGuard AI stores tenant API keys through a secrets abstraction (`secrets_service.py`). By default keys live in PostgreSQL; production deployments should enable Vault.
+
+## Local development (Docker Compose)
+
+The stack includes a Vault dev server:
+
+| Setting | Value |
+|---------|-------|
+| UI / API | http://localhost:8200 |
+| Root token | `dev-root-token` |
+| KV mount | `secret` (v2, enabled in dev mode) |
+
+Enable Vault-backed storage:
+
+```env
+VAULT_ENABLED=true
+VAULT_ADDR=http://vault:8200
+VAULT_AUTH_METHOD=token
+VAULT_TOKEN=dev-root-token
+VAULT_MOUNT_PATH=secret
+```
+
+For production-style auth, use AppRole instead of a root token:
+
+```env
+VAULT_ENABLED=true
+VAULT_AUTH_METHOD=approle
+VAULT_ROLE_ID=<role-id>
+VAULT_SECRET_ID=<secret-id>
+VAULT_ADDR=http://vault:8200
+VAULT_MOUNT_PATH=secret
+```
+
+Restart the backend after changing these variables. Settings → Integrations will show **Secrets backend: vault** and the auth method (`token` or `approle`).
+
+### Secret paths
+
+| Secret | Vault path |
+|--------|------------|
+| OpenAI API key | `helixguard/tenants/{tenant_id}/integrations/openai_api_key` |
+| Gemini API key | `helixguard/tenants/{tenant_id}/integrations/gemini_api_key` |
+| Provider API key | `helixguard/tenants/{tenant_id}/providers/{provider_id}/api_key` |
+
+Each secret is stored as KV v2 data: `{ "value": "<key>" }`.
+
+## Production recommendations
+
+1. **Never use dev mode** — deploy Vault in HA mode with auto-unseal (cloud KMS or HSM).
+2. **Use AppRole or Kubernetes auth** instead of long-lived root tokens for the HelixGuard backend.
+3. **Scope policies per tenant** — restrict read/write to `helixguard/tenants/{tenant_id}/*` paths.
+4. **Enable audit logging** on the Vault cluster and ship logs to your SIEM.
+5. **Rotate keys** through Vault versions; HelixGuard reads the latest version on each gateway request.
+6. **Disable DB fallback** — with `VAULT_ENABLED=true`, plaintext keys are cleared from Postgres on write.
+
+### Example policy (single tenant)
+
+```hcl
+path "secret/data/helixguard/tenants/{{tenant_id}}/*" {
+  capabilities = ["create", "read", "update", "delete"]
+}
+```
+
+### Example AppRole setup
+
+Run the helper script against the dev Vault container:
+
+```bash
+docker compose exec vault sh -c "VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=dev-root-token sh /scripts/vault-setup-approle.sh"
+```
+
+Or configure manually:
+
+```bash
+vault auth enable approle
+vault write auth/approle/role/helixguard-api token_policies="helixguard-secrets"
+vault read auth/approle/role/helixguard-api/role-id
+vault write -f auth/approle/role/helixguard-api/secret-id
+```
+
+Configure the backend with `VAULT_AUTH_METHOD=approle`, `VAULT_ROLE_ID`, and `VAULT_SECRET_ID`. The backend caches AppRole tokens and refreshes them before lease expiry.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `Vault authentication failed` | Verify token/AppRole credentials and `VAULT_ADDR` reachability from backend container |
+| `hvac is not installed` | Rebuild backend image after pulling latest `requirements.txt` |
+| Keys still in Postgres | Confirm `VAULT_ENABLED=true` and save keys again from Settings or LLM Router |
+| Settings shows `database` backend | Vault env vars not loaded — check `.env.docker` or compose environment |
+
+## Related
+
+- BL-033 in `docs/planning/backlog.md`
+- `backend/app/services/secrets_service.py`
+- `docs/architecture/security-architecture.md`

@@ -1,0 +1,32 @@
+# Minikube / local Kubernetes profile
+ingress:
+  enabled: true
+  className: nginx
+  host: helixguard.local
+  publicApiUrl: http://helixguard.local/api/v1
+
+backend:
+  replicaCount: 1
+  image:
+    pullPolicy: IfNotPresent
+
+frontend:
+  replicaCount: 1
+
+celery:
+  worker:
+    replicaCount: 1
+
+postgresql:
+  persistence:
+    size: 5Gi
+
+config:
+  debug: "true"
+  corsOrigins: '["http://helixguard.local"]'
+  frontendUrl: http://helixguard.local
+  opaFailOpen: "true"
+  gatewayMockMode: "true"
+
+secrets:
+  jwtSecretKey: minikube-dev-secret

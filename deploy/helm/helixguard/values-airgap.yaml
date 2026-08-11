@@ -1,0 +1,32 @@
+# Air-gapped Kubernetes profile — local Ollama, no cloud LLM keys, console telemetry only.
+
+ingress:
+  enabled: true
+  host: helixguard.airgap.local
+  publicApiUrl: http://helixguard.airgap.local/api/v1
+
+backend:
+  replicaCount: 1
+
+frontend:
+  replicaCount: 1
+
+config:
+  debug: "false"
+  corsOrigins: '["http://helixguard.airgap.local"]'
+  frontendUrl: http://helixguard.airgap.local
+  gatewayMockMode: "false"
+  ollamaEnabled: "true"
+  ollamaBaseUrl: http://ollama:11434
+  opaEnabled: "true"
+  opaFailOpen: "false"
+  otelEnabled: "true"
+  smtpEnabled: "false"
+  vaultEnabled: "false"
+  airGapMode: "true"
+
+secrets:
+  jwtSecretKey: airgap-change-me-before-production
+
+# Deploy Ollama alongside the chart (add as separate manifest or subchart in production).
+# See deploy/airgap/README.md for bundling Ollama models offline.
