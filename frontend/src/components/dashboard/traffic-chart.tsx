@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   LineChart,
   Line,
@@ -16,8 +17,11 @@ import type { ApiDashboardOverview } from "@/lib/api";
 export function TrafficChart({ data }: { data: ApiDashboardOverview["traffic"] }) {
   return (
     <Card className="border-border/60 bg-card/50">
-      <CardHeader>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
         <CardTitle>AI Traffic Overview</CardTitle>
+        <Link href="/monitoring" className="text-xs text-primary hover:underline">
+          Full ops view →
+        </Link>
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (

@@ -129,6 +129,34 @@ export interface ApiComplianceSnapshotDetail extends ApiComplianceSnapshotSummar
   frameworks: ApiDashboardOverview["compliance_frameworks"];
 }
 
+export interface ApiComplianceReevaluateResponse {
+  framework: ApiDashboardOverview["compliance_frameworks"][number];
+  evaluated_at: string;
+}
+
+export interface ApiComplianceRemediationResponse {
+  control_id: string;
+  framework_name: string;
+  framework_slug: string;
+  mode: "manual" | "ai";
+  summary: string;
+  steps: string[];
+  manual_route?: string | null;
+  ai_generated: boolean;
+  estimated_effort?: string | null;
+  generated_at: string;
+}
+
+export interface ApiDashboardMetricInsight {
+  metric_key: string;
+  title: string;
+  summary: string;
+  insights: string[];
+  recommended_actions: string[];
+  ai_generated: boolean;
+  generated_at: string;
+}
+
 export interface ApiDashboardOverview {
   metrics: ApiDashboardMetrics;
   traffic: { date: string; total_requests: number; blocked_requests: number }[];
@@ -149,6 +177,13 @@ export interface ApiDashboardOverview {
     control_items?: ApiComplianceControl[];
   }[];
   security_trends: { date: string; blocked: number; allowed: number; under_review: number }[];
+  uag?: {
+    protocol_translations: number;
+    provider_migrations: number;
+    cost_savings_usd: number;
+    legacy_app_compatibility: number;
+    route_breakdown: { route: string; count: number }[];
+  };
 }
 
 export interface ApiUser {
@@ -213,6 +248,19 @@ export interface ApiPublicSiteConfig {
   tenant_url: string;
 }
 
+export interface ApiTenantFeatures {
+  qa_dashboard: boolean;
+  compatibility_center: boolean;
+  governance_sandbox: boolean;
+  reports: boolean;
+}
+
+export interface ApiTenantFeaturePolicyEntry {
+  tenant_editable: boolean;
+}
+
+export type ApiTenantFeaturePolicy = Record<keyof ApiTenantFeatures, ApiTenantFeaturePolicyEntry>;
+
 export interface ApiPlatformTenant {
   id: string;
   name: string;
@@ -224,6 +272,8 @@ export interface ApiPlatformTenant {
   subdomain: string;
   entry_mode: "login_only" | "marketing_site";
   tenant_url: string;
+  features: ApiTenantFeatures;
+  feature_policy: ApiTenantFeaturePolicy;
 }
 
 export interface ApiPlatformTenantCreateRequest {
@@ -243,6 +293,8 @@ export interface ApiPlatformTenantUpdateRequest {
   is_active?: boolean;
   subdomain?: string;
   entry_mode?: "login_only" | "marketing_site";
+  features?: Partial<ApiTenantFeatures>;
+  feature_policy?: Partial<ApiTenantFeaturePolicy>;
 }
 
 export interface ApiPlatformTenantProvisionResult {
@@ -281,9 +333,20 @@ export const api = {
       display_name?: string;
       logo_url?: string;
       brand_tagline?: string;
+      qa_dashboard_enabled?: boolean;
+      features?: Partial<ApiTenantFeatures>;
     }
   ) =>
     apiFetch<ApiOrganizationSettings>("/settings/organization", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  getIdentitySettings: (token: string) =>
+    apiFetch<ApiIdentitySettings>("/settings/identity", {}, token),
+
+  updateIdentitySettings: (token: string, body: { oidc_jit_provision_enabled?: boolean }) =>
+    apiFetch<ApiIdentitySettings>("/settings/identity", {
       method: "PUT",
       body: JSON.stringify(body),
     }, token),
@@ -334,8 +397,85 @@ export const api = {
   createOidcProvider: (token: string, body: ApiOidcProviderCreateRequest) =>
     apiFetch<ApiOidcProvider>("/settings/oidc", { method: "POST", body: JSON.stringify(body) }, token),
 
+  updateOidcProvider: (token: string, providerId: string, body: ApiOidcProviderUpdateRequest) =>
+    apiFetch<ApiOidcProvider>(`/settings/oidc/${providerId}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
   deleteOidcProvider: (token: string, providerId: string) =>
     apiFetch<void>(`/settings/oidc/${providerId}`, { method: "DELETE" }, token),
+
+  listUagMappings: (token: string) => apiFetch<ApiUagMapping[]>("/uag/mappings", {}, token),
+
+  createUagMapping: (
+    token: string,
+    body: {
+      requested_model: string;
+      actual_model: string;
+      target_provider: string;
+      emulate_protocol?: string;
+      enabled?: boolean;
+    }
+  ) => apiFetch<ApiUagMapping>("/uag/mappings", { method: "POST", body: JSON.stringify(body) }, token),
+
+  updateUagMapping: (
+    token: string,
+    mappingId: string,
+    body: {
+      requested_model?: string;
+      actual_model?: string;
+      target_provider?: string;
+      emulate_protocol?: string;
+      enabled?: boolean;
+    }
+  ) =>
+    apiFetch<ApiUagMapping>(`/uag/mappings/${mappingId}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  deleteUagMapping: (token: string, mappingId: string) =>
+    apiFetch<void>(`/uag/mappings/${mappingId}`, { method: "DELETE" }, token),
+
+  getUagStats: (token: string) => apiFetch<ApiUagStats>("/uag/stats", {}, token),
+
+  simulateUagTranslation: (
+    token: string,
+    body: { model: string; messages: { role: string; content: string }[]; routing_context?: Record<string, unknown> }
+  ) => apiFetch<ApiUagSimulateResult>("/uag/simulate", { method: "POST", body: JSON.stringify(body) }, token),
+
+  listUagPolicies: (token: string) => apiFetch<ApiUagPolicy[]>("/uag/policies", {}, token),
+
+  createUagPolicy: (
+    token: string,
+    body: {
+      name: string;
+      conditions: Record<string, string>;
+      actions: Record<string, string>;
+      priority?: number;
+      enabled?: boolean;
+    }
+  ) => apiFetch<ApiUagPolicy>("/uag/policies", { method: "POST", body: JSON.stringify(body) }, token),
+
+  updateUagPolicy: (
+    token: string,
+    policyId: string,
+    body: {
+      name?: string;
+      conditions?: Record<string, string>;
+      actions?: Record<string, string>;
+      priority?: number;
+      enabled?: boolean;
+    }
+  ) =>
+    apiFetch<ApiUagPolicy>(`/uag/policies/${policyId}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  deleteUagPolicy: (token: string, policyId: string) =>
+    apiFetch<void>(`/uag/policies/${policyId}`, { method: "DELETE" }, token),
 
   getVaultStatus: (token: string) =>
     apiFetch<ApiVaultStatus>("/security/vault/status", {}, token),
@@ -363,6 +503,9 @@ export const api = {
 
   getDashboardOverview: (token: string) =>
     apiFetch<ApiDashboardOverview>("/dashboard/overview", {}, token),
+
+  getDashboardMetricInsight: (token: string, metricKey: string) =>
+    apiFetch<ApiDashboardMetricInsight>(`/dashboard/metrics/${metricKey}/insights`, {}, token),
 
   getNotifications: (token: string, readIds: string[] = [], limit = 30) => {
     const query = new URLSearchParams({ limit: String(limit) });
@@ -501,6 +644,22 @@ export const api = {
   getComplianceSnapshot: (token: string, snapshotId: string) =>
     apiFetch<ApiComplianceSnapshotDetail>(`/compliance/snapshots/${snapshotId}`, {}, token),
 
+  reevaluateComplianceFramework: (token: string, frameworkKey: string) =>
+    apiFetch<ApiComplianceReevaluateResponse>(
+      `/compliance/frameworks/${encodeURIComponent(frameworkKey)}/reevaluate`,
+      { method: "POST" },
+      token
+    ),
+
+  generateComplianceRemediation: (
+    token: string,
+    body: { framework_name: string; control_id: string; mode: "manual" | "ai" }
+  ) =>
+    apiFetch<ApiComplianceRemediationResponse>("/compliance/remediation", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
   getLlmProviders: (token: string) =>
     apiFetch<ApiRoutingModel[]>("/llm/providers", {}, token),
 
@@ -565,7 +724,7 @@ export const api = {
     }
   ) =>
     apiFetch<ChatCompletionResponse>(
-      "/v1/chat/completions",
+      "/chat/completions",
       {
         method: "POST",
         body: JSON.stringify({
@@ -591,7 +750,7 @@ export const api = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     };
-    const response = await fetch(`${API_BASE}/v1/chat/completions`, {
+    const response = await fetch(`${API_BASE}/chat/completions`, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -812,6 +971,73 @@ export const api = {
 
     throw new ApiError("Report download timed out", 504);
   },
+
+  getQAOverview: (token: string) =>
+    apiFetch<ApiQAOverview>("/qa/overview", {}, token),
+
+  getQACycles: (token: string) =>
+    apiFetch<ApiQATestCycleSummary[]>("/qa/cycles", {}, token),
+
+  createQACycle: (
+    token: string,
+    body: { name: string; import_baseline?: boolean; import_baseline_defects?: boolean }
+  ) =>
+    apiFetch<ApiQATestCycleDetail>("/qa/cycles", { method: "POST", body: JSON.stringify(body) }, token),
+
+  getQACycle: (token: string, cycleId: string) =>
+    apiFetch<ApiQATestCycleDetail>(`/qa/cycles/${cycleId}`, {}, token),
+
+  updateQACycle: (
+    token: string,
+    cycleId: string,
+    body: { status?: string; release_decision?: string; notes?: string }
+  ) =>
+    apiFetch<ApiQATestCycleSummary>(`/qa/cycles/${cycleId}`, { method: "PATCH", body: JSON.stringify(body) }, token),
+
+  updateQATestCase: (token: string, caseId: string, body: { status: string; notes?: string }) =>
+    apiFetch<ApiQATestCase>(`/qa/test-cases/${caseId}`, { method: "PATCH", body: JSON.stringify(body) }, token),
+
+  getQADefects: (token: string, params?: { cycle_id?: string; status?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.cycle_id) query.set("cycle_id", params.cycle_id);
+    if (params?.status) query.set("status", params.status);
+    const qs = query.toString();
+    return apiFetch<ApiQADefect[]>(`/qa/defects${qs ? `?${qs}` : ""}`, {}, token);
+  },
+
+  createQADefect: (
+    token: string,
+    body: {
+      defect_code: string;
+      severity: string;
+      module: string;
+      title: string;
+      description?: string;
+      cycle_id?: string;
+      linked_case_id?: string;
+    }
+  ) =>
+    apiFetch<ApiQADefect>("/qa/defects", { method: "POST", body: JSON.stringify(body) }, token),
+
+  updateQADefect: (
+    token: string,
+    defectId: string,
+    body: { severity?: string; title?: string; description?: string; status?: string }
+  ) =>
+    apiFetch<ApiQADefect>(`/qa/defects/${defectId}`, { method: "PATCH", body: JSON.stringify(body) }, token),
+
+  getNextDefectCode: (token: string) =>
+    apiFetch<{ defect_code: string }>("/qa/next-defect-code", {}, token),
+
+  runQAAutomatedTests: (token: string, cycleId: string, scope: "all" | "failed" = "all") =>
+    apiFetch<ApiQAAutomatedRunResponse>(
+      `/qa/cycles/${cycleId}/run-automated?scope=${scope}`,
+      { method: "POST" },
+      token
+    ),
+
+  fileQADefectFromCase: (token: string, caseId: string) =>
+    apiFetch<ApiQAFileDefectResponse>(`/qa/test-cases/${caseId}/file-defect`, { method: "POST" }, token),
 };
 
 export interface ApiMcpServer {
@@ -1387,6 +1613,14 @@ export interface ApiOrganizationSettings {
   brand_tagline: string;
   default_product_name: string;
   default_tagline: string;
+  qa_dashboard_enabled: boolean;
+  features: ApiTenantFeatures;
+  feature_policy: ApiTenantFeaturePolicy;
+}
+
+export interface ApiIdentitySettings {
+  oidc_jit_provision_enabled: boolean;
+  platform_jit_default: boolean;
 }
 
 export interface ApiPublicTenantBranding {
@@ -1435,6 +1669,52 @@ export interface ApiOidcProviderCreateRequest {
   role_claim?: string;
   role_mapping?: Record<string, string>;
   enabled?: boolean;
+}
+
+export interface ApiOidcProviderUpdateRequest {
+  name?: string;
+  issuer_url?: string;
+  client_id?: string;
+  client_secret?: string;
+  scopes?: string;
+  redirect_uri?: string;
+  role_claim?: string;
+  role_mapping?: Record<string, string>;
+  enabled?: boolean;
+}
+
+export interface ApiUagMapping {
+  id: string;
+  requested_model: string;
+  actual_model: string;
+  target_provider: string;
+  emulate_protocol: string;
+  enabled: boolean;
+}
+
+export interface ApiUagStats {
+  total_translations: number;
+  success_rate: number;
+  failed_translations: number;
+  avg_latency_ms: number;
+  compatibility_scores: Record<string, number>;
+  route_breakdown: Record<string, number>;
+}
+
+export interface ApiUagSimulateResult {
+  original_request: Record<string, unknown>;
+  canonical: Record<string, unknown>;
+  translated_request: Record<string, unknown>;
+  trace: Record<string, unknown>;
+}
+
+export interface ApiUagPolicy {
+  id: string;
+  name: string;
+  conditions: Record<string, string>;
+  actions: Record<string, string>;
+  priority: number;
+  enabled: boolean;
 }
 
 export interface ApiVaultStatus {
@@ -1572,4 +1852,86 @@ export interface ApiReportSchedulerStatus {
 
 export interface ApiReportSchedulerRunDueResponse {
   enqueued: number;
+}
+
+export interface ApiQATestCase {
+  id: string;
+  cycle_id: string;
+  case_id: string;
+  module: string;
+  title: string;
+  priority: string;
+  method: string;
+  status: string;
+  notes: string;
+  automated_key: string | null;
+  tested_by_name: string;
+  tested_at: string | null;
+  remediation_hint?: string | null;
+  linked_defect_code?: string | null;
+  suggested_severity?: string | null;
+}
+
+export interface ApiQADefect {
+  id: string;
+  cycle_id: string | null;
+  linked_case_id: string | null;
+  linked_case_code: string | null;
+  defect_code: string;
+  severity: string;
+  module: string;
+  title: string;
+  description: string;
+  status: string;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiQATestCycleSummary {
+  id: string;
+  name: string;
+  status: string;
+  release_decision: string;
+  notes: string;
+  started_at: string | null;
+  completed_at: string | null;
+  created_by_name: string;
+  created_at: string;
+  total_cases: number;
+  passed_cases: number;
+  failed_cases: number;
+  blocked_cases: number;
+  not_tested_cases: number;
+}
+
+export interface ApiQATestCycleDetail extends ApiQATestCycleSummary {
+  cases: ApiQATestCase[];
+}
+
+export interface ApiQAOverview {
+  active_cycle: ApiQATestCycleSummary | null;
+  total_cycles: number;
+  total_open_defects: number;
+  s1_open_defects: number;
+  s2_open_defects: number;
+  overall_pass_rate: number;
+  modules_in_scope: string[];
+  release_decision: string;
+}
+
+export interface ApiQAAutomatedRunResponse {
+  pytest_exit_code: number;
+  tests_run: number;
+  tests_passed: number;
+  tests_failed: number;
+  cases_updated: number;
+  tests_targeted: number;
+  scope: string;
+  output_tail: string;
+}
+
+export interface ApiQAFileDefectResponse {
+  defect: ApiQADefect;
+  created: boolean;
 }

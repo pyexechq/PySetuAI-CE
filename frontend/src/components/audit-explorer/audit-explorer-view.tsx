@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { GridApi } from "ag-grid-community";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ import { formatDateRangeLabel } from "@/lib/date-range";
 import { useDateRangeStore } from "@/stores/date-range-store";
 import { Download, Pause, Play, Radio, Search, Filter } from "lucide-react";
 import { SiemConnectorsPanel } from "@/components/audit-explorer/siem-connectors-panel";
+import { TranslationTracePanel } from "@/components/audit-explorer/translation-trace-panel";
 
 const AuditLogGrid = dynamic(
   () => import("@/components/audit-explorer/audit-log-grid").then((mod) => mod.AuditLogGrid),
@@ -30,10 +32,12 @@ const AuditLogGrid = dynamic(
 
 export function AuditExplorerView() {
   const token = useAuthStore((s) => s.token);
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [live, setLive] = useState(true);
   const [gridApi, setGridApi] = useState<GridApi<AuditLogEntry> | null>(null);
+  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const from = useDateRangeStore((s) => s.from);
   const to = useDateRangeStore((s) => s.to);
   const { data: logs = [], recentIds, isFetching, dataUpdatedAt } = useAuditLogs(
@@ -50,6 +54,13 @@ export function AuditExplorerView() {
   });
 
   const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
+
+  useEffect(() => {
+    const q = searchParams.get("q")?.trim();
+    if (q) {
+      setSearch(q);
+    }
+  }, [searchParams]);
 
   const handleExport = useCallback(() => {
     gridApi?.exportDataAsCsv({
@@ -127,6 +138,7 @@ export function AuditExplorerView() {
             recentIds={recentIds}
             quickFilterText={search}
             onGridReady={setGridApi}
+            onRowSelect={setSelectedLog}
           />
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
             <span>
@@ -140,6 +152,8 @@ export function AuditExplorerView() {
           </div>
         </CardContent>
       </Card>
+
+      <TranslationTracePanel entry={selectedLog} />
 
       <SiemConnectorsPanel />
     </div>

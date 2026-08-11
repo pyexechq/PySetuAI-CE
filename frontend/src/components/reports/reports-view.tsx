@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   CalendarClock,
   Download,
@@ -11,19 +11,18 @@ import {
   Pencil,
   Play,
   Plus,
+  Radar,
   ShieldAlert,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReportManagementModals } from "@/components/reports/report-management-modals";
-import { EMPTY_DASHBOARD_OVERVIEW, mapSecurityTrends, useDashboardOverview } from "@/hooks/use-dashboard-overview";
 import { useReports } from "@/hooks/use-reports";
 import type { ReportCatalogEntry } from "@/lib/types/domain";
 import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 
 const statusVariant = {
@@ -57,9 +56,6 @@ export function ReportsView() {
   const user = useAuthStore((s) => s.user);
   const canEdit = user?.role === "tenant_admin" || user?.role === "security_admin";
   const { summary, catalog, templates, invalidateCatalog } = useReports();
-  const { data: overview } = useDashboardOverview();
-  const securityTrends = mapSecurityTrends(overview ?? EMPTY_DASHBOARD_OVERVIEW);
-  const complianceFrameworks = overview?.compliance_frameworks ?? EMPTY_DASHBOARD_OVERVIEW.compliance_frameworks;
 
   const [downloading, setDownloading] = useState<string | null>(null);
   const [schedulerMessage, setSchedulerMessage] = useState<string | null>(null);
@@ -137,6 +133,30 @@ export function ReportsView() {
           )}
         </div>
       </div>
+
+      <Card className="border-border/60 bg-card/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Radar className="h-4 w-4" />
+            Live analytics
+          </CardTitle>
+          <CardDescription>
+            Interactive charts and remediation workflows live elsewhere. Reports here are exports and schedules — run
+            or download to capture a point-in-time snapshot.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/monitoring">Monitoring overview</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/monitoring?tab=security">Security analytics</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/compliance">Compliance Center</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {canEdit && (
         <Card className="border-border/60 bg-card/50">
@@ -221,41 +241,16 @@ export function ReportsView() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="border-border/60 bg-card/50 lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Security Activity Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {securityTrends.length === 0 ? (
-              <p className="py-16 text-center text-sm text-muted-foreground">No security activity in this period</p>
-            ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={securityTrends}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#111827",
-                    border: "1px solid #334155",
-                    borderRadius: 8,
-                  }}
-                />
-                <Bar dataKey="allowed" fill="#22c55e" name="Allowed" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="blocked" fill="#ef4444" name="Blocked" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
+      {summary.top_risks.length > 0 && (
         <Card className="border-border/60 bg-card/50">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <ShieldAlert className="h-4 w-4" />
-              Top Risks
+              Executive risk highlights
             </CardTitle>
+            <CardDescription>
+              Summary for this reporting period — detailed trends are in Monitoring.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {summary.top_risks.map((risk, i) => (
@@ -267,11 +262,14 @@ export function ReportsView() {
               </div>
             ))}
             <p className="text-xs text-muted-foreground">
-              Frameworks: {summary.frameworks_compliant}/{summary.frameworks_total} compliant
+              Frameworks: {summary.frameworks_compliant}/{summary.frameworks_total} compliant ·{" "}
+              <Link href="/compliance" className="text-primary hover:underline">
+                Open Compliance Center
+              </Link>
             </p>
           </CardContent>
         </Card>
-      </div>
+      )}
 
       <Card className="border-border/60 bg-card/50">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
@@ -372,22 +370,6 @@ export function ReportsView() {
           )}
         </CardContent>
       </Card>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {complianceFrameworks.map((fw) => (
-          <Card key={fw.name} className="border-border/60 bg-card/50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <p className="font-medium">{fw.name}</p>
-                <Badge variant={fw.status === "compliant" ? "success" : "warning"}>{fw.score}%</Badge>
-              </div>
-              <p className={cn("mt-1 text-xs capitalize text-muted-foreground", fw.status === "at-risk" && "text-red-400")}>
-                {fw.passed}/{fw.controls} controls passed
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       <ReportManagementModals
         key={`${modalMode ?? "closed"}-${activeReport?.id ?? "new"}`}

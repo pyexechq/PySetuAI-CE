@@ -2,9 +2,22 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Beaker, Loader2, Plug, ScanSearch, Send, Shield, Sparkles } from "lucide-react";
-import { GatewayTester } from "@/components/ai-gateway/gateway-tester";
-import { SecurityScanPanel, SecurityScanResults } from "@/components/studio/security-scan-panel";
+import Link from "next/link";
+import {
+  ArrowRight,
+  ArrowRightLeft,
+  Beaker,
+  ExternalLink,
+  Loader2,
+  Plug,
+  Radar,
+  ScanSearch,
+  Send,
+  Shield,
+  Sparkles,
+} from "lucide-react";
+import { UagTranslationSimulator } from "@/components/studio/uag-translation-simulator";
+import { SecurityScanResults } from "@/components/studio/security-scan-panel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +30,7 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { id: "prompt", label: "Prompt Lab", icon: Sparkles },
+  { id: "translation", label: "Translation Simulator", icon: ArrowRightLeft },
   { id: "policy", label: "Policy Sandbox", icon: Shield },
   { id: "mcp", label: "MCP Simulator", icon: Plug },
 ] as const;
@@ -76,16 +90,24 @@ export function StudioView() {
 
       {tab === "prompt" && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Beaker className="h-4 w-4" />
-            Pre-scan content with the live threat engine, then send through the AI Gateway.
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Beaker className="h-4 w-4" />
+              Pre-scan prompts here, then run live completions on the AI Gateway.
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Link href="/monitoring?tab=security">
+                <Radar className="h-3.5 w-3.5" />
+                Full threat scanner
+              </Link>
+            </Button>
           </div>
 
           <Card className="border-border/60 bg-card/50">
             <CardHeader>
               <CardTitle className="text-base">Pre-flight security scan</CardTitle>
               <CardDescription>
-                Uses <code className="text-xs">POST /security/scan</code> — same rules as the gateway ingress pipeline.
+                Quick scan before send — same engine as gateway ingress. For OPA trends and history, use Monitoring.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -128,24 +150,61 @@ export function StudioView() {
             </CardContent>
           </Card>
 
-          <GatewayTester />
+          <Card className="border-border/60 bg-card/50">
+            <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+              <div>
+                <p className="font-medium">Live gateway test</p>
+                <p className="text-sm text-muted-foreground">
+                  Send completions through ingress endpoints with the interactive tester on AI Gateway.
+                </p>
+              </div>
+              <Button className="gap-2" asChild>
+                <Link href="/ai-gateway">
+                  Open AI Gateway
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       )}
+
+      {tab === "translation" && <UagTranslationSimulator />}
 
       {tab === "policy" && (
         <div className="grid gap-4 lg:grid-cols-2">
           <Card className="border-border/60 bg-card/50">
             <CardHeader>
               <CardTitle>Policy Dry Run</CardTitle>
-              <CardDescription>Live scan via injection detection + DLP threat rules (not client-side regex).</CardDescription>
+              <CardDescription>
+                Draft content to evaluate against tenant rules. Run the full threat engine in Monitoring.
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <SecurityScanPanel
-                content={policyInput}
-                onContentChange={setPolicyInput}
-                presets={policyPresets}
-                scanLabel="Evaluate with threat engine"
+            <CardContent className="space-y-4">
+              <textarea
+                value={policyInput}
+                onChange={(e) => setPolicyInput(e.target.value)}
+                rows={5}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus-visible:ring-2"
               />
+              <div className="flex flex-wrap gap-2">
+                {policyPresets.map((item) => (
+                  <Button
+                    key={item.label}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPolicyInput(item.content)}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+              <Button variant="secondary" className="gap-2" asChild>
+                <Link href="/monitoring?tab=security">
+                  <Radar className="h-4 w-4" />
+                  Evaluate in Monitoring
+                </Link>
+              </Button>
             </CardContent>
           </Card>
 
@@ -187,6 +246,7 @@ export function StudioView() {
           <Card className="border-border/60 bg-card/50">
             <CardHeader>
               <CardTitle>MCP Tool Simulator</CardTitle>
+              <CardDescription>Mock tool calls against registered servers — inventory lives in MCP Governance.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -225,33 +285,21 @@ export function StudioView() {
 
           <Card className="border-border/60 bg-card/50">
             <CardHeader>
-              <CardTitle>Registered Servers</CardTitle>
+              <CardTitle>Server inventory</CardTitle>
+              <CardDescription>
+                Health, tools, and call metrics are maintained in MCP Governance — not duplicated here.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {mcpServers.map((server) => (
-                <div
-                  key={server.id}
-                  className="flex items-center justify-between rounded-md border border-border/60 p-3 text-sm"
-                >
-                  <div>
-                    <p className="font-medium">{server.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {server.category} · {server.tools} tools · {server.totalCalls.toLocaleString()} calls
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      server.status === "healthy"
-                        ? "success"
-                        : server.status === "degraded"
-                          ? "warning"
-                          : "destructive"
-                    }
-                  >
-                    {server.status}
-                  </Badge>
-                </div>
-              ))}
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {mcpServers.length} server{mcpServers.length === 1 ? "" : "s"} available for simulation.
+              </p>
+              <Button variant="outline" className="gap-2" asChild>
+                <Link href="/mcp-governance">
+                  <ExternalLink className="h-4 w-4" />
+                  Open MCP Governance
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </div>

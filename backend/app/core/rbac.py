@@ -67,7 +67,7 @@ PERMISSION_LABELS: dict[str, str] = {
     VIEW_AUDIT_LOGS: "View audit logs",
     INGEST_AUDIT_LOGS: "Ingest audit logs",
     MANAGE_MCP: "Manage MCP servers",
-    USE_STUDIO: "Use Studio",
+    USE_STUDIO: "Use Governance Sandbox",
     VIEW_COMPLIANCE: "View compliance",
     MANAGE_LLM_PROVIDERS: "Manage LLM providers",
 }

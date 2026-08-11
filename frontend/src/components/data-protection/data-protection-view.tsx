@@ -1,8 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { LayoutDashboard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { DataResidencyMap } from "@/components/data-protection/data-residency-map";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
@@ -22,7 +25,20 @@ export function DataProtectionView() {
   const total = dataClassifications.reduce((sum, d) => sum + d.count, 0);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+        <p className="text-sm text-muted-foreground">
+          Classification inventory and residency map — executive PII redaction KPIs live on the Dashboard.
+        </p>
+        <Button variant="outline" size="sm" className="gap-1.5" asChild>
+          <Link href="/">
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            Dashboard KPIs
+          </Link>
+        </Button>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
       <Card className="border-border/60 bg-card/50">
         <CardHeader>
           <CardTitle>Classification Inventory</CardTitle>
@@ -90,6 +106,7 @@ export function DataProtectionView() {
           </p>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

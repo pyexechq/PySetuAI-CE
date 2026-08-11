@@ -3,14 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Shield, CheckCircle2, Activity, Copy, Check, Settings2 } from "lucide-react";
+import { ArrowRightLeft, Shield, CheckCircle2, Copy, Check, Settings2, Radar } from "lucide-react";
 import { GatewayTester } from "@/components/ai-gateway/gateway-tester";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { API_BASE, api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
-import { formatNumber } from "@/lib/utils";
 
 function gatewayHttpMethod(endpoint: string): "GET" | "POST" {
   return endpoint === "/v1/models" ? "GET" : "POST";
@@ -77,35 +76,25 @@ export function AiGatewayView() {
       {isLoading && (
         <p className="text-sm text-muted-foreground">Loading gateway status…</p>
       )}
-      <div className="grid gap-4 sm:grid-cols-4">
+
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card className="border-border/60 bg-card/50">
           <CardContent className="flex items-center gap-3 p-5">
             <div className="rounded-lg bg-emerald-500/10 p-2">
-              <Activity className="h-5 w-5 text-emerald-400" />
+              <Shield className="h-5 w-5 text-emerald-400" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Gateway Status</p>
+              <p className="text-sm text-muted-foreground">Gateway status</p>
               <p className="font-semibold capitalize">{status.status}</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-border/60 bg-card/50">
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground">Requests Today</p>
-            <p className="text-2xl font-bold">{formatNumber(status.requests_today)}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/60 bg-card/50">
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground">Blocked Today</p>
-            <p className="text-2xl font-bold text-red-400">{formatNumber(status.blocked_today)}</p>
-          </CardContent>
-        </Card>
+
         <Card className="border-border/60 bg-card/50">
           <CardContent className="p-5">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="text-sm text-muted-foreground">Compatibility</p>
+                <p className="text-sm text-muted-foreground">Active upstream</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {status.openai_compatible && <Badge variant="success">OpenAI</Badge>}
                   {status.gemini_compatible && <Badge variant="secondary">Gemini</Badge>}
@@ -131,6 +120,37 @@ export function AiGatewayView() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="border-border/60 bg-card/50">
+          <CardContent className="space-y-3 p-5">
+            <p className="text-sm text-muted-foreground">Request volume & blocks</p>
+            <p className="text-xs text-muted-foreground">
+              Live traffic KPIs and trends are in Monitoring — this page focuses on ingress endpoints and testing.
+            </p>
+            <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Link href="/monitoring">
+                <Radar className="h-3.5 w-3.5" />
+                Open Monitoring
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex flex-wrap gap-2 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+        <span className="text-xs text-muted-foreground">Related:</span>
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" asChild>
+          <Link href="/settings/uag">
+            <ArrowRightLeft className="h-3.5 w-3.5" />
+            UAG mappings & policies
+          </Link>
+        </Button>
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" asChild>
+          <Link href="/compatibility-center">Compatibility Center</Link>
+        </Button>
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" asChild>
+          <Link href="/llm-router">LLM Router</Link>
+        </Button>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

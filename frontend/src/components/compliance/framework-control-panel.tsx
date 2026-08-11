@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, CircleDashed, XCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle2, CircleDashed, XCircle, ChevronDown, ChevronUp, Sparkles, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ApiComplianceControl } from "@/lib/api";
@@ -28,9 +28,20 @@ const statusConfig = {
   },
 };
 
-function ControlRow({ control }: { control: ApiComplianceControl }) {
+function ControlRow({
+  control,
+  onManualFix,
+  onAiAssist,
+  remediationLoading,
+}: {
+  control: ApiComplianceControl;
+  onManualFix?: (control: ApiComplianceControl) => void;
+  onAiAssist?: (control: ApiComplianceControl) => void;
+  remediationLoading?: boolean;
+}) {
   const config = statusConfig[control.status] ?? statusConfig.in_progress;
   const Icon = config.icon;
+  const showActions = control.status !== "met" && (onManualFix || onAiAssist);
 
   return (
     <div className="rounded-lg border border-border/60 bg-background/40 p-3">
@@ -64,6 +75,34 @@ function ControlRow({ control }: { control: ApiComplianceControl }) {
               </p>
             )}
           </div>
+          {showActions && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {onManualFix && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1 text-xs"
+                  disabled={remediationLoading}
+                  onClick={() => onManualFix(control)}
+                >
+                  <Wrench className="h-3 w-3" />
+                  Manual fix
+                </Button>
+              )}
+              {onAiAssist && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-7 gap-1 text-xs"
+                  disabled={remediationLoading}
+                  onClick={() => onAiAssist(control)}
+                >
+                  <Sparkles className="h-3 w-3" />
+                  AI assist
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -75,9 +114,20 @@ interface FrameworkControlPanelProps {
   passed: number;
   inProgress: number;
   notMet: number;
+  onManualFix?: (control: ApiComplianceControl) => void;
+  onAiAssist?: (control: ApiComplianceControl) => void;
+  remediationLoading?: boolean;
 }
 
-export function FrameworkControlPanel({ controls, passed, inProgress, notMet }: FrameworkControlPanelProps) {
+export function FrameworkControlPanel({
+  controls,
+  passed,
+  inProgress,
+  notMet,
+  onManualFix,
+  onAiAssist,
+  remediationLoading,
+}: FrameworkControlPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const [filter, setFilter] = useState<"all" | ApiComplianceControl["status"]>("all");
 
@@ -136,7 +186,15 @@ export function FrameworkControlPanel({ controls, passed, inProgress, notMet }: 
             {filtered.length === 0 ? (
               <p className="py-4 text-center text-xs text-muted-foreground">No controls in this category.</p>
             ) : (
-              filtered.map((control) => <ControlRow key={control.id} control={control} />)
+              filtered.map((control) => (
+                <ControlRow
+                  key={control.id}
+                  control={control}
+                  onManualFix={onManualFix}
+                  onAiAssist={onAiAssist}
+                  remediationLoading={remediationLoading}
+                />
+              ))
             )}
           </div>
         </div>

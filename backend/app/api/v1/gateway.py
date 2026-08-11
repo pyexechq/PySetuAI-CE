@@ -30,7 +30,9 @@ from app.services.integration_service import resolve_gateway_config
 from app.services.ollama_client import check_ollama_health
 from app.services.policy_engine import inspect_content
 
-router = APIRouter(tags=["OpenAI Compatible Gateway"])
+openai_router = APIRouter(tags=["OpenAI Compatible Gateway"])
+admin_router = APIRouter(tags=["Gateway Admin"])
+router = openai_router
 
 
 async def _gateway_counts(db: AsyncSession, tenant_id) -> tuple[int, int]:
@@ -45,33 +47,10 @@ async def _gateway_counts(db: AsyncSession, tenant_id) -> tuple[int, int]:
     return total_result.scalar() or 0, blocked_result.scalar() or 0
 
 
-@router.get("/v1/models", response_model=ModelsListResponse)
-async def list_models(
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ModelsListResponse:
-    result = await db.execute(
-        select(LLMProvider).where(
-            LLMProvider.tenant_id == current_user.tenant_id,
-            LLMProvider.is_active.is_(True),
-        )
-    )
-    providers = result.scalars().all()
-    return ModelsListResponse(
-        data=[ModelInfo(id=p.name, owned_by=p.provider_type) for p in providers]
-        or [
-            ModelInfo(id="gpt-4o", owned_by="openai"),
-            ModelInfo(id="gemini-1.5-pro", owned_by="google"),
-            ModelInfo(id="claude-3.5-sonnet", owned_by="anthropic"),
-        ]
-    )
-
-
-@router.post("/v1/chat/completions")
-async def chat_completions(
+async def _handle_chat_completions(
     request: ChatCompletionRequest,
-    ctx: Annotated[GatewayContext, Depends(get_gateway_context)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    ctx: GatewayContext,
+    db: AsyncSession,
 ):
     if request.stream:
         prepared, inspection, error_message = await prepare_chat_request(request, ctx, db)
@@ -109,7 +88,48 @@ async def chat_completions(
     return response
 
 
-@router.post("/v1beta/models/{model_id}:generateContent")
+@openai_router.get("/v1/models", response_model=ModelsListResponse)
+@admin_router.get("/models", response_model=ModelsListResponse)
+async def list_models(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ModelsListResponse:
+    result = await db.execute(
+        select(LLMProvider).where(
+            LLMProvider.tenant_id == current_user.tenant_id,
+            LLMProvider.is_active.is_(True),
+        )
+    )
+    providers = result.scalars().all()
+    return ModelsListResponse(
+        data=[ModelInfo(id=p.name, owned_by=p.provider_type) for p in providers]
+        or [
+            ModelInfo(id="gpt-4o", owned_by="openai"),
+            ModelInfo(id="gemini-1.5-pro", owned_by="google"),
+            ModelInfo(id="claude-3.5-sonnet", owned_by="anthropic"),
+        ]
+    )
+
+
+@openai_router.post("/v1/chat/completions")
+async def chat_completions_openai(
+    request: ChatCompletionRequest,
+    ctx: Annotated[GatewayContext, Depends(get_gateway_context)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    return await _handle_chat_completions(request, ctx, db)
+
+
+@admin_router.post("/chat/completions")
+async def chat_completions_api(
+    request: ChatCompletionRequest,
+    ctx: Annotated[GatewayContext, Depends(get_gateway_context)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    return await _handle_chat_completions(request, ctx, db)
+
+
+@openai_router.post("/v1beta/models/{model_id}:generateContent")
 async def gemini_generate_content(
     model_id: str,
     body: dict[str, Any],
@@ -145,7 +165,7 @@ async def gemini_generate_content(
     }
 
 
-@router.get("/gateway/stats")
+@admin_router.get("/gateway/stats")
 async def gateway_stats(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -154,7 +174,7 @@ async def gateway_stats(
     return {"requests_today": total, "blocked_today": blocked}
 
 
-@router.get("/gateway/ollama/status")
+@admin_router.get("/gateway/ollama/status")
 async def ollama_status(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],

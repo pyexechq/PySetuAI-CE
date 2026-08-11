@@ -1,17 +1,15 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { FrameworkControlPanel } from "@/components/compliance/framework-control-panel";
+import { Button } from "@/components/ui/button";
+import { FrameworkComplianceCard } from "@/components/compliance/framework-compliance-card";
 import { ComplianceEvidencePanel } from "@/components/compliance/compliance-evidence-panel";
-import { EMPTY_DASHBOARD_OVERVIEW, useDashboardOverview } from "@/hooks/use-dashboard-overview";
-import { cn } from "@/lib/utils";
+import { useComplianceFrameworks } from "@/hooks/use-compliance-frameworks";
+import type { ApiDashboardOverview } from "@/lib/api";
 
-const statusLabel = {
-  compliant: { label: "Compliant", variant: "success" as const },
-  partial: { label: "Partial", variant: "warning" as const },
-  "at-risk": { label: "At Risk", variant: "destructive" as const },
-};
+type Framework = ApiDashboardOverview["compliance_frameworks"][number];
 
 function CircularProgress({ score, size = 80 }: { score: number; size?: number }) {
   const radius = (size - 8) / 2;
@@ -43,8 +41,13 @@ function CircularProgress({ score, size = 80 }: { score: number; size?: number }
 }
 
 export function ComplianceCenterView() {
-  const { data: overview, isLoading } = useDashboardOverview();
-  const frameworks = overview?.compliance_frameworks ?? EMPTY_DASHBOARD_OVERVIEW.compliance_frameworks;
+  const { data: frameworksData = [], isLoading, refetch, isFetching } = useComplianceFrameworks();
+  const [frameworkOverrides, setFrameworkOverrides] = useState<Record<string, Framework>>({});
+
+  const frameworks = useMemo(() => {
+    return frameworksData.map((framework) => frameworkOverrides[framework.name] ?? framework);
+  }, [frameworksData, frameworkOverrides]);
+
   const avgScore =
     frameworks.length > 0
       ? Math.round(frameworks.reduce((sum, f) => sum + f.score, 0) / frameworks.length)
@@ -56,6 +59,16 @@ export function ComplianceCenterView() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          Re-evaluate frameworks after changes, then use manual fix or AI assist on each gap.
+        </p>
+        <Button variant="outline" size="sm" className="gap-2" disabled={isFetching} onClick={() => refetch()}>
+          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+          Refresh all
+        </Button>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="border-border/60 bg-card/50">
           <CardContent className="flex items-center gap-4 p-5">
@@ -86,52 +99,15 @@ export function ComplianceCenterView() {
         <p className="py-12 text-center text-sm text-muted-foreground">No compliance data available yet</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {frameworks.map((framework) => {
-            const status = statusLabel[framework.status as keyof typeof statusLabel] ?? statusLabel.partial;
-            const inProgress = framework.in_progress ?? 0;
-            const notMet = framework.not_met ?? Math.max(0, framework.controls - framework.passed - inProgress);
-            const controlItems = framework.control_items ?? [];
-
-            return (
-              <Card key={framework.name} className="border-border/60 bg-card/50">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold">{framework.name}</h3>
-                      <Badge variant={status.variant} className="mt-2">
-                        {status.label}
-                      </Badge>
-                    </div>
-                    <CircularProgress score={framework.score} size={64} />
-                  </div>
-                  <div className="mt-4 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Key controls</span>
-                    <span>
-                      <span className={cn(framework.passed === framework.controls ? "text-emerald-400" : "")}>
-                        {framework.passed}
-                      </span>
-                      /{framework.controls} met
-                    </span>
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${framework.controls ? (framework.passed / framework.controls) * 100 : 0}%` }}
-                    />
-                  </div>
-
-                  {controlItems.length > 0 && (
-                    <FrameworkControlPanel
-                      controls={controlItems}
-                      passed={framework.passed}
-                      inProgress={inProgress}
-                      notMet={notMet}
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+          {frameworks.map((framework) => (
+            <FrameworkComplianceCard
+              key={framework.name}
+              framework={framework}
+              onFrameworkUpdated={(updated) =>
+                setFrameworkOverrides((current) => ({ ...current, [updated.name]: updated }))
+              }
+            />
+          ))}
         </div>
       )}
 
