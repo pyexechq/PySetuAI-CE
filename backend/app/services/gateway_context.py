@@ -17,3 +17,5 @@ class GatewayContext:
     client_api_key_name: str | None = None
     policy_bundle_id: uuid.UUID | None = None
     policy_bundle_name: str | None = None
+    client_response_protocol: str | None = None
+    debug_mode: bool = False

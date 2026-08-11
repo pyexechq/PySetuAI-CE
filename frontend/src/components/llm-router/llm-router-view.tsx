@@ -40,6 +40,7 @@ export function LlmRouterView() {
       id: model.id,
       model: model.model,
       provider_type: model.providerType ?? "custom",
+      endpoint_url: model.endpointUrl ?? null,
       requests: model.requests,
       percentage: model.percentage,
       latency: model.latency,

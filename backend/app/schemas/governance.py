@@ -189,6 +189,7 @@ class RoutingModelResponse(BaseModel):
     id: str
     model: str
     provider_type: str
+    endpoint_url: str | None = None
     requests: int
     percentage: float
     latency: int
@@ -232,6 +233,7 @@ class McpToolInvokeResponse(BaseModel):
 class LLMProviderCreateRequest(BaseModel):
     name: str
     provider_type: str
+    endpoint_url: str | None = None
     is_active: bool = True
     api_key: str | None = None
 
@@ -239,6 +241,7 @@ class LLMProviderCreateRequest(BaseModel):
 class LLMProviderUpdateRequest(BaseModel):
     name: str | None = None
     provider_type: str | None = None
+    endpoint_url: str | None = None
     is_active: bool | None = None
     percentage: float | None = None
     api_key: str | None = None

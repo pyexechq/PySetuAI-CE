@@ -15,6 +15,17 @@ import {
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 
+const CLIENT_PROTOCOL_OPTIONS = [
+  { value: "", label: "Inherit tenant default" },
+  { value: "openai", label: "OpenAI (chat.completion)" },
+  { value: "gemini", label: "Gemini (GenerateContent)" },
+  { value: "anthropic", label: "Anthropic / Claude (Messages)" },
+] as const;
+
+function protocolLabel(value: string | null | undefined) {
+  return CLIENT_PROTOCOL_OPTIONS.find((option) => option.value === (value ?? ""))?.label ?? "Inherit tenant default";
+}
+
 function flattenPolicies(nodes: ApiPolicyTreeNode[]): ApiPolicyTreeNode[] {
   const out: ApiPolicyTreeNode[] = [];
   for (const node of nodes) {
@@ -37,6 +48,7 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
   const [newBundlePolicyIds, setNewBundlePolicyIds] = useState<string[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyBundleId, setNewKeyBundleId] = useState("");
+  const [newKeyClientProtocol, setNewKeyClientProtocol] = useState("");
   const [createdKey, setCreatedKey] = useState<ApiClientApiKeyCreateResponse | null>(null);
 
   const { data: bundles = [], isLoading: bundlesLoading } = useQuery({
@@ -85,13 +97,21 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
       api.createClientApiKey(token!, {
         name: newKeyName,
         bundle_id: newKeyBundleId || undefined,
+        client_response_protocol: newKeyClientProtocol || null,
       }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["client-api-keys"] });
       setCreatedKey(data);
       setNewKeyName("");
       setNewKeyBundleId("");
+      setNewKeyClientProtocol("");
     },
+  });
+
+  const updateKeyProtocol = useMutation({
+    mutationFn: ({ id, client_response_protocol }: { id: string; client_response_protocol: string | null }) =>
+      api.updateClientApiKey(token!, id, { client_response_protocol }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["client-api-keys"] }),
   });
 
   const toggleKey = useMutation({
@@ -235,7 +255,8 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
           </CardTitle>
           <CardDescription>
             Ingress keys for applications calling <code className="text-xs">/v1/chat/completions</code>. Use{" "}
-            <code className="text-xs">Authorization: Bearer hg_…</code> instead of a JWT.
+            <code className="text-xs">Authorization: Bearer hg_…</code> instead of a JWT. Each key can set its own
+            client response format (OpenAI, Gemini, or Anthropic) or inherit the tenant UAG default.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -273,9 +294,30 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
                 {key.bundle_name && (
                   <p className="mt-1 text-xs text-muted-foreground">Bundle: {key.bundle_name}</p>
                 )}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Response format: {protocolLabel(key.client_response_protocol)}
+                </p>
               </div>
               {canEdit && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={key.client_response_protocol ?? ""}
+                    disabled={updateKeyProtocol.isPending}
+                    onChange={(e) =>
+                      updateKeyProtocol.mutate({
+                        id: key.id,
+                        client_response_protocol: e.target.value || null,
+                      })
+                    }
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                    title="Client response format"
+                  >
+                    {CLIENT_PROTOCOL_OPTIONS.map((option) => (
+                      <option key={option.value || "inherit"} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                   <Button variant="outline" size="sm" onClick={() => toggleKey.mutate(key)}>
                     {key.is_active ? "Deactivate" : "Activate"}
                   </Button>
@@ -310,6 +352,17 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
                 {bundles.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={newKeyClientProtocol}
+                onChange={(e) => setNewKeyClientProtocol(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {CLIENT_PROTOCOL_OPTIONS.map((option) => (
+                  <option key={option.value || "inherit"} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>

@@ -56,6 +56,7 @@ export interface RoutingModel {
   id?: string;
   model: string;
   providerType?: string;
+  endpointUrl?: string | null;
   requests: number;
   percentage: number;
   latency: number;

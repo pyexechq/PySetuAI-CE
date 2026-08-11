@@ -20,6 +20,7 @@ function mapProvider(m: Awaited<ReturnType<typeof api.getLlmProviders>>[0]): Rou
     id: m.id,
     model: m.model,
     providerType: m.provider_type,
+    endpointUrl: m.endpoint_url ?? null,
     requests: m.requests,
     percentage: m.percentage,
     latency: m.latency,

@@ -825,6 +825,7 @@ async def _provider_response(db: AsyncSession, tenant_id: uuid.UUID, provider: L
         id=str(provider.id),
         model=provider.name,
         provider_type=provider.provider_type,
+        endpoint_url=provider.endpoint_url,
         requests=provider.total_requests,
         percentage=provider.percentage,
         latency=provider.avg_latency_ms,
@@ -879,6 +880,29 @@ async def _get_provider_or_404(db: AsyncSession, tenant_id: uuid.UUID, provider_
 
 
 ALLOWED_PROVIDER_TYPES = {"openai", "gemini", "anthropic", "ollama", "azure", "custom"}
+
+
+def _normalize_provider_endpoint(endpoint: str | None) -> str | None:
+    if endpoint is None:
+        return None
+    trimmed = endpoint.strip()
+    return trimmed or None
+
+
+def _validate_provider_endpoint(provider_type: str, endpoint_url: str | None) -> str | None:
+    normalized = _normalize_provider_endpoint(endpoint_url)
+    if provider_type == "custom":
+        if not normalized:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="endpoint_url is required for custom providers",
+            )
+        if not normalized.startswith(("http://", "https://")):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="endpoint_url must start with http:// or https://",
+            )
+    return normalized
 
 
 @router.get("/llm/providers", response_model=list[RoutingModelResponse])
@@ -944,6 +968,7 @@ async def create_llm_provider(
         tenant_id=current_user.tenant_id,
         name=name,
         provider_type=provider_type,
+        endpoint_url=_validate_provider_endpoint(provider_type, payload.endpoint_url),
         is_active=payload.is_active,
     )
     db.add(provider)
@@ -985,6 +1010,13 @@ async def update_llm_provider(
                 detail=f"provider_type must be one of: {', '.join(sorted(ALLOWED_PROVIDER_TYPES))}",
             )
         provider.provider_type = provider_type
+
+    if payload.endpoint_url is not None or payload.provider_type is not None:
+        effective_type = (payload.provider_type or provider.provider_type).strip().lower()
+        endpoint_value = payload.endpoint_url if payload.endpoint_url is not None else provider.endpoint_url
+        provider.endpoint_url = _validate_provider_endpoint(effective_type, endpoint_value)
+        if effective_type != "custom":
+            provider.endpoint_url = None
 
     if payload.is_active is not None:
         provider.is_active = payload.is_active

@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  RoutingConditionHelpButton,
+  type RoutingConditionHelpExample,
+} from "@/components/llm-router/routing-condition-help";
+import {
   ApiError,
   api,
   type ApiRoutingRule,
@@ -190,9 +194,19 @@ export function RoutingRuleModal({
         </div>
 
         <div className="space-y-1.5">
-          <label className={labelClass} htmlFor="rule-condition">
-            Condition
-          </label>
+          <div className="flex items-center gap-1.5">
+            <label className={labelClass} htmlFor="rule-condition">
+              Condition
+            </label>
+            <RoutingConditionHelpButton
+              onApplyExample={(example: RoutingConditionHelpExample) => {
+                setCondition(example.condition);
+                if (!name.trim() && example.title) {
+                  setName(example.title);
+                }
+              }}
+            />
+          </div>
           <input
             id="rule-condition"
             className={`${inputClass} font-mono text-xs`}

@@ -19,6 +19,7 @@ export function GatewayTester() {
   const [clientApiKey, setClientApiKey] = useState("");
   const [routingContextJson, setRoutingContextJson] = useState('{"task":{"type":"code_review"}}');
   const [useStream, setUseStream] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<string | null>(null);
@@ -63,7 +64,7 @@ export function GatewayTester() {
         });
         setMeta({ upstream: "stream", inspection_action: "allow" });
       } else {
-        const result = await api.chatCompletion(authToken, payload);
+        const result = await api.chatCompletion(authToken, { ...payload, debug: debugMode });
         setResponse(result.choices[0]?.message?.content ?? "No content");
         setMeta(result.helixguard ?? null);
       }
@@ -168,6 +169,16 @@ export function GatewayTester() {
             placeholder='{"task":{"type":"code_review"},"sla":{"latency_ms":400}}'
           />
         </div>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={debugMode}
+            onChange={(e) => setDebugMode(e.target.checked)}
+            className="rounded border-input"
+          />
+          Debug response (<code className="text-xs">?mode=debug</code> — include HelixGuard metadata)
+        </label>
 
         <label className="flex items-center gap-2 text-sm">
           <input

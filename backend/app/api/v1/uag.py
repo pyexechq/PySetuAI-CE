@@ -13,6 +13,8 @@ from app.schemas.uag import (
     UagModelMappingCreateRequest,
     UagModelMappingResponse,
     UagModelMappingUpdateRequest,
+    UagSettingsResponse,
+    UagSettingsUpdateRequest,
     UagSimulateRequest,
     UagSimulateResponse,
     UagStatsResponse,
@@ -29,12 +31,14 @@ from app.services.uag_admin_service import (
     delete_policy,
     get_mapping,
     get_policy,
+    get_uag_settings,
     list_mappings,
     list_policies,
     mapping_to_dict,
     policy_to_dict,
     update_mapping,
     update_policy,
+    update_uag_settings,
 )
 
 router = APIRouter(prefix="/uag", tags=["Universal AI Gateway"])
@@ -177,6 +181,25 @@ async def get_uag_stats(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UagStatsResponse:
     return UagStatsResponse(**await build_stats(db, current_user.tenant_id))
+
+
+@router.get("/settings", response_model=UagSettingsResponse, dependencies=[Depends(require_compatibility_center)])
+async def get_uag_settings_route(
+    current_user: Annotated[User, Depends(_require_uag_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UagSettingsResponse:
+    return UagSettingsResponse(**await get_uag_settings(db, current_user.tenant_id))
+
+
+@router.put("/settings", response_model=UagSettingsResponse, dependencies=[Depends(require_compatibility_center)])
+async def put_uag_settings_route(
+    body: UagSettingsUpdateRequest,
+    current_user: Annotated[User, Depends(_require_uag_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UagSettingsResponse:
+    return UagSettingsResponse(
+        **await update_uag_settings(db, current_user.tenant_id, body.model_dump(exclude_unset=True))
+    )
 
 
 @router.post("/simulate", response_model=UagSimulateResponse, dependencies=[Depends(require_uag_simulator)])

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.governance import LLMProvider
 from app.models.uag import UagModelMapping
 
 DEFAULT_MAPPINGS: dict[str, dict[str, str]] = {
@@ -16,15 +17,42 @@ DEFAULT_MAPPINGS: dict[str, dict[str, str]] = {
 }
 
 
+def normalize_target_provider(provider_type: str) -> str:
+    normalized = provider_type.strip().lower()
+    if normalized in {"custom", "openai-compatible", "openai_compatible"}:
+        return "openai"
+    if normalized == "google":
+        return "gemini"
+    return normalized
+
+
+async def _resolve_provider_from_registry(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    requested_model: str,
+) -> tuple[str, str] | None:
+    result = await db.execute(
+        select(LLMProvider).where(
+            LLMProvider.tenant_id == tenant_id,
+            LLMProvider.is_active.is_(True),
+            func.lower(LLMProvider.name) == requested_model.strip().lower(),
+        )
+    )
+    provider = result.scalar_one_or_none()
+    if provider is None:
+        return None
+    return provider.name, normalize_target_provider(provider.provider_type)
+
+
 async def resolve_model_mapping(
     db: AsyncSession,
     tenant_id: uuid.UUID,
     requested_model: str,
-) -> tuple[str, str, str | None]:
-    """Return (actual_model, target_provider, mapping_id or None)."""
+) -> tuple[str, str, str | None, str]:
+    """Return (actual_model, target_provider, mapping_id or None, emulate_protocol)."""
     normalized = requested_model.strip().lower()
     if normalized in {"", "auto"}:
-        return requested_model, "openai", None
+        return requested_model, "openai", None, "openai"
 
     result = await db.execute(
         select(UagModelMapping).where(
@@ -35,10 +63,20 @@ async def resolve_model_mapping(
     rows = result.scalars().all()
     for row in rows:
         if row.requested_model.strip().lower() == normalized:
-            return row.actual_model, row.target_provider, str(row.id)
+            return (
+                row.actual_model,
+                row.target_provider,
+                str(row.id),
+                row.emulate_protocol or "openai",
+            )
 
     default = DEFAULT_MAPPINGS.get(normalized)
     if default:
-        return default["actual_model"], default["target_provider"], None
+        return default["actual_model"], default["target_provider"], None, "openai"
 
-    return requested_model, "openai", None
+    registry_match = await _resolve_provider_from_registry(db, tenant_id, requested_model)
+    if registry_match:
+        actual_model, target_provider = registry_match
+        return actual_model, target_provider, None, "openai"
+
+    return requested_model, "openai", None, "openai"

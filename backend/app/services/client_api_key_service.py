@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.governance import ClientApiKey, PolicyBundle
+from app.modules.uag.client_response import INHERIT_CLIENT_PROTOCOL, normalize_client_protocol
 
 KEY_PREFIX = "hg_"
 
@@ -83,6 +84,15 @@ async def validate_bundle_for_tenant(
     return bundle_uuid
 
 
+def normalize_api_key_client_protocol(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    if normalized in {"", INHERIT_CLIENT_PROTOCOL, "default", "auto"}:
+        return None
+    return normalize_client_protocol(normalized)
+
+
 def client_key_response(record: ClientApiKey, *, bundle_name: str | None = None) -> dict:
     return {
         "id": str(record.id),
@@ -92,6 +102,7 @@ def client_key_response(record: ClientApiKey, *, bundle_name: str | None = None)
         "key_masked": f"{record.key_prefix}••••",
         "bundle_id": str(record.bundle_id) if record.bundle_id else None,
         "bundle_name": bundle_name,
+        "client_response_protocol": record.client_response_protocol,
         "is_active": record.is_active,
         "last_used_at": record.last_used_at.isoformat() if record.last_used_at else None,
         "created_at": record.created_at.isoformat() if record.created_at else None,

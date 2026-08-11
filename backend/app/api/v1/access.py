@@ -26,6 +26,7 @@ from app.services.client_api_key_service import (
     client_key_response,
     generate_client_key,
     get_client_api_key,
+    normalize_api_key_client_protocol,
     validate_bundle_for_tenant,
 )
 from app.services.policy_bundle_service import clear_other_defaults, get_policy_bundle
@@ -202,6 +203,7 @@ async def create_client_api_key(
         key_prefix=key_prefix,
         key_hash=key_hash,
         bundle_id=bundle_uuid,
+        client_response_protocol=normalize_api_key_client_protocol(payload.client_response_protocol),
         is_active=True,
     )
     db.add(record)
@@ -232,6 +234,8 @@ async def update_client_api_key(
         record.description = payload.description.strip()
     if payload.bundle_id is not None:
         record.bundle_id = await validate_bundle_for_tenant(db, current_user.tenant_id, payload.bundle_id or None)
+    if payload.client_response_protocol is not None:
+        record.client_response_protocol = normalize_api_key_client_protocol(payload.client_response_protocol)
     if payload.is_active is not None:
         record.is_active = payload.is_active
     await db.commit()

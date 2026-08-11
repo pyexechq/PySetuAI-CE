@@ -215,7 +215,14 @@ async def apply_provider_gateway_credentials(
         return config
 
     provider_type = provider.provider_type.lower()
-    if provider_type in {"openai", "azure", "anthropic", "custom"}:
+    if provider_type == "custom":
+        return replace(
+            config,
+            openai_api_key=api_key,
+            openai_api_base=provider.endpoint_url,
+            source="provider_registry",
+        )
+    if provider_type in {"openai", "azure", "anthropic"}:
         return replace(config, openai_api_key=api_key, source="provider_registry")
     if provider_type == "gemini":
         return replace(config, gemini_api_key=api_key, source="provider_registry")

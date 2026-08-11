@@ -8,11 +8,13 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.uag.canonical import CanonicalPrompt, TranslationTrace, build_canonical_from_openai
+from app.modules.uag.client_response import resolve_client_response_protocol_with_source
 from app.modules.uag.model_mapping import resolve_model_mapping
 from app.modules.uag.protocol_translator import ProtocolTranslator, resolve_target_protocol
 from app.modules.uag.translation_policy import evaluate_translation_policies
 from app.modules.uag.provider_registry import get_provider
 from app.schemas.openai import ChatCompletionRequest, ChatCompletionResponse
+from app.services.uag_admin_service import get_uag_settings
 
 
 @dataclass
@@ -20,6 +22,7 @@ class UagPipelineResult:
     canonical: CanonicalPrompt
     trace: TranslationTrace
     translated_request: ChatCompletionRequest
+    client_response_protocol: str = "openai"
 
 
 async def run_uag_pre_governance(
@@ -27,27 +30,35 @@ async def run_uag_pre_governance(
     request: ChatCompletionRequest,
     *,
     tenant_id: uuid.UUID,
+    api_key_client_response_protocol: str | None = None,
 ) -> UagPipelineResult:
     """Build canonical prompt and resolve target provider/model before governance."""
-    translator = ProtocolTranslator(source_protocol="openai")
-    canonical = translator.normalize_request(request, tenant_id=str(tenant_id))
+    settings = await get_uag_settings(db, tenant_id)
+    actual_model, target_provider, mapping_id, emulate_protocol = await resolve_model_mapping(
+        db, tenant_id, request.model
+    )
 
-    actual_model, target_provider, _ = await resolve_model_mapping(db, tenant_id, request.model)
+    mapping_protocol = emulate_protocol if mapping_id else None
+    client_protocol, protocol_source = resolve_client_response_protocol_with_source(
+        mapping_protocol=mapping_protocol,
+        api_key_protocol=api_key_client_response_protocol,
+        tenant_protocol=settings["client_response_protocol"],
+    )
+
+    canonical = build_canonical_from_openai(
+        request,
+        tenant_id=str(tenant_id),
+        source_protocol=client_protocol,
+    )
+
     policy = await evaluate_translation_policies(db, tenant_id, canonical, target_provider)
-
     target_provider = policy.target_provider or target_provider
     target_protocol = resolve_target_protocol(target_provider)
-    provider = get_provider(target_provider)
-    if provider and provider.upstream_key != "openai" and actual_model == request.model:
-        mapped_model, mapped_provider, _ = await resolve_model_mapping(db, tenant_id, request.model)
-        actual_model = mapped_model
-        target_provider = mapped_provider
-        target_protocol = resolve_target_protocol(target_provider)
 
     canonical = CanonicalPrompt(
         tenant_id=str(tenant_id),
         request_id=canonical.request_id,
-        source_protocol=canonical.source_protocol,
+        source_protocol=client_protocol,
         target_provider=target_provider,
         target_protocol=target_protocol,
         model=actual_model,
@@ -61,13 +72,14 @@ async def run_uag_pre_governance(
     )
 
     trace = TranslationTrace(
-        source_protocol=canonical.source_protocol,
+        source_protocol=client_protocol,
         requested_model=canonical.requested_model,
         canonical_model=canonical.model,
         target_provider=canonical.target_provider,
         target_protocol=canonical.target_protocol,
         translated_model=canonical.model,
         policy_applied=policy.policy_name,
+        client_response_protocol_source=protocol_source,
     )
 
     translated_request = ChatCompletionRequest(
@@ -79,7 +91,12 @@ async def run_uag_pre_governance(
         routing_context=request.routing_context,
     )
 
-    return UagPipelineResult(canonical=canonical, trace=trace, translated_request=translated_request)
+    return UagPipelineResult(
+        canonical=canonical,
+        trace=trace,
+        translated_request=translated_request,
+        client_response_protocol=client_protocol,
+    )
 
 
 async def run_uag_post_upstream(
@@ -104,7 +121,7 @@ async def simulate_translation(
     tenant_id: uuid.UUID,
 ) -> dict:
     pipeline = await run_uag_pre_governance(db, request, tenant_id=tenant_id)
-    translator = ProtocolTranslator(source_protocol="openai")
+    translator = ProtocolTranslator(source_protocol=pipeline.canonical.source_protocol)
     upstream_payload, trace = translator.translate_request(pipeline.canonical)
     return {
         "original_request": request.model_dump(),
@@ -118,4 +135,5 @@ async def simulate_translation(
         },
         "translated_request": upstream_payload,
         "trace": trace.to_dict(),
+        "client_response_protocol": pipeline.client_response_protocol,
     }

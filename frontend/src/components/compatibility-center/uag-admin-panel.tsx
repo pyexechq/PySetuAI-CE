@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRightLeft, Loader2, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ export function UagAdminPanel() {
   const [requestedModel, setRequestedModel] = useState("gpt-4o");
   const [actualModel, setActualModel] = useState("gemini-1.5-pro");
   const [targetProvider, setTargetProvider] = useState("gemini");
+  const [emulateProtocol, setEmulateProtocol] = useState("openai");
+  const [clientResponseProtocol, setClientResponseProtocol] = useState("openai");
   const [policyName, setPolicyName] = useState("Finance to local LLM");
   const [policyConditionKey, setPolicyConditionKey] = useState("department");
   const [policyConditionValue, setPolicyConditionValue] = useState("finance");
@@ -46,8 +48,15 @@ export function UagAdminPanel() {
     enabled: Boolean(token) && canManage,
   });
 
+  const { data: settings, isLoading: settingsLoading } = useQuery({
+    queryKey: ["uag-settings", token],
+    queryFn: () => api.getUagSettings(token!),
+    enabled: Boolean(token) && canManage,
+  });
+
   const invalidateMappings = () => queryClient.invalidateQueries({ queryKey: ["uag-mappings"] });
   const invalidatePolicies = () => queryClient.invalidateQueries({ queryKey: ["uag-policies"] });
+  const invalidateSettings = () => queryClient.invalidateQueries({ queryKey: ["uag-settings"] });
 
   const createMapping = useMutation({
     mutationFn: () =>
@@ -55,6 +64,7 @@ export function UagAdminPanel() {
         requested_model: requestedModel,
         actual_model: actualModel,
         target_provider: targetProvider,
+        emulate_protocol: emulateProtocol,
       }),
     onSuccess: () => {
       setActionError("");
@@ -115,6 +125,24 @@ export function UagAdminPanel() {
     onError: (err) => setActionError(err instanceof ApiError ? err.message : "Unable to delete policy."),
   });
 
+  const saveSettings = useMutation({
+    mutationFn: () =>
+      api.updateUagSettings(token!, {
+        client_response_protocol: clientResponseProtocol,
+      }),
+    onSuccess: () => {
+      setActionError("");
+      invalidateSettings();
+    },
+    onError: (err) => setActionError(err instanceof ApiError ? err.message : "Unable to save UAG settings."),
+  });
+
+  useEffect(() => {
+    if (settings) {
+      setClientResponseProtocol(settings.client_response_protocol);
+    }
+  }, [settings]);
+
   if (!canManage) {
     return (
       <Card className="border-border/60">
@@ -139,6 +167,42 @@ export function UagAdminPanel() {
 
       <Card className="border-border/60">
         <CardHeader>
+          <CardTitle className="text-base">Client response format</CardTitle>
+          <CardDescription>
+            Choose the API shape returned to clients. HelixGuard routing metadata is omitted by default for strict SDK
+            compatibility; append <code className="text-xs">?mode=debug</code> to include it. Client API keys can
+            override the tenant default. UAG model mappings still override both when a model alias matches.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {settingsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading settings…</p>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:max-w-md">
+                <label className="space-y-1 text-sm">
+                  <span className="text-muted-foreground">Default client protocol</span>
+                  <select
+                    value={clientResponseProtocol}
+                    onChange={(e) => setClientResponseProtocol(e.target.value)}
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    <option value="openai">OpenAI (chat.completion)</option>
+                    <option value="gemini">Gemini (GenerateContent)</option>
+                    <option value="anthropic">Anthropic / Claude (Messages)</option>
+                  </select>
+                </label>
+              </div>
+              <Button size="sm" disabled={saveSettings.isPending} onClick={() => saveSettings.mutate()}>
+                {saveSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save response settings"}
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <ArrowRightLeft className="h-4 w-4" />
             Provider mappings
@@ -148,7 +212,7 @@ export function UagAdminPanel() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <input
               value={requestedModel}
               onChange={(e) => setRequestedModel(e.target.value)}
@@ -172,6 +236,15 @@ export function UagAdminPanel() {
               <option value="openai">openai</option>
               <option value="azure_openai">azure_openai</option>
             </select>
+            <select
+              value={emulateProtocol}
+              onChange={(e) => setEmulateProtocol(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="openai">Client: OpenAI</option>
+              <option value="gemini">Client: Gemini</option>
+              <option value="anthropic">Client: Anthropic</option>
+            </select>
           </div>
           <Button size="sm" className="gap-1" disabled={createMapping.isPending} onClick={() => createMapping.mutate()}>
             {createMapping.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
@@ -192,6 +265,7 @@ export function UagAdminPanel() {
                     <th className="px-3 py-2">Requested</th>
                     <th className="px-3 py-2">Actual</th>
                     <th className="px-3 py-2">Provider</th>
+                    <th className="px-3 py-2">Client protocol</th>
                     <th className="px-3 py-2">Status</th>
                     <th className="px-3 py-2 text-right">Actions</th>
                   </tr>
@@ -202,6 +276,7 @@ export function UagAdminPanel() {
                       <td className="px-3 py-2 font-medium">{row.requested_model}</td>
                       <td className="px-3 py-2">{row.actual_model}</td>
                       <td className="px-3 py-2">{row.target_provider}</td>
+                      <td className="px-3 py-2">{row.emulate_protocol}</td>
                       <td className="px-3 py-2">
                         <label className="flex cursor-pointer items-center gap-2">
                           <input

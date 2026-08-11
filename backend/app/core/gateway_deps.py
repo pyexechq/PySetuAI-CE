@@ -45,6 +45,7 @@ async def get_gateway_context(
             client_api_key_name=record.name,
             policy_bundle_id=record.bundle_id,
             policy_bundle_name=bundle_name,
+            client_response_protocol=record.client_response_protocol,
         )
 
     try:

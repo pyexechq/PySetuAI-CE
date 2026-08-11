@@ -63,6 +63,7 @@ class TranslationTrace:
     policy_applied: str | None = None
     compatibility_score: float | None = None
     unsupported_features: list[str] = field(default_factory=list)
+    client_response_protocol_source: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -77,6 +78,7 @@ class TranslationTrace:
             "policy_applied": self.policy_applied,
             "compatibility_score": self.compatibility_score,
             "unsupported_features": self.unsupported_features,
+            "client_response_protocol_source": self.client_response_protocol_source,
         }
 
 
@@ -84,6 +86,7 @@ def build_canonical_from_openai(
     request: ChatCompletionRequest,
     *,
     tenant_id: str,
+    source_protocol: str = "openai",
     target_provider: str = "openai",
     target_protocol: str = "openai",
     metadata: dict[str, Any] | None = None,
@@ -92,7 +95,7 @@ def build_canonical_from_openai(
     return CanonicalPrompt(
         tenant_id=tenant_id,
         request_id=str(uuid.uuid4()),
-        source_protocol="openai",
+        source_protocol=source_protocol,
         target_provider=target_provider,
         target_protocol=target_protocol,
         model=request.model,

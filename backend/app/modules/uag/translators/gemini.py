@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from app.modules.uag.canonical import CanonicalPrompt
 from app.modules.uag.translators.base import OpenAICompatibleTranslator
 from app.schemas.openai import ChatCompletionResponse, ChatMessage

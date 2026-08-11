@@ -6,6 +6,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.governance import TenantIntegration
 
+_LOCAL_OLLAMA_URLS = {
+    "http://localhost:11434",
+    "http://127.0.0.1:11434",
+}
+
+
+def resolve_ollama_base_url(configured: str) -> str:
+    """Prefer platform Ollama URL when tenant still has a localhost default in Docker."""
+    normalized = configured.rstrip("/")
+    platform = settings.ollama_base_url.rstrip("/")
+    if normalized in _LOCAL_OLLAMA_URLS and platform not in _LOCAL_OLLAMA_URLS:
+        return settings.ollama_base_url
+    return configured
+
 
 def mask_secret(value: str | None) -> str | None:
     if not value:
@@ -24,6 +38,7 @@ class GatewayConfig:
     ollama_base_url: str
     ollama_default_model: str
     source: str
+    openai_api_base: str | None = None
 
     def resolve_upstream(self, model: str) -> str:
         model_l = model.lower()
@@ -86,7 +101,7 @@ async def resolve_gateway_config(db: AsyncSession, tenant_id) -> GatewayConfig:
             ollama_enabled = True
             source = "tenant_settings" if source == "environment" else source
         if row.ollama_base_url:
-            ollama_base_url = row.ollama_base_url
+            ollama_base_url = resolve_ollama_base_url(row.ollama_base_url)
         if row.ollama_default_model:
             ollama_default_model = row.ollama_default_model
 

@@ -96,6 +96,7 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
   const isEdit = provider !== null;
   const [name, setName] = useState("");
   const [providerType, setProviderType] = useState("openai");
+  const [endpointUrl, setEndpointUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [clearApiKey, setClearApiKey] = useState(false);
   const [isActive, setIsActive] = useState(true);
@@ -109,6 +110,7 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
     if (!open) return;
     setName(provider?.model ?? "");
     setProviderType(provider?.provider_type ?? "openai");
+    setEndpointUrl(provider?.endpoint_url ?? "");
     setApiKey("");
     setClearApiKey(false);
     setIsActive(provider?.is_active ?? true);
@@ -129,6 +131,15 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
     }
 
     const trimmedKey = apiKey.trim();
+    const trimmedEndpoint = endpointUrl.trim();
+    if (providerType === "custom" && !trimmedEndpoint) {
+      setError("Endpoint URL is required for custom providers");
+      return;
+    }
+    if (trimmedEndpoint && !/^https?:\/\//i.test(trimmedEndpoint)) {
+      setError("Endpoint URL must start with http:// or https://");
+      return;
+    }
     if (!isEdit && providerType !== "ollama" && !trimmedKey && !clearApiKey) {
       setError("API key is required for this provider type");
       return;
@@ -144,6 +155,11 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
           provider_type: providerType,
           is_active: isActive,
         };
+        if (providerType === "custom") {
+          body.endpoint_url = trimmedEndpoint;
+        } else {
+          body.endpoint_url = "";
+        }
         if (percentage.trim()) {
           body.percentage = Number(percentage);
         }
@@ -159,6 +175,9 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
           provider_type: providerType,
           is_active: isActive,
         };
+        if (providerType === "custom") {
+          body.endpoint_url = trimmedEndpoint;
+        }
         if (trimmedKey) {
           body.api_key = trimmedKey;
         }
@@ -202,7 +221,13 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
             id="provider-type"
             className={inputClass}
             value={providerType}
-            onChange={(e) => setProviderType(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setProviderType(next);
+              if (next !== "custom") {
+                setEndpointUrl("");
+              }
+            }}
             disabled={saving}
           >
             {PROVIDER_TYPES.map((type) => (
@@ -212,6 +237,26 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
             ))}
           </select>
         </div>
+
+        {providerType === "custom" && (
+          <div className="space-y-1.5">
+            <label className={labelClass} htmlFor="provider-endpoint-url">
+              Endpoint URL
+            </label>
+            <input
+              id="provider-endpoint-url"
+              className={inputClass}
+              value={endpointUrl}
+              onChange={(e) => setEndpointUrl(e.target.value)}
+              placeholder="https://api.example.com/v1"
+              disabled={saving}
+            />
+            <p className="text-xs text-muted-foreground">
+              OpenAI-compatible base URL or full <code className="rounded bg-muted px-1">/v1/chat/completions</code>{" "}
+              path. Required for custom providers.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <label className={labelClass} htmlFor="provider-api-key">

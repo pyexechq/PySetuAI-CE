@@ -59,7 +59,17 @@ async function parseResponse<T>(response: Response): Promise<T> {
     }
     throw new ApiError(message || `Request failed (${response.status})`, response.status);
   }
-  return response.json() as Promise<T>;
+
+  if (response.status === 204 || response.status === 205) {
+    return undefined as T;
+  }
+
+  const text = await response.text();
+  if (!text.trim()) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
 }
 
 export async function apiFetch<T>(
@@ -454,6 +464,11 @@ export const api = {
 
   getUagStats: (token: string) => apiFetch<ApiUagStats>("/uag/stats", {}, token),
 
+  getUagSettings: (token: string) => apiFetch<ApiUagSettings>("/uag/settings", {}, token),
+
+  updateUagSettings: (token: string, body: { client_response_protocol?: string }) =>
+    apiFetch<ApiUagSettings>("/uag/settings", { method: "PUT", body: JSON.stringify(body) }, token),
+
   simulateUagTranslation: (
     token: string,
     body: { model: string; messages: { role: string; content: string }[]; routing_context?: Record<string, unknown> }
@@ -742,10 +757,11 @@ export const api = {
       messages: { role: string; content: string }[];
       stream?: boolean;
       routing_context?: Record<string, unknown>;
+      debug?: boolean;
     }
   ) =>
     apiFetch<ChatCompletionResponse>(
-      "/chat/completions",
+      `/chat/completions${body.debug ? "?mode=debug" : ""}`,
       {
         method: "POST",
         body: JSON.stringify({
@@ -1460,6 +1476,7 @@ export interface ApiRoutingModel {
   id: string;
   model: string;
   provider_type: string;
+  endpoint_url?: string | null;
   requests: number;
   percentage: number;
   latency: number;
@@ -1472,6 +1489,7 @@ export interface ApiRoutingModel {
 export interface ApiLlmProviderCreateRequest {
   name: string;
   provider_type: string;
+  endpoint_url?: string;
   is_active?: boolean;
   api_key?: string;
 }
@@ -1479,6 +1497,7 @@ export interface ApiLlmProviderCreateRequest {
 export interface ApiLlmProviderUpdateRequest {
   name?: string;
   provider_type?: string;
+  endpoint_url?: string;
   is_active?: boolean;
   percentage?: number;
   api_key?: string;
@@ -1602,6 +1621,7 @@ export interface ApiClientApiKey {
   key_masked: string;
   bundle_id: string | null;
   bundle_name: string | null;
+  client_response_protocol: string | null;
   is_active: boolean;
   last_used_at: string | null;
   created_at: string | null;
@@ -1611,6 +1631,7 @@ export interface ApiClientApiKeyCreateRequest {
   name: string;
   description?: string;
   bundle_id?: string;
+  client_response_protocol?: string | null;
 }
 
 export interface ApiClientApiKeyCreateResponse extends ApiClientApiKey {
@@ -1621,6 +1642,7 @@ export interface ApiClientApiKeyUpdateRequest {
   name?: string;
   description?: string;
   bundle_id?: string | null;
+  client_response_protocol?: string | null;
   is_active?: boolean;
 }
 
@@ -1782,6 +1804,10 @@ export interface ApiUagStats {
   avg_latency_ms: number;
   compatibility_scores: Record<string, number>;
   route_breakdown: Record<string, number>;
+}
+
+export interface ApiUagSettings {
+  client_response_protocol: string;
 }
 
 export interface ApiUagSimulateResult {

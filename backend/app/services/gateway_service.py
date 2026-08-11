@@ -21,7 +21,9 @@ from app.schemas.openai import (
     InspectionResult,
 )
 from app.modules.uag.canonical import CanonicalPrompt, TranslationTrace
+from app.modules.uag.client_response import serialize_gateway_response
 from app.modules.uag.provider_registry import get_provider
+from app.modules.uag.protocol_translator import resolve_target_protocol
 from app.modules.uag.service import run_uag_post_upstream, run_uag_pre_governance
 from app.services.alert_webhook_service import (
     build_gateway_alert_event,
@@ -67,6 +69,7 @@ class PreparedChat:
     uag_canonical: CanonicalPrompt | None = None
     uag_trace: TranslationTrace | None = None
     requested_model: str | None = None
+    client_response_protocol: str = "openai"
 
 
 def _estimate_tokens(text: str) -> int:
@@ -210,7 +213,12 @@ async def prepare_chat_request(
     ctx: GatewayContext,
     db: AsyncSession,
 ) -> tuple[PreparedChat | None, InspectionResult | None, str | None]:
-    uag_pipeline = await run_uag_pre_governance(db, request, tenant_id=ctx.tenant_id)
+    uag_pipeline = await run_uag_pre_governance(
+        db,
+        request,
+        tenant_id=ctx.tenant_id,
+        api_key_client_response_protocol=ctx.client_response_protocol,
+    )
     canonical = uag_pipeline.canonical
     uag_trace = uag_pipeline.trace
     effective_request = uag_pipeline.translated_request
@@ -345,6 +353,30 @@ async def prepare_chat_request(
         routed_model,
     )
 
+    if uag_trace and canonical:
+        upstream_provider = {
+            "ollama": "ollama",
+            "gemini": "gemini",
+            "openai": "openai",
+        }.get(upstream, canonical.target_provider)
+        uag_trace.target_provider = upstream_provider
+        uag_trace.target_protocol = resolve_target_protocol(upstream_provider)
+        canonical = CanonicalPrompt(
+            tenant_id=canonical.tenant_id,
+            request_id=canonical.request_id,
+            source_protocol=canonical.source_protocol,
+            target_provider=upstream_provider,
+            target_protocol=uag_trace.target_protocol,
+            model=canonical.model,
+            requested_model=canonical.requested_model,
+            messages=canonical.messages,
+            tools=canonical.tools,
+            system_prompt=canonical.system_prompt,
+            temperature=canonical.temperature,
+            max_tokens=canonical.max_tokens,
+            metadata=canonical.metadata,
+        )
+
     prepared = PreparedChat(
         messages=messages,
         routed_model=routed_model,
@@ -362,10 +394,14 @@ async def prepare_chat_request(
         uag_canonical=canonical,
         uag_trace=uag_trace,
         requested_model=request.model,
+        client_response_protocol=uag_pipeline.client_response_protocol,
     )
 
     if upstream == "ollama":
-        available = await list_ollama_models(config.ollama_base_url)
+        try:
+            available = await list_ollama_models(config.ollama_base_url)
+        except OllamaError:
+            available = []
         prepared.ollama_model = resolve_ollama_model(
             effective_request.model if effective_request.model != "auto" else routed_model,
             available,
@@ -380,8 +416,22 @@ async def prepare_chat_request(
     return prepared, ingress, None
 
 
+def resolve_chat_completions_url(endpoint: str) -> str:
+    trimmed = endpoint.strip().rstrip("/")
+    if trimmed.endswith("/chat/completions"):
+        return trimmed
+    if trimmed.endswith("/v1"):
+        return f"{trimmed}/chat/completions"
+    return f"{trimmed}/v1/chat/completions"
+
+
 async def _call_openai(
-    model: str, messages: list[ChatMessage], temperature: float | None, api_key: str, stream: bool = False
+    model: str,
+    messages: list[ChatMessage],
+    temperature: float | None,
+    api_key: str,
+    stream: bool = False,
+    api_base: str | None = None,
 ):
     payload = {
         "model": model,
@@ -389,7 +439,8 @@ async def _call_openai(
         "temperature": temperature or 0.7,
         "stream": stream,
     }
-    return payload, "https://api.openai.com/v1/chat/completions", {"Authorization": f"Bearer {api_key}"}
+    url = resolve_chat_completions_url(api_base) if api_base else "https://api.openai.com/v1/chat/completions"
+    return payload, url, {"Authorization": f"Bearer {api_key}"}
 
 
 async def _call_ollama_payload(
@@ -407,7 +458,11 @@ async def _call_ollama_payload(
 async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionRequest) -> ChatCompletionResponse:
     if prepared.upstream == "openai" and prepared.config.openai_api_key:
         payload, url, headers = await _call_openai(
-            prepared.routed_model, prepared.messages, request.temperature, prepared.config.openai_api_key
+            prepared.routed_model,
+            prepared.messages,
+            request.temperature,
+            prepared.config.openai_api_key,
+            api_base=prepared.config.openai_api_base,
         )
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(url, headers=headers, json=payload)
@@ -534,6 +589,7 @@ async def stream_chat_completion(
                 request.temperature,
                 prepared.config.openai_api_key,
                 stream=True,
+                api_base=prepared.config.openai_api_base,
             )
             async with httpx.AsyncClient(timeout=180.0) as client:
                 async with client.stream("POST", url, headers=headers, json=payload) as response:
@@ -617,7 +673,7 @@ async def process_chat_completion(
     request: ChatCompletionRequest,
     ctx: GatewayContext,
     db: AsyncSession,
-) -> tuple[ChatCompletionResponse | None, InspectionResult | None, str | None]:
+) -> tuple[dict | None, InspectionResult | None, str | None]:
     with tracer.start_as_current_span("gateway.chat_completion") as span:
         span.set_attribute("helixguard.model", request.model)
         span.set_attribute("helixguard.stream", bool(request.stream))
@@ -709,4 +765,10 @@ async def process_chat_completion(
         )
         await db.commit()
         span.set_attribute("helixguard.result", audit_status)
-        return response, prepared.ingress, None
+        return serialize_gateway_response(
+            prepared.client_response_protocol,
+            response,
+            prepared.uag_canonical,
+            prepared.uag_trace,
+            include_metadata=ctx.debug_mode,
+        ), prepared.ingress, None

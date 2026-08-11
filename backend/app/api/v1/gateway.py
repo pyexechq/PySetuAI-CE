@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +33,10 @@ from app.services.policy_engine import inspect_content
 openai_router = APIRouter(tags=["OpenAI Compatible Gateway"])
 admin_router = APIRouter(tags=["Gateway Admin"])
 router = openai_router
+
+
+def _is_debug_mode(mode: str | None) -> bool:
+    return (mode or "").strip().lower() == "debug"
 
 
 async def _gateway_counts(db: AsyncSession, tenant_id) -> tuple[int, int]:
@@ -116,7 +120,9 @@ async def chat_completions_openai(
     request: ChatCompletionRequest,
     ctx: Annotated[GatewayContext, Depends(get_gateway_context)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    mode: Annotated[str | None, Query()] = None,
 ):
+    ctx.debug_mode = _is_debug_mode(mode)
     return await _handle_chat_completions(request, ctx, db)
 
 
@@ -125,7 +131,9 @@ async def chat_completions_api(
     request: ChatCompletionRequest,
     ctx: Annotated[GatewayContext, Depends(get_gateway_context)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    mode: Annotated[str | None, Query()] = None,
 ):
+    ctx.debug_mode = _is_debug_mode(mode)
     return await _handle_chat_completions(request, ctx, db)
 
 

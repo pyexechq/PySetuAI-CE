@@ -60,6 +60,14 @@ class UagStatsResponse(BaseModel):
     route_breakdown: dict[str, int]
 
 
+class UagSettingsResponse(BaseModel):
+    client_response_protocol: str = "openai"
+
+
+class UagSettingsUpdateRequest(BaseModel):
+    client_response_protocol: str | None = Field(default=None, max_length=32)
+
+
 class UagSimulateRequest(BaseModel):
     model: str = "gpt-4o"
     messages: list[dict]

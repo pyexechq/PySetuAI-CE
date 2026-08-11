@@ -8,7 +8,9 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.governance import TenantIntegration
 from app.models.uag import UagModelMapping, UagTranslationEvent, UagTranslationPolicy
+from app.modules.uag.client_response import normalize_client_protocol
 from app.modules.uag.provider_registry import DEFAULT_COMPATIBILITY_SCORES
 
 
@@ -34,6 +36,31 @@ def policy_to_dict(row: UagTranslationPolicy) -> dict:
     }
 
 
+async def get_uag_settings(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
+    result = await db.execute(select(TenantIntegration).where(TenantIntegration.tenant_id == tenant_id))
+    row = result.scalar_one_or_none()
+    if row is None:
+        return {"client_response_protocol": "openai"}
+    return {
+        "client_response_protocol": normalize_client_protocol(row.uag_client_protocol or "openai"),
+    }
+
+
+async def update_uag_settings(db: AsyncSession, tenant_id: uuid.UUID, data: dict) -> dict:
+    result = await db.execute(select(TenantIntegration).where(TenantIntegration.tenant_id == tenant_id))
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = TenantIntegration(tenant_id=tenant_id)
+        db.add(row)
+
+    if "client_response_protocol" in data and data["client_response_protocol"] is not None:
+        row.uag_client_protocol = normalize_client_protocol(str(data["client_response_protocol"]))
+
+    await db.commit()
+    await db.refresh(row)
+    return await get_uag_settings(db, tenant_id)
+
+
 async def list_mappings(db: AsyncSession, tenant_id: uuid.UUID) -> list[UagModelMapping]:
     result = await db.execute(
         select(UagModelMapping)
@@ -49,7 +76,7 @@ async def create_mapping(db: AsyncSession, tenant_id: uuid.UUID, data: dict) -> 
         requested_model=data["requested_model"].strip(),
         actual_model=data["actual_model"].strip(),
         target_provider=data.get("target_provider", "openai").strip(),
-        emulate_protocol=data.get("emulate_protocol", "openai").strip(),
+        emulate_protocol=normalize_client_protocol(data.get("emulate_protocol", "openai")),
         enabled=bool(data.get("enabled", True)),
     )
     db.add(row)
