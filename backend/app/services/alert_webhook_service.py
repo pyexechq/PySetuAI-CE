@@ -45,6 +45,8 @@ GATEWAY_BLOCK_ACTIONS = frozenset(
         "gateway.injection.block",
         "gateway.abac.block",
         "gateway.egress.block",
+        "gateway.rate_limit.block",
+        "gateway.token_budget.block",
     }
 )
 
@@ -65,6 +67,8 @@ def build_gateway_alert_event(
         "gateway.injection.block": "Prompt injection blocked",
         "gateway.abac.block": "Gateway request blocked by ABAC",
         "gateway.egress.block": "Gateway response blocked by egress policy",
+        "gateway.rate_limit.block": "AI rate limit exceeded",
+        "gateway.token_budget.block": "AI token budget limit exceeded",
     }
     event: dict[str, Any] = {
         "title": title_by_action.get(action, "PySetu gateway alert"),

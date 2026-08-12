@@ -11,6 +11,8 @@ import { api, ApiError, type ApiMcpServer } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
+import { usePreferencesStore } from "@/stores/preferences-store";
+import { formatDateTime } from "@/lib/date-utils";
 
 const statusVariant = {
   healthy: "success" as const,
@@ -21,6 +23,7 @@ const statusVariant = {
 export function McpGovernanceView() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
+  const timezone = usePreferencesStore((s) => s.timezone);
   const canEdit = user?.role === "tenant_admin" || user?.role === "security_admin";
 
   const [category, setCategory] = useState("All");
@@ -255,7 +258,7 @@ export function McpGovernanceView() {
                           <p className="mt-0.5 text-xs text-emerald-400/80">
                             MCP session active
                             {server.connectionConfig.mcp_session.initialized_at
-                              ? ` · ${new Date(server.connectionConfig.mcp_session.initialized_at).toLocaleString()}`
+                              ? ` · ${formatDateTime(server.connectionConfig.mcp_session.initialized_at, timezone)}`
                               : ""}
                           </p>
                         )}

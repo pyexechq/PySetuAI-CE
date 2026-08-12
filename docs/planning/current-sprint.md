@@ -1,31 +1,34 @@
-# Current Sprint — Phase 7 Kickoff
+# Current Sprint — Sprint 10 Kickoff (Phase 8)
 
-**Updated:** Aug 11, 2026  
-**Active focus:** Phase 7 gateway pipeline parity (rate limits, egress guardrails)
+**Updated:** Aug 12, 2026  
+**Active focus:** Phase 8 Prompt Lifecycle & Cost Optimization (Prompt store, custom intents, token compression)
 
-> Phase 6 complete: [phase-6-sprint.md](./phase-6-sprint.md)  
-> Phase 7 plan: [phase-7-sprint.md](./phase-7-sprint.md)
+> Phase 7 complete: [phase-7-sprint.md](./phase-7-sprint.md)  
+> Phase 8 plan: [phase-8-sprint.md](./phase-8-sprint.md)
 
-## Phase 6 closed (Aug 11)
+## Phase 7 / Sprint 9 Closed (Aug 12 — M8 Milestone Complete)
 
 | ID | Task | Status |
 |----|------|--------|
-| S7-04 | Tenant onboarding (invites, email templates, docs) | Done |
-| S7-05 | Operator SLA / health dashboard | Done |
-| S7-06 | Usage metering hooks (BL-053) | Done |
-| S6-09 | Penetration test prep checklist | Done |
+| S9-01 | Routing group entity — name, members, weights | Done |
+| S9-02 | Group-as-model — `model: "production"` resolves group | Done |
+| S9-03 | Auto-failover — try next provider on 5xx/timeout | Done |
+| S9-04 | LLM Router UI — routing groups tab & modal | Done |
+| S9-05 | Regional routing spike — Bedrock + Vertex adapters | Done |
+| S9-06 | Wire alert webhooks — budget & rate limit breaches | Done |
 
-## Ops backlog (non-blocking)
+## Sprint 10 Closed (Aug 12 — Prompt Store & Custom Intents Complete)
 
-| ID | Item |
-|----|------|
-| BL-038 | Git remote + push |
-| BL-039 | pytest stabilization in CI |
-| BL-046 | Keep progress docs current (ongoing) |
-| S6-08 | Remove demo credentials from prod bundles |
+- ~~S10-01 Prompt store schema — versions, variables, enforce flag (BL-061)~~ (Done)
+- ~~S10-02 Gateway prompt injection — resolve version at ingress (BL-061)~~ (Done)
+- ~~S10-03 Prompt store UI — Studio + Settings (BL-061)~~ (Done)
+- ~~S10-04 Custom intents MVP — keyword & classification engine (BL-062)~~ (Done)
+- ~~S10-05 Custom intents UI — Security / Policy Studio (BL-062)~~ (Done)
 
-## Phase 7 preview
+## Sprint 11 Kickoff (Token Saving & Dynamic Tool Calling)
 
-- BL-056 AI traffic rate limits + token budgets
-- BL-057 Per-user / per-team usage attribution (extends BL-053 hooks)
-- BL-059 Response-path guardrails
+- **S11-01 (BL-063)**: Token saving engine — JSON→TOON / strip markdown (Backend)
+- **S11-02 (BL-063, BL-072)**: Token saving dashboard — before/after savings (Frontend)
+- **S11-03 (BL-064)**: Dynamic tool calling — rank/filter MCP tools per request (Backend)
+- **S11-04 (BL-064)**: Dynamic tool calling UI — MCP Governance config (Frontend)
+- **S11-05 (BL-063, BL-064)**: Compounding cost report — routing + tools + compression (Reports)

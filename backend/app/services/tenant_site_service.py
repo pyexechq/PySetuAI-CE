@@ -89,7 +89,7 @@ def public_site_dict(tenant: Tenant) -> dict:
         "name": tenant.name,
         "display_name": tenant.display_name or tenant.name,
         "logo_url": tenant.logo_url,
-        "brand_tagline": tenant.brand_tagline or "Enterprise AI Control Plane",
+        "brand_tagline": tenant.brand_tagline or "Governance, Gateway, and Guardrails across the Agentic Frontier",
         "subdomain": subdomain,
         "entry_mode": tenant.entry_mode,
         "login_path": f"/login?tenant={tenant.slug}",

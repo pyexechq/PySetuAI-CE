@@ -19,6 +19,9 @@ class UserResponse(BaseModel):
     role: str
     tenant_id: str
 
+class UserProfileUpdate(BaseModel):
+    name: str
+
 
 from app.schemas.tenant_features import TenantFeaturePolicyResponse, TenantFeaturesResponse
 

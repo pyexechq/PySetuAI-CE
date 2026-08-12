@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PySetu AI | Enterprise AI Control Plane",
+  title: "PySetu AI | Governance, Gateway, and Guardrails across the Agentic Frontier",
   description:
     "Production-grade multi-tenant AI governance platform for LLM routing, MCP governance, policy enforcement, and compliance.",
 };
@@ -33,6 +34,7 @@ export default function RootLayout({
           <QueryProvider>
             <AuthGuard>{children}</AuthGuard>
           </QueryProvider>
+          <Toaster position="bottom-right" />
         </ThemeProvider>
       </body>
     </html>

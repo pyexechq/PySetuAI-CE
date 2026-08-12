@@ -19,6 +19,8 @@ from app.schemas.settings import (
     IntegrationSettingsUpdate,
     OrganizationSettingsResponse,
     OrganizationSettingsUpdate,
+    GatewaySettingsResponse,
+    GatewaySettingsUpdate,
 )
 from app.services.ai_assist_config_service import ai_assist_status, update_ai_assist_settings
 from app.services.integration_service import get_or_create_integration, mask_secret, resolve_gateway_config
@@ -178,6 +180,7 @@ async def get_identity_settings(
     return IdentitySettingsResponse(
         oidc_jit_provision_enabled=tenant.oidc_jit_provision_enabled,
         platform_jit_default=settings.oidc_jit_provision_default,
+        allowed_login_domains=tenant.allowed_login_domains,
     )
 
 
@@ -192,10 +195,76 @@ async def update_identity_settings(
 
     if payload.oidc_jit_provision_enabled is not None:
         tenant.oidc_jit_provision_enabled = payload.oidc_jit_provision_enabled
+    if payload.allowed_login_domains is not None:
+        tenant.allowed_login_domains = payload.allowed_login_domains
 
     await db.commit()
     await db.refresh(tenant)
     return IdentitySettingsResponse(
         oidc_jit_provision_enabled=tenant.oidc_jit_provision_enabled,
         platform_jit_default=settings.oidc_jit_provision_default,
+        allowed_login_domains=tenant.allowed_login_domains,
+    )
+
+
+@router.get("/settings/gateway", response_model=GatewaySettingsResponse)
+async def get_gateway_settings(
+    current_user: Annotated[User, Depends(_require_org_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> GatewaySettingsResponse:
+    result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = result.scalar_one()
+    return GatewaySettingsResponse(
+        ai_rate_limit_rpm=tenant.ai_rate_limit_rpm,
+        ai_rate_limit_rph=tenant.ai_rate_limit_rph,
+        ai_rate_limit_rpd=tenant.ai_rate_limit_rpd,
+        ai_token_limit_tpm=tenant.ai_token_limit_tpm,
+        ai_token_limit_tph=tenant.ai_token_limit_tph,
+        ai_token_limit_tpd=tenant.ai_token_limit_tpd,
+        ai_token_budgets=tenant.ai_token_budgets,
+        allowed_api_origins=tenant.allowed_api_origins,
+    )
+
+
+@router.put("/settings/gateway", response_model=GatewaySettingsResponse)
+async def update_gateway_settings(
+    payload: GatewaySettingsUpdate,
+    current_user: Annotated[User, Depends(_require_org_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> GatewaySettingsResponse:
+    result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = result.scalar_one()
+
+    def _normalize(val: int | None) -> int | None:
+        return val if val and val > 0 else None
+
+    if payload.ai_rate_limit_rpm is not None:
+        tenant.ai_rate_limit_rpm = _normalize(payload.ai_rate_limit_rpm)
+    if payload.ai_rate_limit_rph is not None:
+        tenant.ai_rate_limit_rph = _normalize(payload.ai_rate_limit_rph)
+    if payload.ai_rate_limit_rpd is not None:
+        tenant.ai_rate_limit_rpd = _normalize(payload.ai_rate_limit_rpd)
+    if payload.ai_token_limit_tpm is not None:
+        tenant.ai_token_limit_tpm = _normalize(payload.ai_token_limit_tpm)
+    if payload.ai_token_limit_tph is not None:
+        tenant.ai_token_limit_tph = _normalize(payload.ai_token_limit_tph)
+    if payload.ai_token_limit_tpd is not None:
+        tenant.ai_token_limit_tpd = _normalize(payload.ai_token_limit_tpd)
+    if payload.ai_token_budgets is not None:
+        tenant.ai_token_budgets = payload.ai_token_budgets
+    if payload.allowed_api_origins is not None:
+        tenant.allowed_api_origins = payload.allowed_api_origins
+
+    await db.commit()
+    await db.refresh(tenant)
+    
+    return GatewaySettingsResponse(
+        ai_rate_limit_rpm=tenant.ai_rate_limit_rpm,
+        ai_rate_limit_rph=tenant.ai_rate_limit_rph,
+        ai_rate_limit_rpd=tenant.ai_rate_limit_rpd,
+        ai_token_limit_tpm=tenant.ai_token_limit_tpm,
+        ai_token_limit_tph=tenant.ai_token_limit_tph,
+        ai_token_limit_tpd=tenant.ai_token_limit_tpd,
+        ai_token_budgets=tenant.ai_token_budgets,
+        allowed_api_origins=tenant.allowed_api_origins,
     )

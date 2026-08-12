@@ -1,15 +1,12 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
-import {
-  AllCommunityModule,
-  ModuleRegistry,
-  type ColDef,
-  type GridApi,
-  type GridReadyEvent,
-} from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry, type ColDef, type GridApi, type GridReadyEvent } from "ag-grid-community";
+import { useTheme } from "next-themes";
 import type { AuditLogEntry } from "@/lib/types/domain";
+import { usePreferencesStore } from "@/stores/preferences-store";
+import { formatDateTime } from "@/lib/date-utils";
 
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
@@ -25,6 +22,14 @@ interface AuditLogGridProps {
 }
 
 export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridReady, onRowSelect }: AuditLogGridProps) {
+  const timezone = usePreferencesStore((s) => s.timezone);
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const columnDefs = useMemo<ColDef<AuditLogEntry>[]>(
     () => [
       {
@@ -33,6 +38,7 @@ export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridRead
         filter: "agTextColumnFilter",
         width: 168,
         sort: "desc",
+        valueFormatter: (params) => formatDateTime(params.value, timezone),
       },
       { field: "actor", headerName: "Actor", filter: "agTextColumnFilter", flex: 1, minWidth: 140 },
       { field: "action", headerName: "Action", filter: "agTextColumnFilter", flex: 1, minWidth: 130 },
@@ -62,7 +68,7 @@ export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridRead
         tooltipField: "details",
       },
     ],
-    []
+    [timezone]
   );
 
   const defaultColDef = useMemo<ColDef>(
@@ -92,9 +98,17 @@ export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridRead
     [onGridReady]
   );
 
+  if (!mounted) {
+    return null;
+  }
+
+  const isDark = resolvedTheme === "dark";
+  const themeClass = isDark ? "ag-theme-quartz-dark" : "ag-theme-quartz";
+
   return (
-    <div className="audit-log-grid ag-theme-quartz w-full rounded-md border border-border/60">
+    <div className={`audit-log-grid ${themeClass} w-full rounded-md border border-border/60`}>
       <AgGridReact<AuditLogEntry>
+        key={timezone}
         rowData={rows}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}

@@ -182,3 +182,99 @@ export interface ExecutiveSummary {
   frameworks_total: number;
   top_risks: string[];
 }
+
+export interface PromptVersion {
+  id: string;
+  template_id: string;
+  version: number;
+  system_prompt: string;
+  variables: string[];
+  created_by?: string;
+  created_at: string;
+}
+
+export interface PromptTemplate {
+  id: string;
+  tenant_id: string;
+  name: string;
+  alias?: string | null;
+  description?: string | null;
+  enforce_mode: "strict" | "warn" | "disabled";
+  is_active: boolean;
+  current_version_id?: string | null;
+  current_version?: PromptVersion | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PromptTemplateCreate {
+  name: string;
+  alias?: string | null;
+  description?: string | null;
+  enforce_mode: "strict" | "warn" | "disabled";
+  system_prompt: string;
+}
+
+export interface PromptTemplateUpdate {
+  name?: string;
+  alias?: string | null;
+  description?: string | null;
+  enforce_mode?: "strict" | "warn" | "disabled";
+  is_active?: boolean;
+}
+
+export interface PromptVersionCreate {
+  system_prompt: string;
+}
+
+export interface CustomIntent {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description?: string | null;
+  action: "block" | "monitor" | "redact";
+  keywords: string[];
+  confidence_threshold: number;
+  is_active: boolean;
+  parent_id?: string | null;
+  intent_type?: "intent" | "folder";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomIntentCreate {
+  name: string;
+  description?: string;
+  action: "block" | "monitor" | "redact";
+  keywords: string[];
+  confidence_threshold: number;
+  is_active?: boolean;
+  parent_id?: string | null;
+  intent_type?: "intent" | "folder";
+}
+
+export interface CustomIntentUpdate {
+  name?: string;
+  description?: string;
+  action?: "block" | "monitor" | "redact";
+  keywords?: string[];
+  confidence_threshold?: number;
+  is_active?: boolean;
+  parent_id?: string | null;
+  intent_type?: "intent" | "folder";
+}
+
+export interface CustomIntentMatch {
+  intent_id: string;
+  intent_name: string;
+  action: string;
+  matched_keywords: string[];
+  score: number;
+}
+
+export interface CustomIntentTestResponse {
+  matched: boolean;
+  matches: CustomIntentMatch[];
+  action: string;
+  modified_prompt?: string | null;
+}

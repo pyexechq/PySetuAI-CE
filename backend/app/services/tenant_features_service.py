@@ -33,12 +33,14 @@ DEFAULT_FEATURE_FLAGS: dict[str, bool] = {key: True for key in FEATURE_DEFINITIO
 
 
 def _stored_flags(tenant: Tenant) -> dict[str, bool]:
-    raw = tenant.feature_flags if isinstance(tenant.feature_flags, dict) else {}
+    flags_attr = getattr(tenant, "feature_flags", None)
+    raw = flags_attr if isinstance(flags_attr, dict) else {}
     return {key: bool(raw[key]) for key in FEATURE_DEFINITIONS if key in raw}
 
 
 def _stored_policy(tenant: Tenant) -> dict[str, dict[str, bool]]:
-    raw = tenant.feature_policy if isinstance(tenant.feature_policy, dict) else {}
+    policy_attr = getattr(tenant, "feature_policy", None)
+    raw = policy_attr if isinstance(policy_attr, dict) else {}
     policy: dict[str, dict[str, bool]] = {}
     for key in FEATURE_DEFINITIONS:
         entry = raw.get(key) if isinstance(raw.get(key), dict) else {}
@@ -49,7 +51,7 @@ def _stored_policy(tenant: Tenant) -> dict[str, dict[str, bool]]:
 def resolve_feature_flags(tenant: Tenant) -> dict[str, bool]:
     flags = dict(DEFAULT_FEATURE_FLAGS)
     flags.update(_stored_flags(tenant))
-    if tenant.qa_dashboard_enabled is False:
+    if getattr(tenant, "qa_dashboard_enabled", None) is False:
         flags["qa_dashboard"] = False
     return flags
 

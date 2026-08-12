@@ -39,6 +39,7 @@ _require_policy_admin = require_permission(MANAGE_POLICIES)
 def _bundle_response(bundle: PolicyBundle, policy_names: dict[str, str] | None = None) -> PolicyBundleResponse:
     ids = bundle.policy_ids if isinstance(bundle.policy_ids, list) else []
     names = [policy_names.get(str(i), str(i)) for i in ids] if policy_names else []
+    c_ids = bundle.custom_intent_ids if isinstance(bundle.custom_intent_ids, list) else []
     return PolicyBundleResponse(
         id=str(bundle.id),
         name=bundle.name,
@@ -46,6 +47,7 @@ def _bundle_response(bundle: PolicyBundle, policy_names: dict[str, str] | None =
         status=bundle.status,
         is_default=bundle.is_default,
         policy_ids=[str(i) for i in ids],
+        custom_intent_ids=[str(i) for i in c_ids],
         policy_names=names,
         created_at=bundle.created_at.isoformat() if bundle.created_at else "",
     )
@@ -79,6 +81,29 @@ async def _validate_policy_ids(db: AsyncSession, tenant_id: uuid.UUID, policy_id
     return ordered
 
 
+async def _validate_custom_intent_ids(db: AsyncSession, tenant_id: uuid.UUID, custom_intent_ids: list[str]) -> list[str]:
+    if not custom_intent_ids:
+        return []
+    from app.models.governance import CustomIntent
+    uuids: list[uuid.UUID] = []
+    for raw in custom_intent_ids:
+        try:
+            uuids.append(uuid.UUID(str(raw)))
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid custom intent id: {raw}") from exc
+    result = await db.execute(
+        select(CustomIntent.id).where(
+            CustomIntent.tenant_id == tenant_id,
+            CustomIntent.id.in_(uuids),
+        )
+    )
+    found = {str(row[0]) for row in result.all()}
+    ordered = [str(raw) for raw in custom_intent_ids if str(raw) in found]
+    if len(ordered) != len(custom_intent_ids):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One or more custom intent ids were not found")
+    return ordered
+
+
 @router.get("/policy-bundles", response_model=list[PolicyBundleResponse])
 async def list_policy_bundles(
     current_user: Annotated[User, Depends(_require_policy_admin)],
@@ -102,6 +127,7 @@ async def create_policy_bundle(
     if not name:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Bundle name is required")
     policy_ids = await _validate_policy_ids(db, current_user.tenant_id, payload.policy_ids)
+    custom_intent_ids = await _validate_custom_intent_ids(db, current_user.tenant_id, payload.custom_intent_ids)
     if payload.is_default:
         await clear_other_defaults(db, current_user.tenant_id)
     bundle = PolicyBundle(
@@ -111,6 +137,7 @@ async def create_policy_bundle(
         status=payload.status,
         is_default=payload.is_default,
         policy_ids=policy_ids,
+        custom_intent_ids=custom_intent_ids,
     )
     db.add(bundle)
     await db.commit()
@@ -140,6 +167,8 @@ async def update_policy_bundle(
         bundle.status = payload.status
     if payload.policy_ids is not None:
         bundle.policy_ids = await _validate_policy_ids(db, current_user.tenant_id, payload.policy_ids)
+    if payload.custom_intent_ids is not None:
+        bundle.custom_intent_ids = await _validate_custom_intent_ids(db, current_user.tenant_id, payload.custom_intent_ids)
     if payload.is_default is not None:
         if payload.is_default:
             await clear_other_defaults(db, current_user.tenant_id, except_id=bundle.id)
@@ -204,6 +233,12 @@ async def create_client_api_key(
         key_hash=key_hash,
         bundle_id=bundle_uuid,
         client_response_protocol=normalize_api_key_client_protocol(payload.client_response_protocol),
+        ai_rate_limit_rpm=payload.ai_rate_limit_rpm,
+        ai_rate_limit_rph=payload.ai_rate_limit_rph,
+        ai_rate_limit_rpd=payload.ai_rate_limit_rpd,
+        ai_token_limit_tpm=payload.ai_token_limit_tpm,
+        ai_token_limit_tph=payload.ai_token_limit_tph,
+        ai_token_limit_tpd=payload.ai_token_limit_tpd,
         is_active=True,
     )
     db.add(record)
@@ -236,6 +271,20 @@ async def update_client_api_key(
         record.bundle_id = await validate_bundle_for_tenant(db, current_user.tenant_id, payload.bundle_id or None)
     if payload.client_response_protocol is not None:
         record.client_response_protocol = normalize_api_key_client_protocol(payload.client_response_protocol)
+    
+    if payload.ai_rate_limit_rpm is not None:
+        record.ai_rate_limit_rpm = payload.ai_rate_limit_rpm
+    if payload.ai_rate_limit_rph is not None:
+        record.ai_rate_limit_rph = payload.ai_rate_limit_rph
+    if payload.ai_rate_limit_rpd is not None:
+        record.ai_rate_limit_rpd = payload.ai_rate_limit_rpd
+    if payload.ai_token_limit_tpm is not None:
+        record.ai_token_limit_tpm = payload.ai_token_limit_tpm
+    if payload.ai_token_limit_tph is not None:
+        record.ai_token_limit_tph = payload.ai_token_limit_tph
+    if payload.ai_token_limit_tpd is not None:
+        record.ai_token_limit_tpd = payload.ai_token_limit_tpd
+
     if payload.is_active is not None:
         record.is_active = payload.is_active
     await db.commit()

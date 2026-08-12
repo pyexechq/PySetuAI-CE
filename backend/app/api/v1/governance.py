@@ -2,8 +2,9 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_, select
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel
+from sqlalchemy import delete, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.gateway import _gateway_counts
@@ -43,6 +44,7 @@ from app.schemas.governance import (
     PolicyGraphLinkResponse,
     PolicyRuleResponse,
     PolicyRulesSaveRequest,
+    PolicyTestRequest,
     PolicyTreeNode,
     PolicyUpdateRequest,
     ProviderRebalanceResponse,
@@ -52,7 +54,9 @@ from app.schemas.governance import (
     RoutingRuleResponse,
     RoutingRuleUpdateRequest,
 )
+from app.schemas.openai import InspectionResult
 from app.services.integration_service import get_or_create_integration
+from app.services.policy_engine import _evaluate_rules
 from app.services.mcp_client_service import (
     apply_discovered_tools,
     apply_tool_invoke,
@@ -439,6 +443,83 @@ async def seed_starter_policy_rules(
     if updated:
         await db.commit()
     return {"policies_updated": updated, "message": f"Applied starter rules to {updated} policy(ies)."}
+
+
+class SeedComplianceTemplateRequest(BaseModel):
+    template_id: str
+
+@router.post("/policies/seed-compliance-template", response_model=dict)
+async def seed_compliance_template(
+    current_user: Annotated[User, Depends(_require_policy_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    body: SeedComplianceTemplateRequest,
+) -> dict:
+    """Seed a compliance template (e.g. gdpr, hipaa) to the tenant's policy tree."""
+    from app.db.seed_governance import COMPLIANCE_TEMPLATES
+    
+    template = COMPLIANCE_TEMPLATES.get(body.template_id)
+    if not template:
+        raise HTTPException(status_code=400, detail="Invalid template ID")
+        
+    folder_name = template["folder_name"]
+    policy_name = template["policy_name"]
+    rules = template["rules"]
+    
+    # 1. Find or create the folder
+    folder_query = select(Policy).where(
+        Policy.tenant_id == current_user.tenant_id,
+        Policy.policy_type == "folder",
+        Policy.name == folder_name,
+    )
+    folder_result = await db.execute(folder_query)
+    folder = folder_result.scalar_one_or_none()
+    
+    if not folder:
+        folder = Policy(
+            tenant_id=current_user.tenant_id,
+            name=folder_name,
+            policy_type="folder",
+            status="active",
+        )
+        db.add(folder)
+        await db.flush()
+        
+    # 2. Check if the policy already exists
+    policy_query = select(Policy).where(
+        Policy.tenant_id == current_user.tenant_id,
+        Policy.policy_type == "policy",
+        Policy.name == policy_name,
+    )
+    policy_result = await db.execute(policy_query)
+    policy = policy_result.scalar_one_or_none()
+    
+    if policy:
+        return {"message": f"Policy '{policy_name}' already exists in your workspace."}
+        
+    # 3. Create the policy
+    new_policy = Policy(
+        tenant_id=current_user.tenant_id,
+        name=policy_name,
+        policy_type="policy",
+        status="active",
+        parent_id=folder.id,
+        rules=rules,
+    )
+    db.add(new_policy)
+    await db.commit()
+    
+    return {"message": f"Successfully applied '{policy_name}' template."}
+
+
+@router.post("/policies/test", response_model=InspectionResult)
+async def test_policy_rules(
+    payload: PolicyTestRequest,
+    _current_user: Annotated[User, Depends(_require_policy_access)],
+) -> InspectionResult:
+    # Convert Pydantic models back to dicts for _evaluate_rules
+    rules_dicts = [rule.model_dump() for rule in payload.rules]
+    result = _evaluate_rules(payload.content, rules_dicts)
+    return result
 
 
 @router.get("/policies/graph-links", response_model=list[PolicyGraphLinkResponse])

@@ -26,10 +26,10 @@ Legend: **Have** · **Partial** (extend) · **Gap** (net-new)
 | Identity & Auth (JWT, OIDC/Okta/Google) | Partial | Have | BL-042 ✓, BL-057, BL-058 |
 | Per-user / per-team AI usage & attribution | Gap | Have | BL-057, BL-053 |
 | Domain allowlists (login / API) | Gap | Have | BL-058 |
-| AI traffic rate limits (req/min/hr/day) | Gap | Have | BL-056 |
-| Token budgets (tenant, team, model) | Gap | Have | BL-056 |
+| AI traffic rate limits (req/min/hr/day) | Have ✓ | Have | BL-056 ✓ |
+| Token budgets (tenant, team, model) | Have ✓ | Have | BL-056 ✓ |
 | Security guardrails (PII/PHI/PCI, injection) | Partial | Have | BL-014 ✓, BL-082, BL-023 ✓ |
-| Response-path guardrails (ingress + egress) | Partial | Have | BL-059 |
+| Response-path guardrails (ingress + egress) | Have ✓ | Have | BL-059 ✓ |
 | Custom intents (trainable classifiers) | Gap | Have | BL-062 |
 | Prompt store (versioned, `{{vars}}`, enforce) | Gap | Have | BL-061 |
 | Token saving (JSON→TOON / compression) | Gap | Have | BL-063 |

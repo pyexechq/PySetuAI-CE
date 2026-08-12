@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ApiQADefect, ApiQATestCase } from "@/lib/api";
 import { useQACycle, useQADefects, useQAMutations, useQAOverview } from "@/hooks/use-qa-dashboard";
+import { usePreferencesStore } from "@/stores/preferences-store";
+import { formatDateOnly } from "@/lib/date-utils";
 
 type Tab = "overview" | "cases" | "defects";
 
@@ -175,6 +177,7 @@ export function QADashboardView() {
   const [showNewCycle, setShowNewCycle] = useState(false);
   const [automatedResult, setAutomatedResult] = useState<string | null>(null);
   const [filingDefectId, setFilingDefectId] = useState<string | null>(null);
+  const timezone = usePreferencesStore((s) => s.timezone);
 
   const { data: overview, isLoading, isError, error, refetch } = useQAOverview();
   const activeCycleId = overview?.active_cycle?.id ?? null;
@@ -201,7 +204,7 @@ export function QADashboardView() {
   }, [cycleDetail?.cases]);
 
   const handleStartCycle = async (importBaseline: boolean) => {
-    const name = newCycleName.trim() || `QA Cycle ${new Date().toLocaleDateString()}`;
+    const name = newCycleName.trim() || `QA Cycle ${formatDateOnly(new Date(), timezone)}`;
     await createCycle.mutateAsync({
       name,
       import_baseline: importBaseline,
@@ -403,7 +406,7 @@ export function QADashboardView() {
                 <input
                   value={newCycleName}
                   onChange={(e) => setNewCycleName(e.target.value)}
-                  placeholder={`QA Cycle ${new Date().toLocaleDateString()}`}
+                  placeholder={`QA Cycle ${formatDateOnly(new Date(), timezone)}`}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus-visible:ring-2"
                 />
               </div>

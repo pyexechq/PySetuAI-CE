@@ -75,19 +75,19 @@
 
 | ID | Item | Module | Phase | Notes |
 |----|------|--------|-------|-------|
-| BL-056 | AI traffic rate limits + token budgets (tenant/team/model) | Gateway | 7 | Req/min/hr/day; Redis counters |
+| BL-056 | AI traffic rate limits + token budgets (tenant/team/model) | Gateway | 7 | Done (Req/min/hr/day & TPM/TPH/TPD Redis limits + UI) |
 | BL-057 | Per-user / per-team usage metering & attribution | Platform / Gateway | 7 | API key + OIDC subject tagging |
 | BL-058 | Domain allowlists (login + API client origins) | Identity | 7 | Tenant policy in Settings |
-| BL-059 | Response-path guardrails (egress scan parity) | Gateway / Security | 7 | Extend UAG response flow |
-| BL-060 | Routing groups — alias-as-model, weighted failover | LLM Router | 7 | Depends BL-050 |
-| BL-077 | Regional routing (US/India, Bedrock, Vertex, vLLM) | LLM Router / UAG | 7–10 | Spike in Sprint 9; GA Sprint 14 |
+| BL-059 | Response-path guardrails (egress scan parity) | Gateway / Security | 7 | Done (DLP scan, egress policy inspection & stream audit) |
+| BL-060 | Routing groups — alias-as-model, weighted failover | LLM Router | 7 | Done (Entity, Migration 036, CRUD API, Router resolution, Auto-failover & Frontend UI) |
+| BL-077 | Regional routing (US/India, Bedrock, Vertex, vLLM) | LLM Router / UAG | 7–10 | Spike Done in Sprint 9 (Bedrock & Vertex Adapters + Design Doc); GA Sprint 14 |
 
 ## Phase 8 — Prompt Lifecycle & Cost Optimization (planned)
 
 | ID | Item | Module | Phase | Notes |
 |----|------|--------|-------|-------|
-| BL-061 | Prompt store — versions, templates, enforce mode | Gateway / Studio | 8 | Central prompt registry |
-| BL-062 | Custom intents — trainable content classifiers | Security / Policy | 8 | MVP: rule + embedding hybrid |
+| BL-061 | Managed system prompt store & enforce mode | Prompt Lifecycle | 8 | Done (Schema, CRUD API, Versioning, Gateway Injection & Full UI in S10-01/S10-02/S10-03) |
+| BL-062 | Custom intents — trainable content classifiers | Security / Policy | 8 | Done (Migration 038, Model, Service, Scan Engine, API & Policy Studio UI in S10-04/S10-05) |
 | BL-063 | Token saving — JSON→TOON / payload compression | Gateway | 8 | Opt-in per route; preserve responses |
 | BL-064 | Dynamic tool calling — relevant MCP tools only | MCP Governance | 8 | Tool ranking + token KPI |
 
@@ -105,7 +105,7 @@
 | BL-072 | Per-user/team/model token & cost analytics | Observability | 9 | Depends BL-057 |
 | BL-073 | Full request/response log store | Audit Explorer | 9 | Retention + search + export |
 | BL-074 | OTel-native trace replay | Observability | 9 | Stage-by-stage debug UI |
-| BL-075 | Wire alert webhooks to gateway events | Security | 6–9 | Fixes DEF-004; blocks/budget/latency |
+| BL-075 | Alert webhooks (Slack / ServiceNow) | Identity / Audit | 7 | Done (Delivery stubs, payload formatter, test alert API, rate limit & token budget breach alerts) |
 | BL-076 | Telemetry facade API (`/telemetry/*`) | Backend | 9 | Dashboard/Monitoring single source |
 
 ## Phase 10 — Enterprise Security Parity (planned)

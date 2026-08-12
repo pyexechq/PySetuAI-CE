@@ -75,6 +75,108 @@ def check_rate_limit(key: str, *, limit: int, window_seconds: int) -> tuple[bool
         return True, 0
 
 
+def check_ai_rate_limits(
+    tenant_id: str,
+    rpm: int | None,
+    rph: int | None,
+    rpd: int | None,
+) -> tuple[bool, int]:
+    """Check AI rate limits (RPM, RPH, RPD). Returns (allowed, retry_after)."""
+    if rpm is None and rph is None and rpd is None:
+        return True, 0
+
+    limits = []
+    if rpm is not None:
+        limits.append((f"pysetu:ai_ratelimit:rpm:{tenant_id}", rpm, 60))
+    if rph is not None:
+        limits.append((f"pysetu:ai_ratelimit:rph:{tenant_id}", rph, 3600))
+    if rpd is not None:
+        limits.append((f"pysetu:ai_ratelimit:rpd:{tenant_id}", rpd, 86400))
+
+    for key, limit, window in limits:
+        allowed, retry = check_rate_limit(key, limit=limit, window_seconds=window)
+        if not allowed:
+            return False, retry
+
+    return True, 0
+
+
+def check_ai_token_limits(
+    tenant_id: str,
+    tpm: int | None,
+    tph: int | None,
+    tpd: int | None,
+    requested_tokens: int,
+) -> tuple[bool, int]:
+    """Check AI token budgets. Returns (allowed, retry_after). Checks without incrementing."""
+    if tpm is None and tph is None and tpd is None:
+        return True, 0
+
+    client = _get_redis()
+    if client is None:
+        return True, 0
+
+    limits = []
+    if tpm is not None:
+        limits.append((f"pysetu:ai_tokenlimit:tpm:{tenant_id}", tpm, 60))
+    if tph is not None:
+        limits.append((f"pysetu:ai_tokenlimit:tph:{tenant_id}", tph, 3600))
+    if tpd is not None:
+        limits.append((f"pysetu:ai_tokenlimit:tpd:{tenant_id}", tpd, 86400))
+
+    try:
+        for key, limit, window in limits:
+            current = client.get(key)
+            if current is not None and int(current) + requested_tokens > limit:
+                ttl = client.ttl(key)
+                return False, max(int(ttl), 1)
+        return True, 0
+    except redis.RedisError as exc:
+        logger.warning("Token limit check failed, allowing request (%s)", exc)
+        return True, 0
+
+
+def increment_ai_token_usage(
+    tenant_id: str,
+    tpm: int | None,
+    tph: int | None,
+    tpd: int | None,
+    used_tokens: int,
+) -> None:
+    """Increment AI token budgets after a successful request."""
+    if used_tokens <= 0:
+        return
+    if tpm is None and tph is None and tpd is None:
+        return
+
+    client = _get_redis()
+    if client is None:
+        return
+
+    limits = []
+    if tpm is not None:
+        limits.append((f"pysetu:ai_tokenlimit:tpm:{tenant_id}", 60))
+    if tph is not None:
+        limits.append((f"pysetu:ai_tokenlimit:tph:{tenant_id}", 3600))
+    if tpd is not None:
+        limits.append((f"pysetu:ai_tokenlimit:tpd:{tenant_id}", 86400))
+
+    try:
+        pipeline = client.pipeline()
+        for key, window in limits:
+            pipeline.incrby(key, used_tokens)
+        results = pipeline.execute()
+
+        # Set expiry if newly created
+        expire_pipeline = client.pipeline()
+        for (key, window), count in zip(limits, results):
+            if count == used_tokens:
+                expire_pipeline.expire(key, window)
+        expire_pipeline.execute()
+    except redis.RedisError as exc:
+        logger.warning("Failed to increment token usage (%s)", exc)
+
+
 def reset_rate_limit_state_for_tests() -> None:
     global _redis_client, _redis_unavailable
     _redis_client = None

@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.tenant import Base
 
@@ -133,6 +133,7 @@ class PolicyBundle(Base):
     status: Mapped[str] = mapped_column(String(20), default="active")
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     policy_ids: Mapped[list] = mapped_column(JSONB, default=list)
+    custom_intent_ids: Mapped[list] = mapped_column(JSONB, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -149,6 +150,14 @@ class ClientApiKey(Base):
         UUID(as_uuid=True), ForeignKey("policy_bundles.id"), nullable=True
     )
     client_response_protocol: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    
+    ai_rate_limit_rpm: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_rate_limit_rph: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_rate_limit_rpd: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_token_limit_tpm: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_token_limit_tph: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_token_limit_tpd: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -219,3 +228,75 @@ class ReportDefinition(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class RoutingGroup(Base):
+    __tablename__ = "routing_groups"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    strategy: Mapped[str] = mapped_column(String(50), default="weighted")
+    members: Mapped[list] = mapped_column(JSONB, default=list)
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class PromptTemplate(Base):
+    __tablename__ = "prompt_templates"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    alias: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    enforce_mode: Mapped[str] = mapped_column(String(32), default="warn")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    current_version_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    versions: Mapped[list["PromptVersion"]] = relationship("PromptVersion", back_populates="template", cascade="all, delete-orphan")
+
+
+class PromptVersion(Base):
+    __tablename__ = "prompt_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    template_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("prompt_templates.id"), index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    variables: Mapped[list] = mapped_column(JSONB, default=list)
+    created_by: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    template: Mapped[PromptTemplate] = relationship("PromptTemplate", back_populates="versions")
+
+
+class CustomIntent(Base):
+    __tablename__ = "custom_intents"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    action: Mapped[str] = mapped_column(String(32), default="block")
+    keywords: Mapped[list] = mapped_column(JSONB, default=list)
+    confidence_threshold: Mapped[float] = mapped_column(Float, default=0.8)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("custom_intents.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    intent_type: Mapped[str] = mapped_column(String(32), default="intent")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+

@@ -3,7 +3,7 @@ import random
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.governance import LLMProvider, RoutingRule
+from app.models.governance import LLMProvider, RoutingGroup, RoutingRule
 from app.services.routing_conditions import evaluate_condition
 
 
@@ -23,6 +23,27 @@ def pick_weighted_provider(providers: list[LLMProvider]) -> LLMProvider | None:
         if target <= cumulative:
             return provider
     return providers[-1]
+
+
+def pick_routing_group_member(members: list[dict], strategy: str = "weighted") -> str | None:
+    if not members:
+        return None
+    if strategy == "failover":
+        sorted_members = sorted(members, key=lambda m: m.get("priority", 1))
+        return sorted_members[0].get("model")
+
+    weights = [max(float(m.get("weight", 0)), 0.0) for m in members]
+    total = sum(weights)
+    if total <= 0:
+        return members[0].get("model")
+
+    target = random.uniform(0, total)
+    cumulative = 0.0
+    for m, weight in zip(members, weights, strict=False):
+        cumulative += weight
+        if target <= cumulative:
+            return m.get("model")
+    return members[-1].get("model")
 
 
 async def select_model(
@@ -45,6 +66,19 @@ async def select_model(
             return provider.name, None, "explicit"
         if normalized in provider.name.lower().replace(" ", ""):
             return provider.name, None, "explicit"
+
+    groups_result = await db.execute(
+        select(RoutingGroup).where(
+            RoutingGroup.tenant_id == tenant_id,
+            RoutingGroup.status == "active",
+        )
+    )
+    groups = groups_result.scalars().all()
+    for group in groups:
+        if group.name.strip().lower() == normalized or group.name.strip().lower().replace(" ", "-") == normalized.replace(" ", "-"):
+            target = pick_routing_group_member(group.members or [], strategy=group.strategy)
+            if target:
+                return target, group.name, "routing_group"
 
     if requested_model and requested_model != "auto":
         return requested_model, None, "passthrough"

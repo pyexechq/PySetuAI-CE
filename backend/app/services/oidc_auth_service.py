@@ -300,6 +300,14 @@ async def complete_oidc_login(
     if not email:
         raise ValueError("OIDC id_token missing email claim")
 
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_uuid))
+    tenant = tenant_result.scalar_one()
+
+    if tenant.allowed_login_domains:
+        email_domain = email.split("@")[-1].lower()
+        if email_domain not in [d.lower() for d in tenant.allowed_login_domains]:
+            raise ValueError("Email domain not allowed for this tenant")
+
     external_subject = str(claims.get("sub") or "").strip()
     if not external_subject:
         raise ValueError("OIDC id_token missing sub claim")
@@ -314,7 +322,7 @@ async def complete_oidc_login(
 
     user = await _resolve_oidc_user(
         db,
-        tenant_id=tenant_uuid,
+        tenant=tenant,
         email=email,
         name=name,
         role=role,
@@ -339,7 +347,7 @@ async def complete_oidc_login(
 async def _resolve_oidc_user(
     db: AsyncSession,
     *,
-    tenant_id: uuid.UUID,
+    tenant: Tenant,
     email: str,
     name: str,
     role: str,
@@ -347,7 +355,7 @@ async def _resolve_oidc_user(
 ) -> User:
     by_subject = await db.execute(
         select(User).where(
-            User.tenant_id == tenant_id,
+            User.tenant_id == tenant.id,
             User.auth_provider == "oidc",
             User.external_subject == external_subject,
             User.is_active.is_(True),
@@ -364,7 +372,7 @@ async def _resolve_oidc_user(
 
     by_email = await db.execute(
         select(User).where(
-            User.tenant_id == tenant_id,
+            User.tenant_id == tenant.id,
             User.email == email,
             User.is_active.is_(True),
         )
@@ -379,13 +387,11 @@ async def _resolve_oidc_user(
         await db.refresh(user)
         return user
 
-    tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
-    tenant = tenant_result.scalar_one()
     if not is_oidc_jit_provision_enabled(tenant):
         raise ValueError("User is not provisioned for SSO login")
 
     user = User(
-        tenant_id=tenant_id,
+        tenant_id=tenant.id,
         email=email,
         name=name,
         role=role,

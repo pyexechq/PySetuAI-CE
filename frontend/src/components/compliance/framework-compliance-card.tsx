@@ -18,6 +18,8 @@ import { ComplianceRemediationDialog } from "@/components/compliance/compliance-
 import { useComplianceActions } from "@/hooks/use-compliance-actions";
 import type { ApiComplianceControl, ApiComplianceRemediationResponse, ApiDashboardOverview } from "@/lib/api";
 import { complianceFrameworkSlug } from "@/lib/compliance-routes";
+import { usePreferencesStore } from "@/stores/preferences-store";
+import { formatDateTime } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
 type Framework = ApiDashboardOverview["compliance_frameworks"][number];
@@ -88,8 +90,9 @@ interface FrameworkComplianceCardProps {
 
 export function FrameworkComplianceCard({ framework, onFrameworkUpdated }: FrameworkComplianceCardProps) {
   const { reevaluateFramework, generateRemediation } = useComplianceActions();
+  const timezone = usePreferencesStore((s) => s.timezone);
   const [localFramework, setLocalFramework] = useState(framework);
-  const [lastEvaluated, setLastEvaluated] = useState<string | null>(null);
+  const [evaluatedAt, setEvaluatedAt] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogLoading, setDialogLoading] = useState(false);
   const [plan, setPlan] = useState<ApiComplianceRemediationResponse | null>(null);
@@ -105,7 +108,7 @@ export function FrameworkComplianceCard({ framework, onFrameworkUpdated }: Frame
   async function handleReevaluate() {
     const result = await reevaluateFramework.mutateAsync(slug);
     setLocalFramework(result.framework);
-    setLastEvaluated(new Date(result.evaluated_at).toLocaleString());
+    setEvaluatedAt(result.evaluated_at);
     onFrameworkUpdated(result.framework);
   }
 
@@ -136,8 +139,8 @@ export function FrameworkComplianceCard({ framework, onFrameworkUpdated }: Frame
               <Badge variant={status.variant} className="mt-2">
                 {status.label}
               </Badge>
-              {lastEvaluated && (
-                <p className="mt-2 text-[10px] text-muted-foreground">Re-evaluated {lastEvaluated}</p>
+              {evaluatedAt && (
+                <p className="mt-2 text-[10px] text-muted-foreground">Re-evaluated {formatDateTime(evaluatedAt, timezone)}</p>
               )}
             </div>
             <CircularProgress score={localFramework.score} />

@@ -29,7 +29,7 @@ const DEFAULT_TENANT: Tenant = {
   name: "Acme Corporation",
   slug: "acme",
   displayName: "Acme Corporation",
-  brandTagline: "Enterprise AI Control Plane",
+  brandTagline: "Governance, Gateway, and Guardrails across the Agentic Frontier",
   qaDashboardEnabled: true,
   features: DEFAULT_TENANT_FEATURES,
 };
@@ -42,7 +42,7 @@ export const useTenantStore = create<TenantState>((set) => ({
       currentTenant: {
         ...tenant,
         displayName: tenant.displayName ?? tenant.name,
-        brandTagline: tenant.brandTagline ?? "Enterprise AI Control Plane",
+        brandTagline: tenant.brandTagline ?? "Governance, Gateway, and Guardrails across the Agentic Frontier",
         features: resolveTenantFeatures(tenant.features, tenant.qaDashboardEnabled),
         qaDashboardEnabled: resolveTenantFeatures(tenant.features, tenant.qaDashboardEnabled).qa_dashboard,
         featurePolicy: tenant.featurePolicy,
@@ -55,5 +55,5 @@ export function tenantBrandName(tenant: Tenant): string {
 }
 
 export function tenantBrandTagline(tenant: Tenant): string {
-  return tenant.brandTagline?.trim() || "Enterprise AI Control Plane";
+  return tenant.brandTagline?.trim() || "Governance, Gateway, and Guardrails across the Agentic Frontier";
 }

@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronRight, ChevronDown, FileText, Folder, GitBranch, List, Plus, Trash2, Workflow, X } from "lucide-react";
+import { ChevronRight, ChevronDown, FileText, Folder, GitBranch, List, Plus, Trash2, Workflow, X, Sparkles, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { PolicyRule, PolicyTreeNode } from "@/lib/types/domain";
 import { usePolicyRules, usePolicyTree } from "@/hooks/use-policies";
 import { api, ApiError } from "@/lib/api";
+import { toast } from "react-hot-toast";
 import { usePolicyGraphLinks } from "@/hooks/use-policy-graph-links";
 import {
   findFirstPolicy,
@@ -18,9 +19,12 @@ import {
 } from "@/lib/policy-graph-map";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PolicyTesterModal } from "./policy-tester-modal";
 import { insertPolicyNode, PolicyCreateModal } from "@/components/policy-studio/policy-create-modal";
 import { PolicyFlowCanvas } from "@/components/policy-studio/policy-flow-canvas";
 import { PolicyAiHelper } from "@/components/policy-studio/policy-ai-helper";
+import { CustomIntentsPanel } from "@/components/policy-studio/custom-intents-panel";
+import { ComplianceTemplateModal } from "@/components/policy-studio/compliance-template-modal";
 import {
   PolicyConditionHelpButton,
   type PolicyConditionHelpExample,
@@ -313,6 +317,8 @@ export function PolicyStudioLayout() {
 
   const [localTree, setLocalTree] = useState<PolicyTreeNode[] | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [testerOpen, setTesterOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const tree = localTree ?? treeFromApi;
 
   const defaultPolicy = useMemo(() => findFirstPolicy(tree), [tree]);
@@ -334,7 +340,10 @@ export function PolicyStudioLayout() {
   const [saving, setSaving] = useState(false);
   const [loadingStarter, setLoadingStarter] = useState(false);
   const [policyStatus, setPolicyStatus] = useState<PolicyTreeNode["status"]>("draft");
+  const [currentPage, setCurrentPage] = useState(1);
+  const RULES_PER_PAGE = 5;
 
+  // Clear unsaved changes and reset pagination when selecting a new policy.
   useEffect(() => {
     setAddedRules([]);
     setDeletedRuleIds(new Set());
@@ -345,6 +354,7 @@ export function PolicyStudioLayout() {
     setSaveError(null);
     setPolicyStatus(selectedPolicy?.status ?? "draft");
     setViewMode("list");
+    setCurrentPage(1);
   }, [activePolicyId, selectedPolicy?.status]);
 
   const baseRules = useMemo(() => {
@@ -359,6 +369,12 @@ export function PolicyStudioLayout() {
     () => orderRules(baseRules, ruleOrderByPolicy[selectedId]),
     [baseRules, ruleOrderByPolicy, selectedId]
   );
+
+  const totalPages = Math.max(1, Math.ceil(displayRules.length / RULES_PER_PAGE));
+  const paginatedRules = useMemo(() => {
+    const start = (currentPage - 1) * RULES_PER_PAGE;
+    return displayRules.slice(start, start + RULES_PER_PAGE);
+  }, [displayRules, currentPage]);
 
   const selectedPolicyForGraph = selectedPolicy;
   const graphLink = selectedPolicyForGraph
@@ -385,8 +401,11 @@ export function PolicyStudioLayout() {
       setDeletedRuleIds(new Set());
       invalidatePolicyRules();
       setSaveNotice("Policy rules saved.");
+      toast.success("Policy rules saved successfully.");
     } catch (err) {
-      setSaveError(err instanceof ApiError ? err.message : "Failed to save policy rules");
+      const msg = err instanceof ApiError ? err.message : "Failed to save policy rules";
+      setSaveError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -401,8 +420,10 @@ export function PolicyStudioLayout() {
     if (ruleEditorMode === "create") {
       setAddedRules((prev) => [...prev, updated]);
       setSelectedRuleId(updated.id);
+      toast.success("New rule added. Click Save Changes to persist.");
     } else {
       setRuleOverrides((prev) => ({ ...prev, [updated.id]: updated }));
+      toast.success("Rule updated. Click Save Changes to persist.");
     }
     setEditingRule(null);
     setSaveNotice("Rule updated. Click Save Changes to persist.");
@@ -424,6 +445,7 @@ export function PolicyStudioLayout() {
       setSelectedRuleId(null);
     }
     setSaveNotice("Rule removed. Click Save Changes to persist.");
+    toast.success("Rule removed. Click Save Changes to persist.");
   }
 
   function handleEditRule(rule: PolicyRule) {
@@ -434,6 +456,7 @@ export function PolicyStudioLayout() {
   function handleRuleReorder(ruleIds: string[]) {
     setRuleOrderByPolicy((prev) => ({ ...prev, [selectedId]: ruleIds }));
     setSaveNotice("Rule order updated. Click Save Changes to persist.");
+    toast.success("Rule order updated.");
   }
 
   function handlePolicySelect(id: string) {
@@ -449,9 +472,12 @@ export function PolicyStudioLayout() {
       await api.updatePolicy(token, activePolicyId, { status: nextStatus });
       invalidatePolicyTree();
       setSaveNotice(`Policy status set to ${nextStatus}.`);
+      toast.success(`Policy status set to ${nextStatus}.`);
     } catch (err) {
       setPolicyStatus(selectedPolicy?.status ?? "draft");
-      setSaveError(err instanceof ApiError ? err.message : "Failed to update policy status");
+      const msg = err instanceof ApiError ? err.message : "Failed to update policy status";
+      setSaveError(msg);
+      toast.error(msg);
     }
   }
 
@@ -464,11 +490,16 @@ export function PolicyStudioLayout() {
       if (result.policies_updated > 0) {
         invalidatePolicyRules();
         setSaveNotice(result.message);
+        toast.success(result.message);
       } else {
-        setSaveNotice("No starter template available for this policy, or rules already exist.");
+        const msg = "No starter template available for this policy, or rules already exist.";
+        setSaveNotice(msg);
+        toast.error(msg);
       }
     } catch (err) {
-      setSaveError(err instanceof ApiError ? err.message : "Failed to load starter rules");
+      const msg = err instanceof ApiError ? err.message : "Failed to load starter rules";
+      setSaveError(msg);
+      toast.error(msg);
     } finally {
       setLoadingStarter(false);
     }
@@ -480,35 +511,76 @@ export function PolicyStudioLayout() {
     } else {
       setLocalTree((prev) => insertPolicyNode(prev ?? treeFromApi, node, parentId));
     }
+    toast.success(`${node.type === "policy" ? "Policy" : "Folder"} "${node.label}" created successfully.`);
     if (node.type === "policy") {
       setManualSelectedId(node.id);
       router.replace(`/policy-studio?policy=${encodeURIComponent(node.id)}`, { scroll: false });
     }
   }
 
+  const [activeStudioTab, setActiveStudioTab] = useState<"policies" | "intents">("policies");
+
   function handleApplyAiSuggestion(rule: PolicyRule) {
     setAddedRules((prev) => [...prev, rule]);
     setSelectedRuleId(rule.id);
     setSaveNotice("Suggested rule added. Click Save Changes to persist.");
+    toast.success("Suggested rule added. Click Save Changes to persist.");
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-4">
-      <Card className="w-72 shrink-0 border-border/60 bg-card/50">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">Policy Tree</CardTitle>
-            <Button size="sm" className="h-7 text-xs" onClick={() => setCreateOpen(true)}>
-              Create
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="max-h-[calc(100%-4rem)] overflow-y-auto pt-0">
-          {tree.map((node) => (
-            <PolicyTreeItem key={node.id} node={node} selectedId={selectedId} onSelect={handlePolicySelect} />
-          ))}
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      {/* Top Tab Navigation */}
+      <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+        <Button
+          variant={activeStudioTab === "policies" ? "secondary" : "ghost"}
+          size="sm"
+          className="gap-2"
+          onClick={() => setActiveStudioTab("policies")}
+        >
+          <ShieldCheck className="h-4 w-4 text-primary" />
+          Policy Tree & Rules
+        </Button>
+        <Button
+          variant={activeStudioTab === "intents" ? "secondary" : "ghost"}
+          size="sm"
+          className="gap-2"
+          onClick={() => setActiveStudioTab("intents")}
+        >
+          <Sparkles className="h-4 w-4 text-purple-400" />
+          Custom Intent Classifiers
+        </Button>
+        <div className="ml-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => setTemplateModalOpen(true)}
+          >
+            <ShieldCheck className="h-4 w-4 text-green-500" />
+            Compliance Templates
+          </Button>
+        </div>
+      </div>
+
+      {activeStudioTab === "intents" ? (
+        <CustomIntentsPanel />
+      ) : (
+        <div className="flex h-[calc(100vh-11rem)] gap-4">
+          <Card className="w-72 shrink-0 border-border/60 bg-card/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm">Policy Tree</CardTitle>
+                <Button size="sm" className="h-7 text-xs" onClick={() => setCreateOpen(true)}>
+                  Create
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="max-h-[calc(100%-4rem)] overflow-y-auto pt-0">
+              {tree.map((node) => (
+                <PolicyTreeItem key={node.id} node={node} selectedId={selectedId} onSelect={handlePolicySelect} />
+              ))}
+            </CardContent>
+          </Card>
 
       <PolicyCreateModal
         open={createOpen}
@@ -519,7 +591,7 @@ export function PolicyStudioLayout() {
         onCreated={handlePolicyCreated}
       />
 
-      <Card className="flex-1 border-border/60 bg-card/50">
+      <Card className="flex-1 flex flex-col overflow-hidden border-border/60 bg-card/50">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -590,7 +662,7 @@ export function PolicyStudioLayout() {
                   </Link>
                 </Button>
               )}
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => setTesterOpen(true)}>
                 Test Policy
               </Button>
             </div>
@@ -632,7 +704,7 @@ export function PolicyStudioLayout() {
           </div>
         )}
 
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 flex-1 overflow-y-auto">
           {viewMode === "flow" ? (
             <PolicyFlowCanvas
               rules={displayRules}
@@ -658,38 +730,68 @@ export function PolicyStudioLayout() {
             </div>
           ) : (
             <div className="space-y-3">
-              {displayRules.map((rule) => (
-                <div
-                  key={rule.id}
-                  className="flex items-start justify-between rounded-lg border border-border/60 bg-muted/20 p-4"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{rule.name}</span>
-                      <Badge variant={severityColors[rule.severity]}>{rule.severity}</Badge>
-                      {!rule.enabled && <Badge variant="outline">Disabled</Badge>}
+              <div className="space-y-3">
+                {paginatedRules.map((rule) => (
+                  <div
+                    key={rule.id}
+                    className="flex items-start justify-between rounded-lg border border-border/60 bg-muted/20 p-4"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{rule.name}</span>
+                        <Badge variant={severityColors[rule.severity]}>{rule.severity}</Badge>
+                        {!rule.enabled && <Badge variant="outline">Disabled</Badge>}
+                      </div>
+                      <p className="font-mono text-xs text-muted-foreground">{rule.condition}</p>
+                      <p className="text-sm">
+                        Action: <span className="font-medium text-primary">{rule.action}</span>
+                      </p>
                     </div>
-                    <p className="font-mono text-xs text-muted-foreground">{rule.condition}</p>
-                    <p className="text-sm">
-                      Action: <span className="font-medium text-primary">{rule.action}</span>
-                    </p>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => handleEditRule(rule)} disabled={!canEdit}>
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-400 hover:text-red-300"
+                        onClick={() => handleRuleDelete(rule.id)}
+                        disabled={!canEdit}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => handleEditRule(rule)} disabled={!canEdit}>
-                      Edit
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="text-red-400 hover:text-red-300"
-                      onClick={() => handleRuleDelete(rule.id)}
-                      disabled={!canEdit}
+                      className="h-7 text-xs"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
                     >
-                      Delete
+                      Next
                     </Button>
                   </div>
                 </div>
-              ))}
+              )}
             </div>
           )}
         </CardContent>
@@ -714,6 +816,24 @@ export function PolicyStudioLayout() {
           onSave={handleRuleSave}
           onDelete={ruleEditorMode === "edit" ? () => handleRuleDelete(editingRule.id) : undefined}
         />
+      )}
+
+      <PolicyTesterModal 
+        isOpen={testerOpen}
+        onClose={() => setTesterOpen(false)}
+        rules={displayRules.filter(r => r.enabled)}
+      />
+
+      <ComplianceTemplateModal
+        open={templateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+        token={token}
+        onSuccess={(msg) => {
+          setSaveNotice(msg);
+          invalidatePolicyTree();
+        }}
+      />
+        </div>
       )}
     </div>
   );

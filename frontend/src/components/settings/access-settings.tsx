@@ -2,16 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, KeyRound, Layers, Loader2, Plus, Trash2 } from "lucide-react";
+import { Copy, KeyRound, Layers, Loader2, Plus, Trash2, Folder } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ApiKeyLimitsForm } from "./api-key-limits";
 import {
   api,
   type ApiClientApiKey,
   type ApiClientApiKeyCreateResponse,
   type ApiPolicyBundle,
   type ApiPolicyTreeNode,
+  customIntentsAPI,
 } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -29,7 +31,7 @@ function protocolLabel(value: string | null | undefined) {
 function flattenPolicies(nodes: ApiPolicyTreeNode[]): ApiPolicyTreeNode[] {
   const out: ApiPolicyTreeNode[] = [];
   for (const node of nodes) {
-    if (node.type === "policy") out.push(node);
+    if (node.type === "policy" || node.type === "folder") out.push(node);
     if (node.children?.length) out.push(...flattenPolicies(node.children));
   }
   return out;
@@ -46,9 +48,19 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
   const [newBundleName, setNewBundleName] = useState("");
   const [newBundleDesc, setNewBundleDesc] = useState("");
   const [newBundlePolicyIds, setNewBundlePolicyIds] = useState<string[]>([]);
+  const [newBundleCustomIntentIds, setNewBundleCustomIntentIds] = useState<string[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyBundleId, setNewKeyBundleId] = useState("");
   const [newKeyClientProtocol, setNewKeyClientProtocol] = useState("");
+  const [newKeyLimits, setNewKeyLimits] = useState({
+    ai_rate_limit_rpm: null as number | null,
+    ai_rate_limit_rph: null as number | null,
+    ai_rate_limit_rpd: null as number | null,
+    ai_token_limit_tpm: null as number | null,
+    ai_token_limit_tph: null as number | null,
+    ai_token_limit_tpd: null as number | null,
+  });
+  const [editingKeyLimits, setEditingKeyLimits] = useState<ApiClientApiKey | null>(null);
   const [createdKey, setCreatedKey] = useState<ApiClientApiKeyCreateResponse | null>(null);
 
   const { data: bundles = [], isLoading: bundlesLoading } = useQuery({
@@ -68,6 +80,12 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
     queryFn: () => api.getPolicyTree(token!),
     enabled: Boolean(token),
   });
+  
+  const { data: customIntents = [] } = useQuery({
+    queryKey: ["custom-intents", token],
+    queryFn: () => customIntentsAPI.list(token!),
+    enabled: Boolean(token),
+  });
 
   const policies = useMemo(() => flattenPolicies(policyTree), [policyTree]);
 
@@ -77,6 +95,7 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
         name: newBundleName,
         description: newBundleDesc,
         policy_ids: newBundlePolicyIds,
+        custom_intent_ids: newBundleCustomIntentIds,
         is_default: bundles.length === 0,
       }),
     onSuccess: () => {
@@ -84,6 +103,7 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
       setNewBundleName("");
       setNewBundleDesc("");
       setNewBundlePolicyIds([]);
+      setNewBundleCustomIntentIds([]);
     },
   });
 
@@ -98,6 +118,7 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
         name: newKeyName,
         bundle_id: newKeyBundleId || undefined,
         client_response_protocol: newKeyClientProtocol || null,
+        ...newKeyLimits,
       }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["client-api-keys"] });
@@ -105,6 +126,14 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
       setNewKeyName("");
       setNewKeyBundleId("");
       setNewKeyClientProtocol("");
+      setNewKeyLimits({
+        ai_rate_limit_rpm: null,
+        ai_rate_limit_rph: null,
+        ai_rate_limit_rpd: null,
+        ai_token_limit_tpm: null,
+        ai_token_limit_tph: null,
+        ai_token_limit_tpd: null,
+      });
     },
   });
 
@@ -112,6 +141,17 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
     mutationFn: ({ id, client_response_protocol }: { id: string; client_response_protocol: string | null }) =>
       api.updateClientApiKey(token!, id, { client_response_protocol }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["client-api-keys"] }),
+  });
+
+  const updateKeyLimits = useMutation({
+    mutationFn: (updates: Partial<ApiClientApiKey> & { id: string }) => {
+      const { id, ...rest } = updates;
+      return api.updateClientApiKey(token!, id, rest);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-api-keys"] });
+      setEditingKeyLimits(null);
+    },
   });
 
   const toggleKey = useMutation({
@@ -178,8 +218,16 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
                         {label}
                       </Badge>
                     ))}
-                    {bundle.policy_ids.length === 0 && (
-                      <span className="text-xs text-muted-foreground">No policies attached</span>
+                    {(bundle.custom_intent_ids || []).map((id, i) => {
+                      const intent = customIntents.find((ci) => ci.id === id);
+                      return (
+                        <Badge key={`intent-${bundle.id}-${i}`} variant="outline" className="text-xs border-purple-500/30 text-purple-600 dark:text-purple-400">
+                          {intent ? intent.name : id}
+                        </Badge>
+                      );
+                    })}
+                    {bundle.policy_ids.length === 0 && (bundle.custom_intent_ids || []).length === 0 && (
+                      <span className="text-xs text-muted-foreground">No policies or intents attached</span>
                     )}
                   </div>
                 </div>
@@ -226,9 +274,32 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
                           else setNewBundlePolicyIds((ids) => ids.filter((id) => id !== p.id));
                         }}
                       />
+                      {p.type === "folder" ? <Folder className="h-4 w-4 text-muted-foreground" /> : null}
                       {p.label}
                     </label>
                   ))}
+                  {policies.length === 0 && <span className="text-xs text-muted-foreground">No policies available</span>}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Attach Custom Intents</p>
+                <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-input p-2">
+                  {customIntents.map((intent) => (
+                    <label key={intent.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={newBundleCustomIntentIds.includes(intent.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setNewBundleCustomIntentIds((ids) => [...ids, intent.id]);
+                          else setNewBundleCustomIntentIds((ids) => ids.filter((id) => id !== intent.id));
+                        }}
+                      />
+                      {intent.intent_type === "folder" ? <Folder className="h-4 w-4 text-muted-foreground" /> : null}
+                      {intent.name}
+                    </label>
+                  ))}
+                  {customIntents.length === 0 && <span className="text-xs text-muted-foreground">No custom intents available</span>}
                 </div>
               </div>
               <Button
@@ -297,40 +368,65 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
                 <p className="mt-1 text-xs text-muted-foreground">
                   Response format: {protocolLabel(key.client_response_protocol)}
                 </p>
-              </div>
-              {canEdit && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={key.client_response_protocol ?? ""}
-                    disabled={updateKeyProtocol.isPending}
-                    onChange={(e) =>
-                      updateKeyProtocol.mutate({
-                        id: key.id,
-                        client_response_protocol: e.target.value || null,
-                      })
-                    }
-                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                    title="Client response format"
-                  >
-                    {CLIENT_PROTOCOL_OPTIONS.map((option) => (
-                      <option key={option.value || "inherit"} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <Button variant="outline" size="sm" onClick={() => toggleKey.mutate(key)}>
-                    {key.is_active ? "Deactivate" : "Activate"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() => deleteKey.mutate(key.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Limits: {key.ai_rate_limit_rpm || '∞'} RPM / {key.ai_token_limit_tpm || '∞'} TPM
                 </div>
-              )}
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                {canEdit && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setEditingKeyLimits(key)}>
+                      Edit Limits
+                    </Button>
+                    <select
+                      value={key.client_response_protocol ?? ""}
+                      disabled={updateKeyProtocol.isPending}
+                      onChange={(e) =>
+                        updateKeyProtocol.mutate({
+                          id: key.id,
+                          client_response_protocol: e.target.value || null,
+                        })
+                      }
+                      className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                      title="Client response format"
+                    >
+                      {CLIENT_PROTOCOL_OPTIONS.map((option) => (
+                        <option key={option.value || "inherit"} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <Button variant="outline" size="sm" onClick={() => toggleKey.mutate(key)}>
+                      {key.is_active ? "Deactivate" : "Activate"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => deleteKey.mutate(key.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                {editingKeyLimits?.id === key.id && (
+                  <div className="w-full mt-2 rounded-lg border border-border/60 bg-muted/20 p-3 max-w-[400px]">
+                    <ApiKeyLimitsForm 
+                      limits={editingKeyLimits}
+                      onChange={(field, value) => setEditingKeyLimits(prev => prev ? ({ ...prev, [field]: value } as ApiClientApiKey) : null)}
+                      disabled={updateKeyLimits.isPending}
+                    />
+                    <div className="mt-3 flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setEditingKeyLimits(null)}>
+                        Cancel
+                      </Button>
+                      <Button size="sm" onClick={() => updateKeyLimits.mutate(editingKeyLimits)} disabled={updateKeyLimits.isPending}>
+                        {updateKeyLimits.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
 
@@ -366,6 +462,13 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
                   </option>
                 ))}
               </select>
+              
+              <ApiKeyLimitsForm 
+                limits={newKeyLimits}
+                onChange={(field, value) => setNewKeyLimits(prev => ({ ...prev, [field]: value }))}
+                disabled={createKey.isPending}
+              />
+
               <Button
                 size="sm"
                 className="gap-2"

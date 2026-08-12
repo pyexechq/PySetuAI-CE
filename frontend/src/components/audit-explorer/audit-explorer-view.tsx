@@ -14,6 +14,8 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 import { formatDateRangeLabel } from "@/lib/date-range";
 import { useDateRangeStore } from "@/stores/date-range-store";
+import { usePreferencesStore } from "@/stores/preferences-store";
+import { formatTime } from "@/lib/date-utils";
 import { Download, Pause, Play, Radio, Search, Filter } from "lucide-react";
 import { SiemConnectorsPanel } from "@/components/audit-explorer/siem-connectors-panel";
 import { TranslationTracePanel } from "@/components/audit-explorer/translation-trace-panel";
@@ -33,6 +35,7 @@ const AuditLogGrid = dynamic(
 export function AuditExplorerView() {
   const token = useAuthStore((s) => s.token);
   const searchParams = useSearchParams();
+  const timezone = usePreferencesStore((s) => s.timezone);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [live, setLive] = useState(true);
@@ -55,7 +58,7 @@ export function AuditExplorerView() {
     staleTime: 60_000,
   });
 
-  const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
+  const lastUpdated = dataUpdatedAt ? formatTime(new Date(dataUpdatedAt), timezone) : null;
 
   useEffect(() => {
     const auditId = searchParams.get("audit_id")?.trim();

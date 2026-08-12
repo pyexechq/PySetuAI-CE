@@ -8,7 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api, type ApiComplianceSnapshotSummary } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
+import { usePreferencesStore } from "@/stores/preferences-store";
+import { formatDateTime } from "@/lib/date-utils";
 import { formatNumber } from "@/lib/utils";
+
+import { toast } from "react-hot-toast";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api/v1";
 
@@ -28,12 +32,13 @@ function downloadExport(token: string, snapshotId: string, format: "csv" | "json
       URL.revokeObjectURL(link.href);
     })
     .catch(() => {
-      window.alert("Unable to download evidence export.");
+      toast.error("Unable to download evidence export.");
     });
 }
 
 export function ComplianceEvidencePanel() {
   const token = useAuthStore((s) => s.token);
+  const timezone = usePreferencesStore((s) => s.timezone);
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState("");
 
@@ -98,10 +103,7 @@ export function ComplianceEvidencePanel() {
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-medium">
-                      {new Date(snapshot.created_at).toLocaleString(undefined, {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
+                      {formatDateTime(snapshot.created_at, timezone)}
                     </p>
                     <Badge variant="secondary">{Math.round(snapshot.overall_score)}% overall</Badge>
                     <Badge variant="outline">

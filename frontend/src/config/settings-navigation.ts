@@ -3,6 +3,7 @@ import {
   Building2,
   KeyRound,
   Layers,
+  Network,
   Shield,
   Sparkles,
   Sun,
@@ -41,11 +42,25 @@ export const settingsNavItems: SettingsNavItem[] = [
     description: "Platform-wide AI key for Policy Studio, Compliance, and insights",
   },
   {
+    id: "prompts",
+    label: "Prompt Templates",
+    href: "/settings/prompts",
+    icon: Sparkles,
+    description: "Managed system prompts and enforce modes",
+  },
+  {
     id: "uag",
     label: "Universal AI Gateway",
     href: "/settings/uag",
     icon: ArrowRightLeft,
     description: "Provider mappings and translation policies",
+  },
+  {
+    id: "gateway",
+    label: "Gateway Limits",
+    href: "/settings/gateway",
+    icon: Network,
+    description: "AI traffic rate limits and tenant budgets",
   },
   {
     id: "identity",

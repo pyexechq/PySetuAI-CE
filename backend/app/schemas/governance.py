@@ -142,6 +142,11 @@ class PolicyRulesSaveRequest(BaseModel):
     rules: list[PolicyRuleUpdateRequest]
 
 
+class PolicyTestRequest(BaseModel):
+    content: str
+    rules: list[PolicyRuleUpdateRequest]
+
+
 class PolicyConditionHelpExample(BaseModel):
     title: str
     condition: str

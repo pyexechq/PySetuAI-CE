@@ -19,12 +19,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const finish = () => setHydrated(true);
-    const unsub = useAuthStore.persist.onFinishHydration(finish);
-    if (useAuthStore.persist.hasHydrated()) {
-      finish();
-    }
-    return unsub;
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
@@ -95,7 +90,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       <div className="flex h-screen flex-col items-center justify-center gap-3 bg-background p-6 text-center">
         <p className="text-lg font-semibold">Access denied</p>
         <p className="max-w-md text-sm text-muted-foreground">
-          Your role ({user.role.replace("_", " ")}) does not have access to this page.
+          Your role ({user.role?.replace("_", " ") || "unknown"}) does not have access to this page.
         </p>
         <button
           type="button"

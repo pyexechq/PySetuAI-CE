@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.telemetry import current_trace_id, get_tracer
-from app.models.governance import AuditLog, PolicyBundle
+from app.models.governance import AuditLog, PolicyBundle, RoutingGroup
 from app.schemas.openai import (
     ChatCompletionChoice,
     ChatCompletionRequest,
@@ -40,10 +40,14 @@ from app.services.llm_router import select_model
 from app.services.ollama_client import OllamaError, list_ollama_models, resolve_ollama_model
 from app.services.opa_service import evaluate_gateway_abac
 from app.services.policy_engine import inspect_for_gateway
+from app.services.prompt_injection_service import resolve_and_inject_prompt
+from app.services.regional_adapters import call_bedrock_regional, call_vertex_regional
 from app.services.provider_metrics_service import record_provider_request
 from app.services.routing_context import build_routing_context
 from app.services.secrets_service import apply_provider_gateway_credentials
 from app.services.uag_admin_service import record_translation_event
+from app.core.rate_limit import increment_ai_token_usage
+from app.models.tenant import Tenant
 
 tracer = get_tracer(__name__)
 logger = logging.getLogger(__name__)
@@ -70,6 +74,10 @@ class PreparedChat:
     uag_trace: TranslationTrace | None = None
     requested_model: str | None = None
     client_response_protocol: str = "openai"
+    prompt_template_id: str | None = None
+    prompt_version: int | None = None
+    prompt_enforce_mode: str | None = None
+    prompt_warning: str | None = None
 
 
 def _estimate_tokens(text: str) -> int:
@@ -85,6 +93,11 @@ def _pysetu_meta(prepared: PreparedChat, **extra) -> dict:
     }
     if prepared.matched_routing_rule:
         meta["matched_routing_rule"] = prepared.matched_routing_rule
+    if prepared.prompt_template_id:
+        meta["prompt_template_id"] = prepared.prompt_template_id
+        meta["prompt_version"] = prepared.prompt_version
+    if prepared.prompt_warning:
+        meta["prompt_warning"] = prepared.prompt_warning
     if prepared.policy_bundle_name:
         meta["policy_bundle"] = prepared.policy_bundle_name
     if prepared.client_api_key_name:
@@ -163,6 +176,7 @@ async def _write_audit(
 
 def _build_usage_metadata(
     ctx: GatewayContext,
+    request: ChatCompletionRequest | None = None,
     *,
     model: str,
     prompt_tokens: int,
@@ -170,6 +184,8 @@ def _build_usage_metadata(
     total_tokens: int,
     latency_ms: int | None = None,
 ) -> dict:
+    end_user = request.user if request and request.user else (getattr(ctx.user, "external_subject", None) if ctx.user else None)
+    metadata = request.metadata if request else None
     return {
         "model": model,
         "prompt_tokens": prompt_tokens,
@@ -179,6 +195,8 @@ def _build_usage_metadata(
         "client_api_key_id": str(ctx.client_api_key_id) if ctx.client_api_key_id else None,
         "client_api_key_name": ctx.client_api_key_name,
         "user_id": str(ctx.user.id) if ctx.user else None,
+        "end_user": end_user,
+        "metadata": metadata,
         "latency_ms": latency_ms,
     }
 
@@ -230,6 +248,8 @@ def coerce_upstream(
         return "gemini"
     if upstream == "ollama" and config.ollama_enabled:
         return "ollama"
+    if upstream in ("bedrock", "vertex"):
+        return upstream
     return config.resolve_upstream(effective_model)
 
 
@@ -322,6 +342,25 @@ async def prepare_chat_request(
             else m
             for m in messages
         ]
+
+    requested_template = getattr(request, "prompt_template", None) or getattr(request, "prompt_template_id", None) or getattr(request, "prompt_template_alias", None)
+    req_variables = getattr(request, "variables", None)
+
+    messages, prompt_tmpl_id, prompt_ver, prompt_enforce, prompt_warn, prompt_blocked = await resolve_and_inject_prompt(
+        db, ctx.tenant_id, messages, requested_template, req_variables
+    )
+    if prompt_blocked:
+        await _write_audit(
+            db,
+            ctx,
+            "Policy Inspection",
+            f"{effective_request.model} /chat",
+            "blocked",
+            "high",
+            prompt_warn or "Ad-hoc system prompt blocked by tenant policy",
+        )
+        await db.commit()
+        return None, ingress, prompt_warn or "Ad-hoc system prompts are blocked by tenant policy."
 
     routed_model, matched_rule, routing_strategy = await select_model(
         effective_request.model,
@@ -420,6 +459,10 @@ async def prepare_chat_request(
         uag_trace=uag_trace,
         requested_model=request.model,
         client_response_protocol=uag_pipeline.client_response_protocol,
+        prompt_template_id=prompt_tmpl_id,
+        prompt_version=prompt_ver,
+        prompt_enforce_mode=prompt_enforce,
+        prompt_warning=prompt_warn,
     )
 
     if upstream == "ollama":
@@ -439,6 +482,26 @@ async def prepare_chat_request(
         )
 
     return prepared, ingress, None
+
+
+async def _resolve_failover_candidates(prepared: PreparedChat, db: AsyncSession, ctx: GatewayContext) -> list[str]:
+    candidates = [prepared.routed_model]
+    if prepared.routing_strategy == "routing_group" and prepared.matched_routing_rule:
+        result = await db.execute(
+            select(RoutingGroup).where(
+                RoutingGroup.tenant_id == ctx.tenant_id,
+                RoutingGroup.name == prepared.matched_routing_rule,
+                RoutingGroup.status == "active",
+            )
+        )
+        group = result.scalar_one_or_none()
+        if group and group.members:
+            sorted_members = sorted(group.members, key=lambda m: m.get("priority", 1))
+            member_models = [m["model"] for m in sorted_members if isinstance(m, dict) and m.get("model")]
+            for model_name in member_models:
+                if model_name not in candidates:
+                    candidates.append(model_name)
+    return candidates
 
 
 def resolve_chat_completions_url(endpoint: str) -> str:
@@ -563,6 +626,48 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
             pysetu=_pysetu_meta(prepared, ollama_model=prepared.ollama_model),
         )
 
+    if prepared.upstream == "bedrock":
+        text, bedrock_model, region = await call_bedrock_regional(
+            prepared.messages,
+            model_id=prepared.routed_model,
+            temperature=request.temperature,
+        )
+        prompt_tokens = _estimate_tokens(" ".join(m.content for m in prepared.messages))
+        completion_tokens = _estimate_tokens(text)
+        return ChatCompletionResponse(
+            id=f"chatcmpl-{uuid.uuid4().hex[:24]}",
+            created=int(time.time()),
+            model=bedrock_model,
+            choices=[ChatCompletionChoice(message=ChatMessage(role="assistant", content=text))],
+            usage=ChatCompletionUsage(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=prompt_tokens + completion_tokens,
+            ),
+            pysetu=_pysetu_meta(prepared),
+        )
+
+    if prepared.upstream == "vertex":
+        text, vertex_model, region = await call_vertex_regional(
+            prepared.messages,
+            model_id=prepared.routed_model,
+            temperature=request.temperature,
+        )
+        prompt_tokens = _estimate_tokens(" ".join(m.content for m in prepared.messages))
+        completion_tokens = _estimate_tokens(text)
+        return ChatCompletionResponse(
+            id=f"chatcmpl-{uuid.uuid4().hex[:24]}",
+            created=int(time.time()),
+            model=vertex_model,
+            choices=[ChatCompletionChoice(message=ChatMessage(role="assistant", content=text))],
+            usage=ChatCompletionUsage(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=prompt_tokens + completion_tokens,
+            ),
+            pysetu=_pysetu_meta(prepared),
+        )
+
     mock = _build_mock_response(prepared.routed_model, prepared.combined, prepared.ingress)
     mock.pysetu = _pysetu_meta(prepared)
     mock.pysetu["routed_model"] = prepared.routed_model
@@ -678,9 +783,79 @@ async def stream_chat_completion(
 
         audit_details = f"Streamed to {model_name} via {prepared.upstream}"
         latency_ms = max(1, int((time.perf_counter() - started) * 1000))
+        prompt_tokens = _estimate_tokens(prepared.combined)
+        full_text_str = "".join(full_text)
+        completion_tokens = _estimate_tokens(full_text_str)
+        total_tokens = prompt_tokens + completion_tokens
         await record_provider_request(db, ctx.tenant_id, prepared.routed_model, latency_ms, success=True)
+        
+        tenant_result = await db.execute(select(Tenant).where(Tenant.id == ctx.tenant_id))
+        tenant = tenant_result.scalar_one()
+
+        if ctx.client_api_key_id:
+            increment_ai_token_usage(
+                f"{ctx.tenant_id}:key:{ctx.client_api_key_id}",
+                ctx.ai_token_limit_tpm,
+                ctx.ai_token_limit_tph,
+                ctx.ai_token_limit_tpd,
+                total_tokens,
+            )
+
+        increment_ai_token_usage(
+            str(ctx.tenant_id),
+            tenant.ai_token_limit_tpm,
+            tenant.ai_token_limit_tph,
+            tenant.ai_token_limit_tpd,
+            total_tokens,
+        )
+
+        region = infer_region_from_bundle(ctx.policy_bundle_name)
+        dlp = dlp_scan_content(full_text_str, region=region)
+        inspect_content_text = dlp.redacted_content or full_text_str
+        inspect_context = {"has_pii": dlp.has_pii, "region": dlp.region}
+        bundle = await _load_bundle(db, ctx.policy_bundle_id)
+        egress = await inspect_for_gateway(db, ctx.tenant_id, bundle, inspect_content_text, context=inspect_context)
+
+        if prepared.uag_trace:
+            prepared.uag_trace.governance_actions.append("egress_policy")
+
+        audit_status = "allowed"
+        audit_risk = egress.risk if egress.risk != "low" else prepared.ingress.risk
+        if not egress.allowed:
+            audit_status = "blocked"
+            await _dispatch_gateway_block_alert(
+                db,
+                ctx,
+                audit_action="LLM Response",
+                resource=f"{prepared.routed_model} /chat",
+                risk=egress.risk,
+                details="Output blocked by egress policy (streamed)",
+            )
+        elif egress.violations or dlp.has_pii:
+            audit_status = "review"
+
+        if egress.violations:
+            audit_details += f"; {len(egress.violations)} egress rule violation(s)"
+        if dlp.has_pii:
+            audit_details += f"; PII detected in output ({', '.join(dlp.classifications)})"
+
         await _write_audit(
-            db, ctx, "LLM Request", f"{prepared.routed_model} /chat", "allowed", prepared.ingress.risk, audit_details
+            db, 
+            ctx, 
+            "LLM Response" if not egress.allowed else "LLM Request", 
+            f"{prepared.routed_model} /chat", 
+            audit_status, 
+            audit_risk, 
+            audit_details,
+            usage_metadata=_build_usage_metadata(
+                ctx,
+                request=request,
+                model=prepared.routed_model,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=prompt_tokens + completion_tokens,
+                latency_ms=latency_ms,
+            )
         )
         await db.commit()
 
@@ -709,20 +884,70 @@ async def process_chat_completion(
 
         span.set_attribute("pysetu.upstream", prepared.upstream)
         started = time.perf_counter()
-        try:
-            response = await _execute_upstream(prepared, request)
-        except (httpx.HTTPError, GeminiError, OllamaError) as exc:
-            span.record_exception(exc)
+        candidates = await _resolve_failover_candidates(prepared, db, ctx)
+        failover_chain: list[dict] = []
+        response = None
+        last_exception = None
+
+        for candidate_model in candidates:
+            prepared.routed_model = candidate_model
+            prepared.upstream = coerce_upstream(
+                prepared.config.resolve_upstream(candidate_model),
+                prepared.config,
+                candidate_model,
+                candidate_model,
+            )
+            if prepared.upstream == "ollama":
+                try:
+                    available = await list_ollama_models(prepared.config.ollama_base_url)
+                except OllamaError:
+                    available = []
+                prepared.ollama_model = resolve_ollama_model(candidate_model, available, prepared.config.ollama_default_model)
+                prepared.gemini_model = None
+            elif prepared.upstream == "gemini":
+                prepared.gemini_model = normalize_gemini_model(candidate_model, prepared.config.gemini_default_model)
+                prepared.ollama_model = None
+            else:
+                prepared.ollama_model = None
+                prepared.gemini_model = None
+
+            sub_started = time.perf_counter()
+            try:
+                response = await _execute_upstream(prepared, request)
+                if failover_chain:
+                    failover_chain.append({"model": candidate_model, "upstream": prepared.upstream, "status": "success"})
+                break
+            except (httpx.HTTPError, GeminiError, OllamaError) as exc:
+                last_exception = exc
+                sub_latency = max(1, int((time.perf_counter() - sub_started) * 1000))
+                await record_provider_request(db, ctx.tenant_id, candidate_model, sub_latency, success=False)
+                failover_chain.append({
+                    "model": candidate_model,
+                    "upstream": prepared.upstream,
+                    "status": "failed",
+                    "error": str(exc),
+                })
+                logger.warning("Upstream failure for %s via %s: %s", candidate_model, prepared.upstream, exc)
+
+        if response is None:
+            span.record_exception(last_exception)
             latency_ms = max(1, int((time.perf_counter() - started) * 1000))
-            await record_provider_request(db, ctx.tenant_id, prepared.routed_model, latency_ms, success=False)
-            await _write_audit(db, ctx, "LLM Request", f"{prepared.routed_model} /chat", "review", "medium", str(exc))
+            failover_summary = "; ".join(f"{item['model']}({item['upstream']}): {item['error']}" for item in failover_chain)
+            audit_msg = f"All provider targets failed: {failover_summary}"
+            await _write_audit(db, ctx, "LLM Request", f"{prepared.routed_model} /chat", "review", "medium", audit_msg)
             await db.commit()
-            return None, prepared.ingress, f"Upstream provider error: {exc}"
+            return None, prepared.ingress, f"Upstream provider error: {last_exception}"
 
         latency_ms = max(1, int((time.perf_counter() - started) * 1000))
 
+        region = infer_region_from_bundle(ctx.policy_bundle_name)
+        raw_response_text = response.choices[0].message.content
+        dlp = dlp_scan_content(raw_response_text, region=region)
+        inspect_content_text = dlp.redacted_content or raw_response_text
+        inspect_context = {"has_pii": dlp.has_pii, "region": dlp.region}
+
         bundle = await _load_bundle(db, ctx.policy_bundle_id)
-        egress = await inspect_for_gateway(db, ctx.tenant_id, bundle, response.choices[0].message.content)
+        egress = await inspect_for_gateway(db, ctx.tenant_id, bundle, inspect_content_text, context=inspect_context)
         if not egress.allowed:
             span.set_attribute("pysetu.result", "egress_blocked")
             await _write_audit(
@@ -744,6 +969,11 @@ async def process_chat_completion(
                 details="Output blocked by egress policy",
             )
             return None, egress, "Response blocked by PySetu egress inspection."
+
+        # Apply output redaction if DLP or egress rules redacted text
+        effective_redacted = egress.redacted_content or dlp.redacted_content
+        if effective_redacted and response.choices and len(response.choices) > 0:
+            response.choices[0].message.content = effective_redacted
 
         await record_provider_request(db, ctx.tenant_id, prepared.routed_model, latency_ms, success=True)
 
@@ -778,6 +1008,29 @@ async def process_chat_completion(
             audit_details += f"; {len(prepared.ingress.violations)} policy rule(s) applied"
         if prepared.uag_trace:
             audit_details += f" |uag_trace={json.dumps(prepared.uag_trace.to_dict(), separators=(',', ':'))}"
+        if failover_chain:
+            audit_details += f" |failover_chain={json.dumps(failover_chain, separators=(',', ':'))}"
+            response.pysetu["failover_chain"] = failover_chain
+
+        tenant_result = await db.execute(select(Tenant).where(Tenant.id == ctx.tenant_id))
+        tenant = tenant_result.scalar_one()
+
+        if ctx.client_api_key_id:
+            increment_ai_token_usage(
+                f"{ctx.tenant_id}:key:{ctx.client_api_key_id}",
+                ctx.ai_token_limit_tpm,
+                ctx.ai_token_limit_tph,
+                ctx.ai_token_limit_tpd,
+                response.usage.total_tokens,
+            )
+
+        increment_ai_token_usage(
+            str(ctx.tenant_id),
+            tenant.ai_token_limit_tpm,
+            tenant.ai_token_limit_tph,
+            tenant.ai_token_limit_tpd,
+            response.usage.total_tokens,
+        )
 
         await _write_audit(
             db,
@@ -789,6 +1042,7 @@ async def process_chat_completion(
             audit_details,
             usage_metadata=_build_usage_metadata(
                 ctx,
+                request=request,
                 model=prepared.routed_model,
                 prompt_tokens=response.usage.prompt_tokens,
                 completion_tokens=response.usage.completion_tokens,

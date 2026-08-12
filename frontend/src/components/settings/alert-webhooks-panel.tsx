@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api, type ApiAlertWebhook, type ApiAlertWebhookCreateRequest } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
+import { usePreferencesStore } from "@/stores/preferences-store";
+import { formatDateTime } from "@/lib/date-utils";
 
 const WEBHOOK_TYPES = ["slack", "servicenow"] as const;
 
@@ -162,6 +164,8 @@ function WebhookRow({
   onDelete: () => void;
   testing: boolean;
 }) {
+  const timezone = usePreferencesStore((s) => s.timezone);
+
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 p-3 text-sm">
       <div className="space-y-1">
@@ -174,7 +178,7 @@ function WebhookRow({
         {hook.last_error && <p className="text-xs text-red-400">Last error: {hook.last_error}</p>}
         <p className="text-xs text-muted-foreground">
           Sent: {hook.alerts_sent}
-          {hook.last_alert_at ? ` · Last: ${new Date(hook.last_alert_at).toLocaleString()}` : ""}
+          {hook.last_alert_at ? ` · Last: ${formatDateTime(hook.last_alert_at, timezone)}` : ""}
         </p>
       </div>
       <div className="flex gap-2">

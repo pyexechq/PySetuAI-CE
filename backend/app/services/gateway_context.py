@@ -18,4 +18,10 @@ class GatewayContext:
     policy_bundle_id: uuid.UUID | None = None
     policy_bundle_name: str | None = None
     client_response_protocol: str | None = None
+    ai_rate_limit_rpm: int | None = None
+    ai_rate_limit_rph: int | None = None
+    ai_rate_limit_rpd: int | None = None
+    ai_token_limit_tpm: int | None = None
+    ai_token_limit_tph: int | None = None
+    ai_token_limit_tpd: int | None = None
     debug_mode: bool = False

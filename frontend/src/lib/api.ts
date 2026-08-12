@@ -1,4 +1,12 @@
 import { handleSessionExpired } from "@/lib/session";
+import type {
+  PromptTemplate,
+  PromptVersion,
+  CustomIntent,
+  CustomIntentCreate,
+  CustomIntentUpdate,
+  CustomIntentTestResponse,
+} from "./types/domain";
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api/v1";
 
@@ -453,6 +461,38 @@ export interface LoginPayload {
   tenant_slug?: string;
 }
 
+export interface ApiIdentitySettings {
+  oidc_jit_provision_enabled: boolean;
+  platform_jit_default: boolean;
+  allowed_login_domains: string[] | null;
+}
+
+export interface ApiIdentitySettingsUpdate {
+  oidc_jit_provision_enabled?: boolean;
+  allowed_login_domains?: string[] | null;
+}
+
+export interface ApiGatewaySettings {
+  ai_rate_limit_rpm: number | null;
+  ai_rate_limit_rph: number | null;
+  ai_rate_limit_rpd: number | null;
+  ai_token_limit_tpm: number | null;
+  ai_token_limit_tph: number | null;
+  ai_token_limit_tpd: number | null;
+  ai_token_budgets: Record<string, any> | null;
+  allowed_api_origins: string[] | null;
+}
+
+export interface ApiGatewaySettingsUpdate {
+  ai_rate_limit_rpm?: number | null;
+  ai_rate_limit_rph?: number | null;
+  ai_rate_limit_rpd?: number | null;
+  ai_token_limit_tpm?: number | null;
+  ai_token_limit_tph?: number | null;
+  ai_token_limit_tpd?: number | null;
+  allowed_api_origins?: string[] | null;
+}
+
 export const api = {
   login: (payload: LoginPayload) =>
     apiFetch<ApiTokenResponse>("/auth/login", {
@@ -466,6 +506,12 @@ export const api = {
 
   getCurrentUser: (token: string) =>
     apiFetch<ApiUser>("/auth/me", {}, token),
+
+  updateCurrentUser: (token: string, data: { name: string }) =>
+    apiFetch<ApiUser>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }, token),
 
   getOrganizationSettings: (token: string) =>
     apiFetch<ApiOrganizationSettings>("/settings/organization", {}, token),
@@ -489,8 +535,17 @@ export const api = {
   getIdentitySettings: (token: string) =>
     apiFetch<ApiIdentitySettings>("/settings/identity", {}, token),
 
-  updateIdentitySettings: (token: string, body: { oidc_jit_provision_enabled?: boolean }) =>
+  updateIdentitySettings: (token: string, body: ApiIdentitySettingsUpdate) =>
     apiFetch<ApiIdentitySettings>("/settings/identity", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  getGatewaySettings: (token: string) =>
+    apiFetch<ApiGatewaySettings>("/settings/gateway", {}, token),
+
+  updateGatewaySettings: (token: string, body: ApiGatewaySettingsUpdate) =>
+    apiFetch<ApiGatewaySettings>("/settings/gateway", {
       method: "PUT",
       body: JSON.stringify(body),
     }, token),
@@ -811,6 +866,13 @@ export const api = {
     );
   },
 
+  seedComplianceTemplate: (token: string, templateId: string) =>
+    apiFetch<{ message: string }>(
+      "/policies/seed-compliance-template",
+      { method: "POST", body: JSON.stringify({ template_id: templateId }) },
+      token,
+    ),
+
   getPolicyRules: (token: string, policyId?: string) => {
     const query = policyId ? `?policy_id=${encodeURIComponent(policyId)}` : "";
     return apiFetch<ApiPolicyRule[]>(`/policies/rules${query}`, {}, token);
@@ -819,11 +881,18 @@ export const api = {
   savePolicyRules: (token: string, policyId: string, body: ApiPolicyRulesSaveRequest) =>
     apiFetch<ApiPolicyRule[]>(`/policies/${policyId}/rules`, { method: "PUT", body: JSON.stringify(body) }, token),
 
+  testPolicyRules: (token: string, body: ApiPolicyTestRequest) =>
+    apiFetch<ApiPolicyTestResponse>("/policies/test", { method: "POST", body: JSON.stringify(body) }, token),
+
   getPolicyConditionHelp: (token: string) =>
     apiFetch<ApiPolicyConditionHelpExample[]>("/policies/condition-help", {}, token),
 
   assistPolicyBuilding: (token: string, body: ApiPolicyAssistRequest) =>
     apiFetch<ApiPolicyAssistResponse>("/policies/assist", { method: "POST", body: JSON.stringify(body) }, token),
+
+  assistCustomIntentBuilding: (token: string, goal: string) =>
+    apiFetch<ApiCustomIntentAssistResponse>("/governance/custom-intents/assist", { method: "POST", body: JSON.stringify({ goal }) }, token),
+
 
   getPolicyGraphLinks: (token: string, nodeId?: string) => {
     const query = nodeId ? `?node_id=${encodeURIComponent(nodeId)}` : "";
@@ -902,6 +971,18 @@ export const api = {
 
   deleteRoutingRule: (token: string, ruleId: string) =>
     apiFetch<void>(`/llm/routing-rules/${ruleId}`, { method: "DELETE" }, token),
+
+  getRoutingGroups: (token: string) =>
+    apiFetch<ApiRoutingGroup[]>("/routing-groups", {}, token),
+
+  createRoutingGroup: (token: string, body: ApiRoutingGroupCreateRequest) =>
+    apiFetch<ApiRoutingGroup>("/routing-groups", { method: "POST", body: JSON.stringify(body) }, token),
+
+  updateRoutingGroup: (token: string, groupId: string, body: ApiRoutingGroupUpdateRequest) =>
+    apiFetch<ApiRoutingGroup>(`/routing-groups/${groupId}`, { method: "PUT", body: JSON.stringify(body) }, token),
+
+  deleteRoutingGroup: (token: string, groupId: string) =>
+    apiFetch<void>(`/routing-groups/${groupId}`, { method: "DELETE" }, token),
 
   getGatewayStatus: (token: string) =>
     apiFetch<ApiGatewayStatus>("/gateway/status", {}, token),
@@ -1499,6 +1580,26 @@ export interface ApiPolicyRule {
   enabled: boolean;
 }
 
+export interface ApiPolicyTestRequest {
+  content: string;
+  rules: ApiPolicyRule[];
+}
+
+export interface ApiPolicyViolation {
+  rule_name: string;
+  action: string;
+  severity: string;
+  detail: string;
+}
+
+export interface ApiPolicyTestResponse {
+  allowed: boolean;
+  action: string;
+  violations: ApiPolicyViolation[];
+  redacted_content: string | null;
+  risk: string;
+}
+
 export interface ApiPolicyConditionHelpExample {
   title: string;
   condition: string;
@@ -1529,6 +1630,20 @@ export interface ApiPolicyAssistResponse {
   condition_help: ApiPolicyConditionHelpExample[];
   ai_enhanced?: boolean;
   ai_assist_available?: boolean;
+}
+
+export interface ApiCustomIntentAssistSuggestion {
+  name: string;
+  description: string;
+  action: string;
+  keywords: string[];
+  confidence_threshold: number;
+}
+
+export interface ApiCustomIntentAssistResponse {
+  summary: string;
+  ai_enhanced?: boolean;
+  suggestions: ApiCustomIntentAssistSuggestion[];
 }
 
 export interface ApiPolicyGraphLink {
@@ -1737,6 +1852,40 @@ export interface ApiRoutingRuleUpdateRequest {
   status?: string;
 }
 
+export interface ApiRoutingGroupMember {
+  model: string;
+  weight: number;
+  priority: number;
+}
+
+export interface ApiRoutingGroup {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description: string;
+  strategy: string;
+  members: ApiRoutingGroupMember[];
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiRoutingGroupCreateRequest {
+  name: string;
+  description?: string;
+  strategy?: string;
+  members?: ApiRoutingGroupMember[];
+  status?: string;
+}
+
+export interface ApiRoutingGroupUpdateRequest {
+  name?: string;
+  description?: string;
+  strategy?: string;
+  members?: ApiRoutingGroupMember[];
+  status?: string;
+}
+
 export interface ApiGatewayStatus {
   status: string;
   openai_compatible: boolean;
@@ -1773,6 +1922,7 @@ export interface ApiPolicyBundle {
   status: string;
   is_default: boolean;
   policy_ids: string[];
+  custom_intent_ids: string[];
   policy_names: string[];
   created_at: string;
 }
@@ -1783,6 +1933,7 @@ export interface ApiPolicyBundleCreateRequest {
   status?: string;
   is_default?: boolean;
   policy_ids?: string[];
+  custom_intent_ids?: string[];
 }
 
 export interface ApiPolicyBundleUpdateRequest {
@@ -1791,6 +1942,7 @@ export interface ApiPolicyBundleUpdateRequest {
   status?: string;
   is_default?: boolean;
   policy_ids?: string[];
+  custom_intent_ids?: string[];
 }
 
 export interface ApiClientApiKey {
@@ -1802,6 +1954,12 @@ export interface ApiClientApiKey {
   bundle_id: string | null;
   bundle_name: string | null;
   client_response_protocol: string | null;
+  ai_rate_limit_rpm: number | null;
+  ai_rate_limit_rph: number | null;
+  ai_rate_limit_rpd: number | null;
+  ai_token_limit_tpm: number | null;
+  ai_token_limit_tph: number | null;
+  ai_token_limit_tpd: number | null;
   is_active: boolean;
   last_used_at: string | null;
   created_at: string | null;
@@ -1812,6 +1970,12 @@ export interface ApiClientApiKeyCreateRequest {
   description?: string;
   bundle_id?: string;
   client_response_protocol?: string | null;
+  ai_rate_limit_rpm?: number | null;
+  ai_rate_limit_rph?: number | null;
+  ai_rate_limit_rpd?: number | null;
+  ai_token_limit_tpm?: number | null;
+  ai_token_limit_tph?: number | null;
+  ai_token_limit_tpd?: number | null;
 }
 
 export interface ApiClientApiKeyCreateResponse extends ApiClientApiKey {
@@ -1823,6 +1987,12 @@ export interface ApiClientApiKeyUpdateRequest {
   description?: string;
   bundle_id?: string | null;
   client_response_protocol?: string | null;
+  ai_rate_limit_rpm?: number | null;
+  ai_rate_limit_rph?: number | null;
+  ai_rate_limit_rpd?: number | null;
+  ai_token_limit_tpm?: number | null;
+  ai_token_limit_tph?: number | null;
+  ai_token_limit_tpd?: number | null;
   is_active?: boolean;
 }
 
@@ -2224,3 +2394,68 @@ export interface ApiQAFileDefectResponse {
   defect: ApiQADefect;
   created: boolean;
 }
+
+export const promptTemplatesAPI = {
+  list: async (token: string) => {
+    return apiFetch<PromptTemplate[]>(`/prompt-templates`, {}, token);
+  },
+  get: async (token: string, id: string) => {
+    return apiFetch<PromptTemplate>(`/prompt-templates/${id}`, {}, token);
+  },
+  create: async (token: string, data: any) => {
+    return apiFetch<PromptTemplate>(`/prompt-templates`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token);
+  },
+  update: async (token: string, id: string, data: any) => {
+    return apiFetch<PromptTemplate>(`/prompt-templates/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }, token);
+  },
+  delete: async (token: string, id: string) => {
+    return apiFetch<void>(`/prompt-templates/${id}`, {
+      method: "DELETE",
+    }, token);
+  },
+  addVersion: async (token: string, id: string, data: any) => {
+    return apiFetch<PromptVersion>(`/prompt-templates/${id}/versions`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token);
+  },
+};
+
+export const customIntentsAPI = {
+  list: async (token: string) => {
+    return apiFetch<CustomIntent[]>(`/governance/custom-intents`, {}, token);
+  },
+  get: async (token: string, id: string) => {
+    return apiFetch<CustomIntent>(`/governance/custom-intents/${id}`, {}, token);
+  },
+  create: async (token: string, data: CustomIntentCreate) => {
+    return apiFetch<CustomIntent>(`/governance/custom-intents`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token);
+  },
+  update: async (token: string, id: string, data: CustomIntentUpdate) => {
+    return apiFetch<CustomIntent>(`/governance/custom-intents/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }, token);
+  },
+  delete: async (token: string, id: string) => {
+    return apiFetch<void>(`/governance/custom-intents/${id}`, {
+      method: "DELETE",
+    }, token);
+  },
+  test: async (token: string, prompt: string, intentIds?: string[]) => {
+    return apiFetch<CustomIntentTestResponse>(`/governance/custom-intents/test`, {
+      method: "POST",
+      body: JSON.stringify({ prompt, intent_ids: intentIds }),
+    }, token);
+  },
+};
+

@@ -232,12 +232,48 @@ async def inspect_for_gateway(
     *,
     context: dict | None = None,
 ) -> InspectionResult:
+    from app.services.custom_intent_service import CustomIntentService
+
     if bundle is not None:
         result = await inspect_content_for_bundle(db, tenant_id, bundle, content, context=context)
+        
+        # Evaluate Custom Intents
+        custom_intent_ids_raw = bundle.custom_intent_ids if isinstance(bundle.custom_intent_ids, list) else []
+        custom_intent_ids = []
+        import uuid
+        for cid in custom_intent_ids_raw:
+            try:
+                custom_intent_ids.append(uuid.UUID(str(cid)))
+            except ValueError:
+                pass
+                
+        if custom_intent_ids:
+            intent_res = await CustomIntentService.scan_prompt_intents(db, tenant_id, content, intent_ids=custom_intent_ids)
+            for match in intent_res.matches:
+                if match.is_matched:
+                    result.violations.append(
+                        RuleViolation(
+                            rule_id=f"custom-intent-{match.id}",
+                            category="custom-intent",
+                            severity="high" if match.action == "block" else "medium",
+                            detail=f"Matched custom intent '{match.name}' with score {match.score:.2f}",
+                        )
+                    )
+                    if match.action == "block":
+                        result.allowed = False
+                        result.action = "block"
+                        if result.risk == "low" or result.risk == "medium":
+                            result.risk = "high"
+                    elif match.action == "redact":
+                        result.action = result.action or "redact"
+                        content = intent_res.modified_prompt
+                        result.redacted_content = intent_res.modified_prompt
+
     else:
         default_bundle = await get_tenant_default_bundle(db, tenant_id)
         if default_bundle is not None:
-            result = await inspect_content_for_bundle(db, tenant_id, default_bundle, content, context=context)
+            return await inspect_for_gateway(db, tenant_id, default_bundle, content, context=context)
         else:
             result = inspect_content(content)
+            
     return _merge_threat_scan(content, result)

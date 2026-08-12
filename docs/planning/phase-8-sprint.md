@@ -12,13 +12,13 @@
 
 ## Sprint 10 — Prompt store & custom intents
 
-| ID | Task | Owner | Backlog | Acceptance |
-|----|------|-------|---------|------------|
-| S10-01 | Prompt store schema — versions, variables, enforce flag | Backend | BL-061 | API CRUD + audit on change |
-| S10-02 | Gateway prompt injection — resolve version at ingress | Gateway | BL-061 | Enforce mode blocks ad-hoc prompts |
-| S10-03 | Prompt store UI — Studio + Settings | Frontend | BL-061 | Edit templates with `{{var}}` preview |
-| S10-04 | Custom intents MVP — embedding + policy hybrid | Backend | BL-062 | Train from samples; block/monitor/redact |
-| S10-05 | Custom intents UI — Security / Policy Studio | Frontend | BL-062 | Upload samples, test, deploy |
+| ID | Task | Owner | Backlog | Acceptance | Status |
+|----|------|-------|---------|------------|--------|
+| S10-01 | Prompt store schema — versions, variables, enforce flag | Backend | BL-061 | API CRUD + audit on change | Done |
+| S10-02 | Gateway prompt injection — resolve version at ingress | Gateway | BL-061 | Enforce mode blocks ad-hoc prompts | Done |
+| S10-03 | Prompt store UI — Studio + Settings | Frontend | BL-061 | Edit templates with `{{var}}` preview | Done |
+| S10-04 | Custom intents MVP — embedding + policy hybrid | Backend | BL-062 | Train from samples; block/monitor/redact | Done |
+| S10-05 | Custom intents UI — Security / Policy Studio | Frontend | BL-062 | Upload samples, test, deploy | Done |
 
 **Sprint 10 exit:** Tenant enforces a system prompt version on a route; custom intent blocks a topic.
 

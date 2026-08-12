@@ -11,7 +11,7 @@ from app.services.tenant_features_service import (
 )
 
 DEFAULT_PRODUCT_NAME = "PySetu AI"
-DEFAULT_TAGLINE = "Enterprise AI Control Plane"
+DEFAULT_TAGLINE = "Governance, Gateway, and Guardrails across the Agentic Frontier"
 
 
 def resolve_display_name(tenant: Tenant) -> str:

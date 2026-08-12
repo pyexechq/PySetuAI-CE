@@ -31,6 +31,7 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (user: AuthUser, token: string) => void;
   logout: () => void;
+  updateUser: (updates: Partial<AuthUser>) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -46,6 +47,11 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         clearAuthCookie();
         set({ user: null, token: null, isAuthenticated: false });
+      },
+      updateUser: (updates) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, ...updates } : null,
+        }));
       },
     }),
     {
@@ -72,7 +78,7 @@ export const roleRouteAccess: Record<UserRole, string[]> = {
 };
 
 export function canAccessRoute(role: UserRole, path: string): boolean {
-  const allowed = roleRouteAccess[role];
+  const allowed = roleRouteAccess[role] || [];
   if (allowed.includes("*")) return true;
   return allowed.some((route) => path === route || path.startsWith(`${route}/`));
 }

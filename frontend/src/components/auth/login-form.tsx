@@ -8,7 +8,7 @@ import { BrandingLogo } from "@/components/branding/branding-logo";
 import { TenantLoginPanel } from "@/components/auth/tenant-login-panel";
 import { api } from "@/lib/api";
 
-const DEFAULT_TAGLINE = "Enterprise AI Control Plane";
+const DEFAULT_TAGLINE = "Governance, Gateway, and Guardrails across the Agentic Frontier";
 
 function LoginFormInner() {
   const searchParams = useSearchParams();

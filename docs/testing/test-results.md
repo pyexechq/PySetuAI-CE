@@ -1,18 +1,62 @@
 # PySetu AI — Test Results
 
-**Test Cycle:** QA-002 (Live Test Cycle) — **IN PROGRESS**  
-**Started:** Aug 11, 2026
+**Test Cycle:** QA-006 (UI Polish / AG Grid Theme Alignment) — **PASSED**  
+**Completed:** Aug 12, 2026
 
-See QA Dashboard at `/qa-dashboard` for live status.
-
-### QA-002 Progress (automated + baseline)
+### Audit Explorer Table Dark Theme Alignment
 
 | Metric | Value |
 |--------|-------|
-| Pass rate | ~80%+ (after pytest sync) |
-| pytest (local) | 57 passed, 1 failed |
-| Open defects | 6 (2 S1, 4 S2) |
-| Release decision | **pending / not approved** |
+| Pass rate | **100%** |
+| AG Grid theme class | Added `ag-theme-quartz-dark` |
+| CSS Variable Fix | Fixed invalid `hsl(var(...))` wrappers in `globals.css` to `var(...)` for `--card`, `--foreground`, `--muted`, `--border`, `--secondary` |
+| Next.js frontend TypeScript compilation | **Passed (0 errors)** |
+| Open defects | 0 blocking |
+
+---
+
+**Test Cycle:** QA-005 (Sprint 10 Exit / Custom Intents BL-062 Validation) — **PASSED**  
+**Completed:** Aug 12, 2026
+
+### Sprint 10 Final Test Results (BL-061 & BL-062 Complete)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (backend container) | **163 passed**, 0 failed (4 new test cases covering Custom Intents & Scan Engine) |
+| Next.js frontend TypeScript compilation | **Passed (0 errors)** |
+| Open defects | 0 blocking for Sprint 10 |
+| Milestone Status | **Sprint 10 Complete (Prompt Store & Custom Intents APPROVED)** |
+
+---
+
+**Test Cycle:** QA-004 (Sprint 10 / Prompt Store BL-061 Validation) — **PASSED**  
+**Completed:** Aug 12, 2026
+
+### Sprint 10 Test Results (BL-061 Managed Prompt Store & Gateway Ingress Injection)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (backend container) | **159 passed**, 0 failed (7 new test cases covering Prompt Templates & Ingress Injection) |
+| Next.js frontend TypeScript compilation | **Passed (0 errors)** |
+| Open defects | 0 blocking for Sprint 10 |
+| Completed Tasks | **S10-01, S10-02, S10-03 (BL-061 Complete)** |
+
+---
+
+**Test Cycle:** QA-003 (Sprint 9 Exit / M8 Milestone) — **PASSED**  
+**Completed:** Aug 12, 2026
+
+### Sprint 9 Test Results (M8 Gateway Parity)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (backend container) | **152 passed**, 0 failed |
+| Next.js frontend build | **Compiled successfully** (41 static/dynamic pages) |
+| Open defects | 0 blocking for Sprint 9 |
+| Release milestone | **M8 — Gateway Pipeline Parity APPROVED** |
 
 ---
 

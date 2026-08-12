@@ -8,9 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user
 from app.core.gateway_deps import get_gateway_context
+from app.core.rate_limit import check_ai_rate_limits, check_ai_token_limits
+from app.core.telemetry import current_trace_id
 from app.db.session import get_db
-from app.models.governance import AuditLog, LLMProvider
-from app.models.tenant import User
+from app.models.governance import AuditLog, LLMProvider, RoutingGroup
+from app.models.tenant import Tenant, User
+from app.services.alert_webhook_service import build_gateway_alert_event, dispatch_tenant_alerts
 from app.schemas.openai import (
     ChatCompletionRequest,
     ChatMessage,
@@ -56,6 +59,146 @@ async def _handle_chat_completions(
     ctx: GatewayContext,
     db: AsyncSession,
 ):
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == ctx.tenant_id))
+    tenant = tenant_result.scalar_one()
+
+    if ctx.client_api_key_id:
+        allowed, retry_after = check_ai_rate_limits(
+            f"{ctx.tenant_id}:key:{ctx.client_api_key_id}",
+            rpm=ctx.ai_rate_limit_rpm,
+            rph=ctx.ai_rate_limit_rph,
+            rpd=ctx.ai_rate_limit_rpd,
+        )
+        if not allowed:
+            event = build_gateway_alert_event(
+                action="gateway.rate_limit.block",
+                actor=ctx.actor,
+                resource=request.model,
+                status="blocked",
+                risk="medium",
+                details="Gateway request blocked by API Key rate limit (RPM/RPH/RPD)",
+                trace_id=current_trace_id(),
+            )
+            try:
+                await dispatch_tenant_alerts(db, ctx.tenant_id, event)
+            except Exception:
+                pass
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content=OpenAIErrorResponse(
+                    error=OpenAIError(
+                        message="API Key Rate limit exceeded.",
+                        type="rate_limit_exceeded",
+                        code="rate_limit_exceeded"
+                    )
+                ).model_dump(),
+                headers={"Retry-After": str(retry_after)},
+            )
+
+    allowed, retry_after = check_ai_rate_limits(
+        str(ctx.tenant_id),
+        rpm=tenant.ai_rate_limit_rpm,
+        rph=tenant.ai_rate_limit_rph,
+        rpd=tenant.ai_rate_limit_rpd,
+    )
+    if not allowed:
+        event = build_gateway_alert_event(
+            action="gateway.rate_limit.block",
+            actor=ctx.actor,
+            resource=request.model,
+            status="blocked",
+            risk="medium",
+            details="Gateway request blocked by Tenant AI rate limit (RPM/RPH/RPD)",
+            trace_id=current_trace_id(),
+        )
+        try:
+            await dispatch_tenant_alerts(db, ctx.tenant_id, event)
+        except Exception:
+            pass
+
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content=OpenAIErrorResponse(
+                error=OpenAIError(
+                    message="Tenant Rate limit exceeded.",
+                    type="rate_limit_exceeded",
+                    code="rate_limit_exceeded"
+                )
+            ).model_dump(),
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    prompt_tokens = sum(len(m.content.split()) for m in request.messages if m.content)
+    estimated_total = prompt_tokens + (request.max_tokens or 500)
+
+    if ctx.client_api_key_id:
+        allowed, retry_after = check_ai_token_limits(
+            f"{ctx.tenant_id}:key:{ctx.client_api_key_id}",
+            tpm=ctx.ai_token_limit_tpm,
+            tph=ctx.ai_token_limit_tph,
+            tpd=ctx.ai_token_limit_tpd,
+            requested_tokens=estimated_total,
+        )
+        if not allowed:
+            event = build_gateway_alert_event(
+                action="gateway.token_budget.block",
+                actor=ctx.actor,
+                resource=request.model,
+                status="blocked",
+                risk="high",
+                details=f"Gateway request blocked by API Key token budget limit (TPM/TPH/TPD). Estimated: {estimated_total} tokens",
+                trace_id=current_trace_id(),
+            )
+            try:
+                await dispatch_tenant_alerts(db, ctx.tenant_id, event)
+            except Exception:
+                pass
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content=OpenAIErrorResponse(
+                    error=OpenAIError(
+                        message="API Key Token budget exceeded.",
+                        type="insufficient_quota",
+                        code="insufficient_quota"
+                    )
+                ).model_dump(),
+                headers={"Retry-After": str(retry_after)},
+            )
+
+    allowed, retry_after = check_ai_token_limits(
+        str(ctx.tenant_id),
+        tpm=tenant.ai_token_limit_tpm,
+        tph=tenant.ai_token_limit_tph,
+        tpd=tenant.ai_token_limit_tpd,
+        requested_tokens=estimated_total,
+    )
+    if not allowed:
+        event = build_gateway_alert_event(
+            action="gateway.token_budget.block",
+            actor=ctx.actor,
+            resource=request.model,
+            status="blocked",
+            risk="high",
+            details=f"Gateway request blocked by Tenant AI token budget limit (TPM/TPH/TPD). Estimated: {estimated_total} tokens",
+            trace_id=current_trace_id(),
+        )
+        try:
+            await dispatch_tenant_alerts(db, ctx.tenant_id, event)
+        except Exception:
+            pass
+
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content=OpenAIErrorResponse(
+                error=OpenAIError(
+                    message="Tenant Token budget exceeded.",
+                    type="insufficient_quota",
+                    code="insufficient_quota"
+                )
+            ).model_dump(),
+            headers={"Retry-After": str(retry_after)},
+        )
+
     if request.stream:
         prepared, inspection, error_message = await prepare_chat_request(request, ctx, db)
         if error_message and inspection and not inspection.allowed:
@@ -105,14 +248,24 @@ async def list_models(
         )
     )
     providers = result.scalars().all()
-    return ModelsListResponse(
-        data=[ModelInfo(id=p.name, owned_by=p.provider_type) for p in providers]
-        or [
+
+    groups_result = await db.execute(
+        select(RoutingGroup).where(
+            RoutingGroup.tenant_id == current_user.tenant_id,
+            RoutingGroup.status == "active",
+        )
+    )
+    groups = groups_result.scalars().all()
+
+    model_list = [ModelInfo(id=p.name, owned_by=p.provider_type) for p in providers]
+    model_list.extend([ModelInfo(id=g.name, owned_by="pysetu-routing-group") for g in groups])
+    if not model_list:
+        model_list = [
             ModelInfo(id="gpt-4o", owned_by="openai"),
             ModelInfo(id="gemini-1.5-pro", owned_by="google"),
             ModelInfo(id="claude-3.5-sonnet", owned_by="anthropic"),
         ]
-    )
+    return ModelsListResponse(data=model_list)
 
 
 @openai_router.post("/v1/chat/completions")
@@ -148,10 +301,53 @@ async def gemini_generate_content(
     if not config.gemini_api_key:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Gemini API key not configured")
 
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+
+    allowed, retry_after = check_ai_rate_limits(
+        str(current_user.tenant_id),
+        rpm=tenant.ai_rate_limit_rpm,
+        rph=tenant.ai_rate_limit_rph,
+        rpd=tenant.ai_rate_limit_rpd,
+    )
+    if not allowed:
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={
+                "error": {
+                    "code": 429,
+                    "message": "Rate limit exceeded.",
+                    "status": "RESOURCE_EXHAUSTED"
+                }
+            },
+            headers={"Retry-After": str(retry_after)},
+        )
+
     contents = body.get("contents") or []
     combined = " ".join(
         part.get("text", "") for item in contents for part in item.get("parts", []) if isinstance(part, dict)
     )
+    prompt_tokens = len(combined.split())
+    estimated_total = prompt_tokens + 500
+    allowed, retry_after = check_ai_token_limits(
+        str(current_user.tenant_id),
+        tpm=tenant.ai_token_limit_tpm,
+        tph=tenant.ai_token_limit_tph,
+        tpd=tenant.ai_token_limit_tpd,
+        requested_tokens=estimated_total,
+    )
+    if not allowed:
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={
+                "error": {
+                    "code": 429,
+                    "message": "Token budget exceeded.",
+                    "status": "RESOURCE_EXHAUSTED"
+                }
+            },
+            headers={"Retry-After": str(retry_after)},
+        )
     ingress = inspect_content(combined)
     if not ingress.allowed:
         raise HTTPException(

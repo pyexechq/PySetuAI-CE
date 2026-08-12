@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { UagTranslationSimulator } from "@/components/studio/uag-translation-simulator";
+import { PromptLabTab } from "@/components/studio/prompt-lab-tab";
 import { SecurityScanResults } from "@/components/studio/security-scan-panel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,16 +47,11 @@ export function StudioView() {
   const token = useAuthStore((s) => s.token);
   const [tab, setTab] = useState<TabId>("prompt");
   const [policyInput, setPolicyInput] = useState(gatewayTestPrompts[2].content);
-  const [preflightPrompt, setPreflightPrompt] = useState(gatewayTestPrompts[0].content);
   const { data: rules = [] } = usePolicyRules();
   const { data: mcpServers = [] } = useMcpServers();
   const [selectedMcp, setSelectedMcp] = useState<string>("");
   const [mcpTool, setMcpTool] = useState("query");
   const [mcpResult, setMcpResult] = useState<string | null>(null);
-
-  const preflightScan = useMutation({
-    mutationFn: () => api.scanSecurityContent(token!, { content: preflightPrompt }),
-  });
 
   function simulateMcpCall() {
     const server = mcpServers.find((s) => s.id === selectedMcp);
@@ -88,86 +84,7 @@ export function StudioView() {
         ))}
       </div>
 
-      {tab === "prompt" && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Beaker className="h-4 w-4" />
-              Pre-scan prompts here, then run live completions on the AI Gateway.
-            </div>
-            <Button variant="outline" size="sm" className="gap-1.5" asChild>
-              <Link href="/monitoring?tab=security">
-                <Radar className="h-3.5 w-3.5" />
-                Full threat scanner
-              </Link>
-            </Button>
-          </div>
-
-          <Card className="border-border/60 bg-card/50">
-            <CardHeader>
-              <CardTitle className="text-base">Pre-flight security scan</CardTitle>
-              <CardDescription>
-                Quick scan before send — same engine as gateway ingress. For OPA trends and history, use Monitoring.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <textarea
-                value={preflightPrompt}
-                onChange={(e) => setPreflightPrompt(e.target.value)}
-                rows={3}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus-visible:ring-2"
-              />
-              <div className="flex flex-wrap gap-2">
-                {gatewayTestPrompts.slice(0, 4).map((item) => (
-                  <Button
-                    key={item.label}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPreflightPrompt(item.content)}
-                    title={item.description}
-                  >
-                    {item.label}
-                    <Badge variant="outline" className="ml-1 text-[10px] capitalize">
-                      {item.expected}
-                    </Badge>
-                  </Button>
-                ))}
-              </div>
-              <Button
-                variant="secondary"
-                className="gap-2"
-                disabled={!token || !preflightPrompt.trim() || preflightScan.isPending}
-                onClick={() => preflightScan.mutate()}
-              >
-                {preflightScan.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ScanSearch className="h-4 w-4" />
-                )}
-                Scan before send
-              </Button>
-              {preflightScan.data && <SecurityScanResults result={preflightScan.data} />}
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60 bg-card/50">
-            <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
-              <div>
-                <p className="font-medium">Live gateway test</p>
-                <p className="text-sm text-muted-foreground">
-                  Send completions through ingress endpoints with the interactive tester on AI Gateway.
-                </p>
-              </div>
-              <Button className="gap-2" asChild>
-                <Link href="/ai-gateway">
-                  Open AI Gateway
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {tab === "prompt" && <PromptLabTab />}
 
       {tab === "translation" && <UagTranslationSimulator />}
 

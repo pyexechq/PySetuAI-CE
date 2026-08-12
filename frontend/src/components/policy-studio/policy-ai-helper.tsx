@@ -11,6 +11,7 @@ import { api, ApiError } from "@/lib/api";
 import type { PolicyRule } from "@/lib/types/domain";
 
 type SuggestedRule = PolicyRule & { rationale?: string };
+const SUGGESTIONS_PER_PAGE = 2;
 
 export function PolicyAiHelper({
   token,
@@ -31,6 +32,7 @@ export function PolicyAiHelper({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiEnhanced, setAiEnhanced] = useState(false);
+  const [suggestionPage, setSuggestionPage] = useState(1);
 
   const { data: aiAssistSettings } = useQuery({
     queryKey: ["ai-assist-settings", token],
@@ -62,6 +64,7 @@ export function PolicyAiHelper({
           rationale: item.rationale,
         })),
       );
+      setSuggestionPage(1);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to generate suggestions");
       setSuggestions([]);
@@ -75,9 +78,15 @@ export function PolicyAiHelper({
     setGoal(prompt);
   }
 
+  const totalSuggestionPages = Math.ceil(suggestions.length / SUGGESTIONS_PER_PAGE);
+  const paginatedSuggestions = suggestions.slice(
+    (suggestionPage - 1) * SUGGESTIONS_PER_PAGE,
+    suggestionPage * SUGGESTIONS_PER_PAGE
+  );
+
   return (
-    <Card className="w-80 shrink-0 border-border/60 bg-card/50">
-      <CardHeader className="pb-3">
+    <Card className="w-[340px] shrink-0 flex flex-col overflow-hidden border-border/60 bg-card/50">
+      <CardHeader className="pb-3 shrink-0">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Sparkles className="h-4 w-4 text-indigo-400" />
           AI Helper
@@ -101,8 +110,8 @@ export function PolicyAiHelper({
           </p>
         )}
       </CardHeader>
-      <CardContent className="space-y-3 pt-0">
-        <div className="flex flex-wrap gap-1.5">
+      <CardContent className="space-y-3 pt-0 flex-1 flex flex-col overflow-hidden">
+        <div className="grid grid-cols-2 gap-1.5 shrink-0">
           {[
             "Block prompt injection",
             "Prevent jailbreak attempts",
@@ -112,7 +121,7 @@ export function PolicyAiHelper({
             <button
               key={prompt}
               type="button"
-              className="rounded-full border border-border/60 bg-muted/20 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+              className="rounded-xl border border-border/60 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground text-center w-full line-clamp-2 min-h-[32px] leading-tight flex items-center justify-center"
               onClick={() => handleQuickPrompt(prompt)}
               disabled={!canEdit}
             >
@@ -126,13 +135,13 @@ export function PolicyAiHelper({
           onChange={(e) => setGoal(e.target.value)}
           rows={4}
           placeholder='e.g. "Block jailbreak, DAN mode, and attempts to reveal the system prompt"'
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs outline-none ring-ring focus-visible:ring-2"
+          className="w-full shrink-0 rounded-md border border-input bg-background px-3 py-2 text-xs outline-none ring-ring focus-visible:ring-2"
           disabled={!canEdit}
         />
 
         <Button
           size="sm"
-          className="w-full gap-1.5"
+          className="w-full shrink-0 gap-1.5"
           onClick={handleSuggest}
           disabled={!canEdit || !token || loading}
         >
@@ -140,18 +149,19 @@ export function PolicyAiHelper({
           {loading ? "Thinking…" : "Suggest rules"}
         </Button>
 
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-red-400 shrink-0">{error}</p>}
         {summary && (
-          <p className="text-xs text-emerald-400">
+          <p className="text-xs text-emerald-400 shrink-0">
             {summary}
             {aiEnhanced ? " · Enhanced with tenant AI Assist" : ""}
           </p>
         )}
 
         {suggestions.length > 0 && (
-          <div className="max-h-[calc(100vh-22rem)] space-y-2 overflow-y-auto">
-            {suggestions.map((rule) => (
-              <div key={rule.id} className="rounded-lg border border-border/60 bg-muted/20 p-3">
+          <div className="space-y-3 flex-1 flex flex-col overflow-hidden min-h-0">
+            <div className="flex-1 space-y-2 overflow-y-auto min-h-0">
+              {paginatedSuggestions.map((rule) => (
+                <div key={rule.id} className="rounded-lg border border-border/60 bg-muted/20 p-3">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-xs font-medium">{rule.name}</span>
                   <Badge variant="outline" className="text-[10px]">
@@ -174,6 +184,34 @@ export function PolicyAiHelper({
                 </Button>
               </div>
             ))}
+            </div>
+            {totalSuggestionPages > 1 && (
+              <div className="flex items-center justify-between pt-1 shrink-0">
+                <p className="text-[10px] text-muted-foreground">
+                  Showing {(suggestionPage - 1) * SUGGESTIONS_PER_PAGE + 1} to {Math.min(suggestionPage * SUGGESTIONS_PER_PAGE, suggestions.length)} of {suggestions.length}
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 text-[10px]"
+                    onClick={() => setSuggestionPage((p) => Math.max(1, p - 1))}
+                    disabled={suggestionPage === 1}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 text-[10px]"
+                    onClick={() => setSuggestionPage((p) => Math.min(totalSuggestionPages, p + 1))}
+                    disabled={suggestionPage === totalSuggestionPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

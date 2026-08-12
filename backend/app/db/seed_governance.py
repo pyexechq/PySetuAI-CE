@@ -177,6 +177,110 @@ POLICY_RULE_SETS: dict[str, list] = {
     "DLP Classification": DLP_CLASSIFICATION_RULES,
 }
 
+HIPAA_RULES = [
+    {
+        "id": "hipaa-r1",
+        "name": "Detect PHI patterns",
+        "condition": "has_phi || content.matches(/\\b(patient|diagnosis|treatment|medical)\\b/i)",
+        "action": "Redact",
+        "severity": "critical",
+        "enabled": True,
+    },
+    {
+        "id": "hipaa-r2",
+        "name": "Block unencrypted PHI transmission",
+        "condition": "has_phi && !is_encrypted",
+        "action": "Block",
+        "severity": "critical",
+        "enabled": True,
+    },
+]
+
+SOC2_RULES = [
+    {
+        "id": "soc2-r1",
+        "name": "Audit Trail Logging",
+        "condition": "is_sensitive_action",
+        "action": "Alert",
+        "severity": "medium",
+        "enabled": True,
+    },
+    {
+        "id": "soc2-r2",
+        "name": "Block unauthorized access",
+        "condition": "user.clearance < required_clearance",
+        "action": "Block",
+        "severity": "high",
+        "enabled": True,
+    },
+]
+
+ISO27001_RULES = [
+    {
+        "id": "iso-r1",
+        "name": "Data Residency Enforcement",
+        "condition": "region != required_region",
+        "action": "Block",
+        "severity": "high",
+        "enabled": True,
+    },
+    {
+        "id": "iso-r2",
+        "name": "Information Security Alert",
+        "condition": "content.matches(/(password|secret|credential|api[_-]?key)/i)",
+        "action": "Redact",
+        "severity": "high",
+        "enabled": True,
+    },
+]
+
+NIST_RULES = [
+    {
+        "id": "nist-r1",
+        "name": "Detect Harmful Output",
+        "condition": "toxicity_score > 0.8 || has_hate_speech",
+        "action": "Block",
+        "severity": "critical",
+        "enabled": True,
+    },
+    {
+        "id": "nist-r2",
+        "name": "Detect Algorithmic Bias",
+        "condition": "bias_score > 0.7",
+        "action": "Alert",
+        "severity": "high",
+        "enabled": True,
+    },
+]
+
+COMPLIANCE_TEMPLATES: dict[str, dict] = {
+    "gdpr": {
+        "policy_name": "GDPR Privacy Guard",
+        "folder_name": "Data Protection",
+        "rules": PII_EU_RULES + DLP_CLASSIFICATION_RULES,
+    },
+    "hipaa": {
+        "policy_name": "HIPAA PHI Protection",
+        "folder_name": "Health Compliance",
+        "rules": HIPAA_RULES,
+    },
+    "soc2": {
+        "policy_name": "SOC2 Security Standards",
+        "folder_name": "Security Controls",
+        "rules": SOC2_RULES + JAILBREAK_RULES,
+    },
+    "iso27001": {
+        "policy_name": "ISO27001 Access Controls",
+        "folder_name": "Security Controls",
+        "rules": ISO27001_RULES,
+    },
+    "nist": {
+        "policy_name": "NIST AI RMF",
+        "folder_name": "AI Risk Management",
+        "rules": NIST_RULES,
+    },
+}
+
 POLICY_TREE = [
     ("Organization Policies", "folder", None, None),
     ("Data Protection", "folder", "Organization Policies", None),

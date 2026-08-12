@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ChevronDown,
   Building2,
-  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mainNavGroups } from "@/config/navigation";
@@ -17,24 +16,15 @@ import { BrandingLogo } from "@/components/branding/branding-logo";
 import { TenantBrandingSync } from "@/components/branding/tenant-branding-sync";
 import { tenantBrandName, tenantBrandTagline, useTenantStore } from "@/stores/tenant-store";
 import { useAuthStore, canAccessRoute, canAccessTenantModule } from "@/stores/auth-store";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-
 const SETTINGS_ROOT = "/settings";
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { currentTenant } = useTenantStore();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(pathname.startsWith(SETTINGS_ROOT));
-
-  function handleLogout() {
-    logout();
-    router.replace("/login");
-  }
 
   useEffect(() => {
     if (pathname.startsWith(SETTINGS_ROOT)) {
@@ -188,37 +178,6 @@ export function Sidebar() {
       </nav>
 
       <div className="shrink-0 border-t border-border p-3">
-        <div className={cn("flex items-center gap-2", collapsed && "flex-col")}>
-          <Avatar className="shrink-0">
-            <AvatarFallback className="bg-primary/20 text-primary">
-              {user?.name?.charAt(0) ?? "A"}
-            </AvatarFallback>
-          </Avatar>
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{user?.name}</p>
-              <p className="truncate text-xs text-muted-foreground capitalize">
-                {user?.role?.replace("_", " ")}
-              </p>
-            </div>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size={collapsed ? "icon" : "sm"}
-            onClick={handleLogout}
-            title="Sign out"
-            aria-label="Sign out"
-            className={cn(
-              "shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive",
-              !collapsed && "gap-1.5"
-            )}
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Sign out</span>}
-          </Button>
-        </div>
-        <Separator className="my-3" />
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex w-full items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"

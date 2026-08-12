@@ -40,7 +40,7 @@ class OrganizationSettingsResponse(BaseModel):
     logo_url: str | None = None
     brand_tagline: str
     default_product_name: str = "PySetu AI"
-    default_tagline: str = "Enterprise AI Control Plane"
+    default_tagline: str = "Governance, Gateway, and Guardrails across the Agentic Frontier"
     qa_dashboard_enabled: bool = True
     features: TenantFeaturesResponse = Field(default_factory=TenantFeaturesResponse)
     feature_policy: TenantFeaturePolicyResponse = Field(default_factory=TenantFeaturePolicyResponse)
@@ -58,10 +58,12 @@ class OrganizationSettingsUpdate(BaseModel):
 class IdentitySettingsResponse(BaseModel):
     oidc_jit_provision_enabled: bool
     platform_jit_default: bool = False
+    allowed_login_domains: list[str] | None = None
 
 
 class IdentitySettingsUpdate(BaseModel):
     oidc_jit_provision_enabled: bool | None = None
+    allowed_login_domains: list[str] | None = None
 
 
 class AiAssistSettingsResponse(BaseModel):
@@ -80,3 +82,25 @@ class AiAssistSettingsUpdate(BaseModel):
     provider: str | None = Field(None, description="openai or gemini")
     model: str | None = None
     api_key: str | None = Field(None, description="Set to empty string to clear")
+
+
+class GatewaySettingsResponse(BaseModel):
+    ai_rate_limit_rpm: int | None = None
+    ai_rate_limit_rph: int | None = None
+    ai_rate_limit_rpd: int | None = None
+    ai_token_limit_tpm: int | None = None
+    ai_token_limit_tph: int | None = None
+    ai_token_limit_tpd: int | None = None
+    ai_token_budgets: dict | None = None
+    allowed_api_origins: list[str] | None = None
+
+
+class GatewaySettingsUpdate(BaseModel):
+    ai_rate_limit_rpm: int | None = Field(None, description="Requests per minute, set to 0 or null to clear")
+    ai_rate_limit_rph: int | None = Field(None, description="Requests per hour, set to 0 or null to clear")
+    ai_rate_limit_rpd: int | None = Field(None, description="Requests per day, set to 0 or null to clear")
+    ai_token_limit_tpm: int | None = Field(None, description="Tokens per minute, set to 0 or null to clear")
+    ai_token_limit_tph: int | None = Field(None, description="Tokens per hour, set to 0 or null to clear")
+    ai_token_limit_tpd: int | None = Field(None, description="Tokens per day, set to 0 or null to clear")
+    ai_token_budgets: dict | None = Field(None, description="Granular JSON budgets")
+    allowed_api_origins: list[str] | None = None

@@ -114,19 +114,103 @@ body {
 
 .audit-log-grid {
   height: 520px;
-  --ag-background-color: hsl(var(--card));
-  --ag-foreground-color: hsl(var(--foreground));
-  --ag-header-background-color: hsl(var(--muted));
-  --ag-header-foreground-color: hsl(var(--foreground));
-  --ag-border-color: hsl(var(--border));
-  --ag-row-hover-color: hsl(var(--accent));
-  --ag-selected-row-background-color: hsl(var(--primary) / 0.12);
+  --ag-background-color: var(--card);
+  --ag-foreground-color: var(--foreground);
+  --ag-header-background-color: var(--muted);
+  --ag-header-foreground-color: var(--foreground);
+  --ag-border-color: var(--border);
+  --ag-row-border-color: var(--border);
+  --ag-row-hover-color: var(--secondary);
+  --ag-selected-row-background-color: rgba(129, 140, 248, 0.15);
+  --ag-control-panel-background-color: var(--card);
+  --ag-subheader-background-color: var(--muted);
+  --ag-odd-row-background-color: var(--muted);
+  --ag-input-focus-border-color: var(--primary);
   --ag-font-size: 13px;
-  --ag-font-family: inherit;
+  --ag-font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.audit-log-grid .ag-root-wrapper {
+  background-color: var(--card) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+  border-radius: 0.375rem;
+}
+
+.audit-log-grid .ag-header {
+  background-color: var(--muted) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.audit-log-grid .ag-header-cell,
+.audit-log-grid .ag-header-group-cell {
+  color: var(--foreground) !important;
+  font-weight: 600;
+}
+
+.audit-log-grid .ag-header-cell-text {
+  color: var(--foreground) !important;
+}
+
+.audit-log-grid .ag-icon {
+  color: var(--muted-foreground) !important;
+}
+
+.audit-log-grid .ag-row {
+  background-color: var(--card) !important;
+  color: var(--foreground) !important;
+  border-bottom-color: var(--border) !important;
+}
+
+.audit-log-grid .ag-row-odd {
+  background-color: var(--muted) !important;
+}
+
+.audit-log-grid .ag-row-hover {
+  background-color: var(--secondary) !important;
+}
+
+.audit-log-grid .ag-paging-panel {
+  background-color: var(--muted) !important;
+  color: var(--foreground) !important;
+  border-top: 1px solid var(--border) !important;
+}
+
+.audit-log-grid .ag-paging-number,
+.audit-log-grid .ag-paging-button,
+.audit-log-grid .ag-paging-description,
+.audit-log-grid .ag-paging-row-summary-panel,
+.audit-log-grid .ag-paging-page-summary-panel {
+  color: var(--foreground) !important;
+}
+
+.audit-log-grid .ag-paging-button.ag-disabled {
+  opacity: 0.4;
+}
+
+.audit-log-grid select,
+.audit-log-grid input[type="text"],
+.audit-log-grid input[type="number"],
+.audit-log-grid .ag-picker-field-wrapper,
+.audit-log-grid .ag-input-field-input,
+.audit-log-grid .ag-paging-page-summary-panel input {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+
+.audit-log-grid .ag-menu,
+.audit-log-grid .ag-filter,
+.audit-log-grid .ag-popup-child {
+  background-color: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
 
 .audit-log-grid .audit-row-blocked {
-  background-color: hsl(var(--destructive) / 0.08) !important;
+  background-color: color-mix(in srgb, var(--destructive) 15%, var(--card)) !important;
+  color: var(--foreground) !important;
 }
 
 .audit-log-grid .audit-row-recent {
@@ -135,7 +219,7 @@ body {
 
 @keyframes audit-row-highlight {
   from {
-    background-color: hsl(142 76% 36% / 0.18);
+    background-color: color-mix(in srgb, #22c55e 25%, var(--card));
   }
   to {
     background-color: transparent;
@@ -148,23 +232,23 @@ body {
 }
 
 .audit-log-grid .audit-status-allowed {
-  color: #22c55e;
+  color: #22c55e !important;
 }
 
 .audit-log-grid .audit-status-blocked {
-  color: #ef4444;
+  color: #ef4444 !important;
 }
 
 .audit-log-grid .audit-status-review {
-  color: #eab308;
+  color: #eab308 !important;
 }
 
 .audit-log-grid .audit-risk-high,
 .audit-log-grid .audit-risk-critical {
-  color: #ef4444;
+  color: #ef4444 !important;
   font-weight: 600;
 }
 
 .audit-log-grid .audit-risk-medium {
-  color: #f97316;
+  color: #f97316 !important;
 }

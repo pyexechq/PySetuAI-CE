@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LlmProviderModal } from "@/components/llm-router/llm-provider-modal";
 import { RoutingRuleModal } from "@/components/llm-router/routing-rule-modal";
+import { RoutingGroupModal } from "@/components/llm-router/routing-group-modal";
 import { useLlmRouting } from "@/hooks/use-llm-routing";
-import { api, ApiError, type ApiRoutingModel, type ApiRoutingRule } from "@/lib/api";
+import { api, ApiError, type ApiRoutingModel, type ApiRoutingRule, type ApiRoutingGroup } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -23,11 +24,31 @@ export function LlmRouterView() {
   const [editingProvider, setEditingProvider] = useState<ApiRoutingModel | null>(null);
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ApiRoutingRule | null>(null);
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<ApiRoutingGroup | null>(null);
+  const [groups, setGroups] = useState<ApiRoutingGroup[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [rebalancing, setRebalancing] = useState(false);
 
   const activeModels = useMemo(() => models.filter((m) => m.isActive !== false), [models]);
   const totalRequests = activeModels.reduce((sum, m) => sum + m.requests, 0);
+
+  const fetchGroups = useMemo(
+    () => async () => {
+      if (!token) return;
+      try {
+        const data = await api.getRoutingGroups(token);
+        setGroups(data || []);
+      } catch (err) {
+        console.warn("Failed to fetch routing groups:", err);
+      }
+    },
+    [token]
+  );
+
+  useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
 
   function openCreateModal() {
     setEditingProvider(null);
@@ -92,6 +113,29 @@ export function LlmRouterView() {
       invalidateRules();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Failed to delete routing rule");
+    }
+  }
+
+  function openCreateGroupModal() {
+    setEditingGroup(null);
+    setGroupModalOpen(true);
+  }
+
+  function openEditGroupModal(group: ApiRoutingGroup) {
+    setEditingGroup(group);
+    setGroupModalOpen(true);
+  }
+
+  async function deleteGroup(group: ApiRoutingGroup) {
+    if (!token) return;
+    if (!window.confirm(`Delete routing group "${group.name}"?`)) return;
+
+    setActionError(null);
+    try {
+      await api.deleteRoutingGroup(token, group.id);
+      fetchGroups();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Failed to delete routing group");
     }
   }
 
@@ -347,6 +391,97 @@ export function LlmRouterView() {
         </CardContent>
       </Card>
 
+      <Card className="border-border/60 bg-card/50">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle>LLM Routing Groups</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Virtual model groups (e.g. <code className="text-[11px]">model: &quot;production&quot;</code>) with weighted pools &amp; auto-failover
+            </p>
+          </div>
+          {canEdit && (
+            <Button size="sm" className="gap-1.5" onClick={openCreateGroupModal}>
+              <Plus className="h-4 w-4" />
+              Create Group
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="p-5 pt-0">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-muted-foreground">
+                <th className="pb-3 font-medium">Group Alias</th>
+                <th className="pb-3 font-medium">Strategy</th>
+                <th className="pb-3 font-medium">Member Models</th>
+                <th className="pb-3 font-medium">Status</th>
+                {canEdit && <th className="pb-3 font-medium text-right">Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {groups.length === 0 ? (
+                <tr>
+                  <td colSpan={canEdit ? 5 : 4} className="py-8 text-center text-muted-foreground">
+                    No routing groups configured. Create a virtual model alias for weighted pools or auto-failover.
+                  </td>
+                </tr>
+              ) : (
+                groups.map((grp) => (
+                  <tr key={grp.id} className="border-b border-border/50 last:border-0">
+                    <td className="py-3 font-medium">
+                      <div>
+                        <span>{grp.name}</span>
+                        {grp.description && <p className="text-xs font-normal text-muted-foreground">{grp.description}</p>}
+                      </div>
+                    </td>
+                    <td className="py-3 capitalize">
+                      <Badge variant="outline" className="capitalize text-xs">
+                        {grp.strategy}
+                      </Badge>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {grp.members && grp.members.map((m, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-[11px] font-mono">
+                            {m.model} {grp.strategy === "failover" ? `#${m.priority}` : `${m.weight}%`}
+                          </Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-3">
+                      <Badge variant={grp.status === "active" ? "success" : "warning"}>{grp.status}</Badge>
+                    </td>
+                    {canEdit && (
+                      <td className="py-3">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => openEditGroupModal(grp)}
+                            aria-label={`Edit ${grp.name}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
+                            onClick={() => deleteGroup(grp)}
+                            aria-label={`Delete ${grp.name}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
       <LlmProviderModal
         open={modalOpen}
         provider={editingProvider}
@@ -362,6 +497,14 @@ export function LlmRouterView() {
         token={token}
         onClose={() => setRuleModalOpen(false)}
         onSaved={invalidateRules}
+      />
+
+      <RoutingGroupModal
+        open={groupModalOpen}
+        group={editingGroup}
+        token={token}
+        onClose={() => setGroupModalOpen(false)}
+        onSaved={fetchGroups}
       />
     </div>
   );

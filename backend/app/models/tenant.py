@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -25,6 +25,15 @@ class Tenant(Base):
     qa_dashboard_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     feature_flags: Mapped[dict | None] = mapped_column(JSONB, default=dict)
     feature_policy: Mapped[dict | None] = mapped_column(JSONB, default=dict)
+    allowed_login_domains: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    allowed_api_origins: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    ai_rate_limit_rpm: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_rate_limit_rph: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_rate_limit_rpd: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_token_limit_tpm: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_token_limit_tph: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_token_limit_tpd: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_token_budgets: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

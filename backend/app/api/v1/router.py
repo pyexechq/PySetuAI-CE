@@ -21,6 +21,7 @@ from app.schemas.auth import (
     TenantResponse,
     TokenResponse,
     UserResponse,
+    UserProfileUpdate,
 )
 from app.schemas.dashboard import DashboardMetricInsightResponse, DashboardOverviewResponse
 from app.services.dashboard_metric_insights_service import build_metric_insight
@@ -44,6 +45,11 @@ async def login(payload: LoginRequest, db: Annotated[AsyncSession, Depends(get_d
     tenant = tenant_result.scalar_one_or_none()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    if tenant.allowed_login_domains:
+        email_domain = payload.email.split("@")[-1].lower()
+        if email_domain not in [d.lower() for d in tenant.allowed_login_domains]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email domain not allowed for this tenant")
 
     user_result = await db.execute(
         select(User).where(
@@ -90,6 +96,25 @@ async def accept_invite(
 
 @router.get("/auth/me", response_model=UserResponse)
 async def get_me(current_user: Annotated[User, Depends(get_current_user)]) -> UserResponse:
+    return UserResponse(
+        id=str(current_user.id),
+        email=current_user.email,
+        name=current_user.name,
+        role=current_user.role,
+        tenant_id=str(current_user.tenant_id),
+    )
+
+
+@router.patch("/auth/me", response_model=UserResponse)
+async def update_me(
+    payload: UserProfileUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)]
+) -> UserResponse:
+    current_user.name = payload.name.strip()
+    await db.commit()
+    await db.refresh(current_user)
+    
     return UserResponse(
         id=str(current_user.id),
         email=current_user.email,

@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from app.api.v1.access import router as access_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.compliance import router as compliance_router
+from app.api.v1.custom_intents import router as custom_intents_router
 from app.api.v1.data_protection import router as data_protection_router
 from app.api.v1.gateway import admin_router as gateway_admin_router
 from app.api.v1.gateway import openai_router as gateway_openai_router
@@ -16,9 +17,11 @@ from app.api.v1.notifications import router as notifications_router
 from app.api.v1.observability import router as observability_router
 from app.api.v1.oidc import router as oidc_router
 from app.api.v1.platform import router as platform_router
+from app.api.v1.prompt_templates import router as prompt_templates_router
 from app.api.v1.qa import router as qa_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.router import router as auth_router
+from app.api.v1.routing_groups import router as routing_groups_router
 from app.api.v1.security import router as security_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.uag import router as uag_router
@@ -85,6 +88,9 @@ app.include_router(qa_router, prefix=settings.api_prefix)
 app.include_router(security_router, prefix=settings.api_prefix)
 app.include_router(data_protection_router, prefix=settings.api_prefix)
 app.include_router(notifications_router, prefix=settings.api_prefix)
+app.include_router(routing_groups_router, prefix=settings.api_prefix)
+app.include_router(prompt_templates_router, prefix=settings.api_prefix)
+app.include_router(custom_intents_router, prefix=settings.api_prefix)
 app.include_router(gateway_admin_router, prefix=settings.api_prefix)
 app.include_router(gateway_openai_router)
 

@@ -13,6 +13,8 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: int | None = None
     stream: bool = False
     routing_context: dict | None = None
+    user: str | None = None
+    metadata: dict | None = None
 
 
 class ChatCompletionChoice(BaseModel):

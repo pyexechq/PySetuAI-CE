@@ -12,6 +12,8 @@ import {
   resolveReportQueryTemplates,
 } from "@/lib/report-query-templates";
 import { useAuthStore } from "@/stores/auth-store";
+import { usePreferencesStore } from "@/stores/preferences-store";
+import { formatDateTime } from "@/lib/date-utils";
 
 type ModalMode = "create" | "query" | "schedule";
 
@@ -278,7 +280,7 @@ function DeliveryRecipientsField({
                     selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
                   }`}
                 >
-                  {user.name} ({user.role.replace("_", " ")})
+                  {user.name} ({user.role?.replace("_", " ") || "unknown"})
                 </button>
               );
             })}
@@ -299,6 +301,7 @@ export function ReportManagementModals({
   onSaved,
 }: ReportManagementModalsProps) {
   const currentUser = useAuthStore((s) => s.user);
+  const timezone = usePreferencesStore((s) => s.timezone);
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -647,7 +650,7 @@ export function ReportManagementModals({
 
           {report.schedule?.next_run_at && scheduleEnabled && frequency !== "on_demand" && (
             <p className="text-xs text-muted-foreground">
-              Next run: {new Date(report.schedule.next_run_at).toLocaleString()}
+              Next run: {formatDateTime(report.schedule.next_run_at, timezone)}
               {recipients.length > 0 && ` · Delivering to ${recipients.length} recipient${recipients.length === 1 ? "" : "s"}`}
             </p>
           )}

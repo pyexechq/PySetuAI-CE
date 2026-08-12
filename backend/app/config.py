@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     demo_platform_admin_password: str | None = None
     api_prefix: str = "/api/v1"
 
-    database_url: str = "postgresql+asyncpg://pysetu:pysetu@localhost:5432/pysetu"
+    database_url: str = "postgresql+asyncpg://pysetu:pysetu@127.0.0.1:5432/pysetu"
     redis_url: str = "redis://localhost:6379/0"
 
     jwt_secret_key: str = "change-me-in-production-use-vault"

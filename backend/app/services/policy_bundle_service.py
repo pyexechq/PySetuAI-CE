@@ -58,17 +58,42 @@ async def load_bundle_rules(db: AsyncSession, tenant_id: uuid.UUID, bundle: Poli
     result = await db.execute(
         select(Policy).where(
             Policy.tenant_id == tenant_id,
-            Policy.id.in_(uuids),
-            Policy.policy_type == "policy",
             Policy.status == "active",
         )
     )
-    policies_by_id = {str(p.id): p for p in result.scalars().all()}
+    all_policies = result.scalars().all()
+    
+    policies_by_id = {str(p.id): p for p in all_policies}
+    children_by_parent: dict[str, list[Policy]] = {}
+    for p in all_policies:
+        pid = str(p.parent_id) if p.parent_id else None
+        if pid:
+            children_by_parent.setdefault(pid, []).append(p)
+
+    def _resolve_policies(node_id: str, visited: set) -> list[Policy]:
+        if node_id in visited:
+            return []
+        visited.add(node_id)
+        node = policies_by_id.get(node_id)
+        if not node:
+            return []
+        
+        resolved = []
+        if node.policy_type == "policy":
+            resolved.append(node)
+        elif node.policy_type == "folder":
+            for child in children_by_parent.get(node_id, []):
+                resolved.extend(_resolve_policies(str(child.id), visited))
+        return resolved
+
+    resolved_policies: list[Policy] = []
+    visited = set()
+    for raw_id in policy_ids:
+        resolved_policies.extend(_resolve_policies(str(raw_id), visited))
 
     merged: list[dict] = []
-    for raw_id in policy_ids:
-        policy = policies_by_id.get(str(raw_id))
-        if policy is None or not policy.rules:
+    for policy in resolved_policies:
+        if not policy.rules:
             continue
         for rule in policy.rules:
             if isinstance(rule, dict) and rule.get("enabled", True):
