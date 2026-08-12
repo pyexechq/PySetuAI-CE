@@ -11,3 +11,6 @@ venv/
 dist/
 .DS_Store
 Thumbs.db
+._*
+backend/.pytest_deps/
+backend/pysetu.db
