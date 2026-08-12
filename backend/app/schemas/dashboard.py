@@ -103,6 +103,14 @@ class DashboardUagMetrics(BaseModel):
     route_breakdown: list[DashboardUagRouteItem] = []
 
 
+class DashboardTokenSavingSummary(BaseModel):
+    requests_compressed: int = 0
+    original_tokens: int = 0
+    compressed_tokens: int = 0
+    tokens_saved: int = 0
+    savings_pct: float = 0.0
+
+
 class DashboardMetricInsightResponse(BaseModel):
     metric_key: str
     title: str
@@ -126,3 +134,4 @@ class DashboardOverviewResponse(BaseModel):
     compliance_frameworks: list[DashboardComplianceFramework]
     security_trends: list[DashboardSecurityTrendPoint]
     uag: DashboardUagMetrics | None = None
+    token_saving: DashboardTokenSavingSummary | None = None

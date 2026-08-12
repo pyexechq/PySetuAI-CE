@@ -93,6 +93,8 @@ class GatewaySettingsResponse(BaseModel):
     ai_token_limit_tpd: int | None = None
     ai_token_budgets: dict | None = None
     allowed_api_origins: list[str] | None = None
+    token_saving_enabled: bool = False
+    token_saving_mode: str = "both"
 
 
 class GatewaySettingsUpdate(BaseModel):
@@ -104,3 +106,5 @@ class GatewaySettingsUpdate(BaseModel):
     ai_token_limit_tpd: int | None = Field(None, description="Tokens per day, set to 0 or null to clear")
     ai_token_budgets: dict | None = Field(None, description="Granular JSON budgets")
     allowed_api_origins: list[str] | None = None
+    token_saving_enabled: bool | None = None
+    token_saving_mode: str | None = Field(None, description="json_to_toon, strip_markdown, or both")

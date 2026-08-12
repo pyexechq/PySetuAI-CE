@@ -80,6 +80,18 @@ BUILTIN_REPORTS: list[dict[str, Any]] = [
         "schedule_recipients": ["admin@acme.com"],
     },
     {
+        "slug": "compounding-cost",
+        "name": "Compounding Cost Optimization",
+        "description": "Stacked savings from routing, dynamic MCP tools, and JSON/markdown compression",
+        "category": "Finance",
+        "format": "PDF",
+        "query": {"source": "cost_optimization", "filters": {"days_back": 30}, "limit": 20},
+        "schedule_frequency": "monthly",
+        "schedule_enabled": False,
+        "schedule_time": "06:30",
+        "schedule_day_of_month": 1,
+    },
+    {
         "slug": "data-residency",
         "name": "Data Residency Compliance",
         "description": "Regional data placement and cross-border transfer summary",
@@ -131,6 +143,14 @@ QUERY_TEMPLATES = [
                 "options": ["healthy", "degraded", "offline"],
             },
             {"key": "category", "label": "Category", "type": "text"},
+        ],
+    },
+    {
+        "source": "cost_optimization",
+        "label": "Cost Optimization",
+        "description": "Compounding savings from routing, tool ranking, and token compression",
+        "filter_fields": [
+            {"key": "days_back", "label": "Lookback (days)", "type": "number", "default": 30},
         ],
     },
 ]
@@ -232,11 +252,41 @@ def catalog_item_dict(report: ReportDefinition) -> dict[str, Any]:
 
 async def ensure_tenant_reports(db: AsyncSession, tenant_id: UUID) -> None:
     result = await db.execute(select(func.count(ReportDefinition.id)).where(ReportDefinition.tenant_id == tenant_id))
-    if (result.scalar() or 0) > 0:
+    existing_count = result.scalar() or 0
+    if existing_count == 0:
+        now = datetime.now(UTC)
+        for spec in BUILTIN_REPORTS:
+            report = ReportDefinition(
+                tenant_id=tenant_id,
+                slug=spec["slug"],
+                name=spec["name"],
+                description=spec["description"],
+                category=spec["category"],
+                format=spec["format"],
+                query=spec["query"],
+                schedule_frequency=spec.get("schedule_frequency", "on_demand"),
+                schedule_enabled=spec.get("schedule_enabled", False),
+                schedule_time=spec.get("schedule_time", "09:00"),
+                schedule_day_of_week=spec.get("schedule_day_of_week"),
+                schedule_day_of_month=spec.get("schedule_day_of_month"),
+                schedule_recipients=spec.get("schedule_recipients", []),
+                last_generated_at=now - timedelta(days=3),
+                is_builtin=True,
+            )
+            report.next_run_at = compute_next_run(report)
+            db.add(report)
+        await db.commit()
         return
 
+    existing = await db.execute(
+        select(ReportDefinition.slug).where(ReportDefinition.tenant_id == tenant_id, ReportDefinition.is_builtin.is_(True))
+    )
+    slugs = {row[0] for row in existing.all() if row[0]}
+    added = False
     now = datetime.now(UTC)
     for spec in BUILTIN_REPORTS:
+        if spec["slug"] in slugs:
+            continue
         report = ReportDefinition(
             tenant_id=tenant_id,
             slug=spec["slug"],
@@ -256,7 +306,9 @@ async def ensure_tenant_reports(db: AsyncSession, tenant_id: UUID) -> None:
         )
         report.next_run_at = compute_next_run(report)
         db.add(report)
-    await db.commit()
+        added = True
+    if added:
+        await db.commit()
 
 
 async def get_report_by_id(db: AsyncSession, tenant_id: UUID, report_id: str) -> ReportDefinition | None:
@@ -355,6 +407,21 @@ async def execute_report_query(
             [r.name, r.category, r.total_calls, r.success_rate, r.trust_score, r.risk_score, r.status] for r in rows
         ]
         return columns, data
+
+    if source == "cost_optimization":
+        from app.services.compounding_cost_service import compounding_table, summarize_compounding_savings
+
+        days_back = int(filters.get("days_back") or 30)
+        cutoff = datetime.now(UTC) - timedelta(days=days_back)
+        usage_rows = await db.execute(
+            select(AuditLog.usage_metadata).where(
+                AuditLog.tenant_id == tenant_id,
+                AuditLog.timestamp >= cutoff,
+                AuditLog.usage_metadata.is_not(None),
+            )
+        )
+        summary = summarize_compounding_savings([row[0] for row in usage_rows.all()])
+        return compounding_table(summary)
 
     return [], []
 

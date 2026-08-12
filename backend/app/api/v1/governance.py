@@ -15,6 +15,7 @@ from app.core.rbac import (
     MANAGE_LLM_PROVIDERS,
     MANAGE_MCP,
     MANAGE_POLICIES,
+    USE_MCP,
     USE_STUDIO,
     VIEW_AUDIT_LOGS,
     require_any_permission,
@@ -22,7 +23,7 @@ from app.core.rbac import (
 )
 from app.db.session import get_db
 from app.models.governance import AuditLog, LLMProvider, MCPServer, Policy, RoutingRule
-from app.models.tenant import User
+from app.models.tenant import Tenant, User
 from app.schemas.governance import (
     AuditLogResponse,
     GatewayStatusResponse,
@@ -30,6 +31,37 @@ from app.schemas.governance import (
     LLMProviderCreateRequest,
     LLMProviderUpdateRequest,
     McpDiscoverToolsResponse,
+    DynamicToolPreviewRequest,
+    DynamicToolPreviewResponse,
+    DynamicToolSettingsResponse,
+    DynamicToolSettingsUpdate,
+    McpCatalogCustomInstallRequest,
+    McpCatalogEntryResponse,
+    McpCatalogInstallRequest,
+    McpCatalogListResponse,
+    McpOAuthListResponse,
+    McpOAuthServerStatusResponse,
+    McpOAuthStatusResponse,
+    McpOAuthUpsertRequest,
+    McpToolRiskInventoryResponse,
+    McpToolRiskItem,
+    McpToolRiskSettingsUpdate,
+    McpToolRiskUpdateRequest,
+    McpAgentDetectRequest,
+    McpAgentDetectResponse,
+    McpAgentItem,
+    McpAgentServerAccess,
+    McpAgentSettingsResponse,
+    McpAgentSettingsUpdate,
+    McpAgentServerAccessUpdate,
+    McpPortalConnectRequest,
+    McpPortalConnectResponse,
+    McpPortalListResponse,
+    McpPortalEntry,
+    McpPortalSettingsResponse,
+    McpPortalSettingsUpdate,
+    McpPortalVisibilityUpdate,
+    McpMultiplexInfoResponse,
     McpHealthCheckBatchResponse,
     McpHealthCheckResponse,
     MCPServerCreateRequest,
@@ -57,19 +89,69 @@ from app.schemas.governance import (
 from app.schemas.openai import InspectionResult
 from app.services.integration_service import get_or_create_integration
 from app.services.policy_engine import _evaluate_rules
+from app.services.mcp_agent_service import (
+    apply_allowed_agents_to_config,
+    detect_agent,
+    filter_servers_for_agent,
+    is_mcp_enabled_for_agent,
+    merge_agent_toggles,
+    public_agent_settings,
+    toggles_from_tenant,
+)
+from app.services.mcp_tool_risk_service import (
+    annotate_tools,
+    apply_policies_to_config,
+    merge_tool_policies,
+    policies_from_config,
+    tool_is_visible,
+)
+from app.services.dynamic_tool_service import (
+    apply_dynamic_tools_for_request,
+    catalog_from_servers,
+    tool_token_estimate,
+    tools_from_server,
+)
 from app.services.mcp_client_service import (
     apply_discovered_tools,
     apply_tool_invoke,
     discover_mcp_tools,
     invoke_mcp_tool,
 )
+from app.services.mcp_catalog_service import (
+    catalog_slug_installed,
+    custom_install_spec,
+    get_catalog_entry,
+    install_spec_from_entry,
+    list_catalog_entries,
+)
 from app.services.mcp_health_service import apply_health_result, probe_mcp_server
 from app.services.policy_graph import build_ingress_bindings, resolve_policy_graph_node
 from app.services.provider_metrics_service import rebalance_provider_percentages
+from app.services.mcp_oauth_broker_service import (
+    delete_oauth_state,
+    fetch_and_apply_token,
+    load_oauth_state,
+    persist_token_state,
+    public_oauth_status,
+    save_oauth_state,
+)
+from app.services.mcp_portal_service import (
+    connect_user_token,
+    disconnect_user,
+    list_portal_entries,
+    portal_visible,
+    resolve_effective_mcp_access_token,
+    set_portal_visible,
+    tenant_has_token,
+    user_has_token,
+    connection_status,
+    server_auth_required,
+)
 from app.services.secrets_service import (
     GEMINI_SECRET,
     OPENAI_SECRET,
     provider_secret_status,
+    secrets_backend_name,
     set_provider_secret,
     set_tenant_secret,
 )
@@ -79,6 +161,7 @@ router = APIRouter()
 _require_policy_access = require_any_permission(MANAGE_POLICIES, USE_STUDIO)
 _require_policy_admin = require_permission(MANAGE_POLICIES)
 _require_mcp = require_permission(MANAGE_MCP)
+_require_mcp_portal = require_any_permission(USE_MCP, MANAGE_MCP)
 _require_llm_access = require_any_permission(MANAGE_LLM_PROVIDERS, USE_STUDIO)
 _require_llm_admin = require_permission(MANAGE_LLM_PROVIDERS)
 _require_audit = require_permission(VIEW_AUDIT_LOGS)
@@ -151,6 +234,21 @@ def _normalize_connection_config(config: dict | None) -> dict:
             normalized["timeout_sec"] = max(5, min(int(timeout), 120))
         except (TypeError, ValueError):
             normalized["timeout_sec"] = 30
+    catalog_slug = config.get("catalog_slug")
+    if isinstance(catalog_slug, str) and catalog_slug.strip():
+        normalized["catalog_slug"] = catalog_slug.strip().lower()
+    command = config.get("command")
+    if isinstance(command, str) and command.strip():
+        normalized["command"] = command.strip()
+    args = config.get("args")
+    if isinstance(args, list):
+        normalized["args"] = [str(item) for item in args]
+    tool_risk = config.get("tool_risk")
+    if isinstance(tool_risk, dict):
+        normalized["tool_risk"] = tool_risk
+    allowed_agents = config.get("allowed_agents")
+    if isinstance(allowed_agents, list):
+        normalized["allowed_agents"] = [str(item) for item in allowed_agents]
     return normalized
 
 
@@ -168,6 +266,53 @@ def _validate_transport(transport: str) -> str:
             detail=f"transport must be one of: {', '.join(sorted(ALLOWED_MCP_TRANSPORTS))}",
         )
     return value
+
+
+async def _ensure_unique_mcp_name(db: AsyncSession, tenant_id: uuid.UUID, name: str) -> None:
+    existing = await db.execute(
+        select(MCPServer).where(
+            MCPServer.tenant_id == tenant_id,
+            MCPServer.name.ilike(name),
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="MCP server name already exists")
+
+
+async def _create_mcp_server_from_spec(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    spec: dict,
+) -> MCPServer:
+    name = spec["name"].strip()
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Server name is required")
+    await _ensure_unique_mcp_name(db, tenant_id, name)
+    tool_names = _normalize_tool_names(spec.get("tool_names") or [])
+    transport = _validate_transport(str(spec.get("transport") or "sse"))
+    endpoint_url = spec.get("endpoint_url")
+    if isinstance(endpoint_url, str):
+        endpoint_url = endpoint_url.strip() or None
+    else:
+        endpoint_url = None
+    status_value = str(spec.get("status") or "offline").strip().lower()
+    if status_value not in ALLOWED_MCP_STATUSES:
+        status_value = "offline"
+    server = MCPServer(
+        tenant_id=tenant_id,
+        name=name,
+        category=str(spec.get("category") or "Custom").strip() or "Custom",
+        status=status_value,
+        tool_names=tool_names,
+        tools_count=len(tool_names),
+        endpoint_url=endpoint_url,
+        transport=transport,
+        connection_config=_normalize_connection_config(spec.get("connection_config")),
+    )
+    db.add(server)
+    await db.commit()
+    await db.refresh(server)
+    return server
 
 
 async def _get_policy(db: AsyncSession, tenant_id: uuid.UUID, policy_id: str) -> Policy:
@@ -713,7 +858,8 @@ async def check_mcp_server_health(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> McpHealthCheckResponse:
     server = await _get_mcp_server(db, current_user.tenant_id, server_id)
-    result = await probe_mcp_server(server)
+    token = await resolve_effective_mcp_access_token(db, server, user_id=current_user.id)
+    result = await probe_mcp_server(server, access_token=token)
     apply_health_result(server, result)
     await db.commit()
     await db.refresh(server)
@@ -734,7 +880,8 @@ async def check_all_mcp_servers_health(
     healthy = degraded = offline = skipped = 0
 
     for server in servers:
-        probe = await probe_mcp_server(server)
+        token = await resolve_effective_mcp_access_token(db, server, user_id=current_user.id)
+        probe = await probe_mcp_server(server, access_token=token)
         apply_health_result(server, probe)
         response = _health_check_response(server, probe)
         responses.append(response)
@@ -764,7 +911,8 @@ async def discover_mcp_server_tools(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> McpDiscoverToolsResponse:
     server = await _get_mcp_server(db, current_user.tenant_id, server_id)
-    result = await discover_mcp_tools(server)
+    token = await resolve_effective_mcp_access_token(db, server, user_id=current_user.id)
+    result = await discover_mcp_tools(server, access_token=token)
     apply_discovered_tools(server, result)
     await db.commit()
     await db.refresh(server)
@@ -782,6 +930,520 @@ async def discover_mcp_server_tools(
     )
 
 
+@router.get("/mcp/dynamic-tools/settings", response_model=DynamicToolSettingsResponse)
+async def get_dynamic_tool_settings(
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DynamicToolSettingsResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    servers_result = await db.execute(select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id))
+    catalog = catalog_from_servers(
+        list(servers_result.scalars().all()),
+        auto_hide_destructive=bool(tenant.mcp_auto_hide_destructive),
+    )
+    return DynamicToolSettingsResponse(
+        enabled=tenant.dynamic_tool_calling_enabled,
+        max_tools=tenant.dynamic_tool_max,
+        catalog_count=len(catalog),
+        catalog_tokens=tool_token_estimate(catalog),
+    )
+
+
+@router.put("/mcp/dynamic-tools/settings", response_model=DynamicToolSettingsResponse)
+async def update_dynamic_tool_settings(
+    payload: DynamicToolSettingsUpdate,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DynamicToolSettingsResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    if payload.enabled is not None:
+        tenant.dynamic_tool_calling_enabled = payload.enabled
+    if payload.max_tools is not None:
+        tenant.dynamic_tool_max = max(1, min(int(payload.max_tools), 64))
+    await db.commit()
+    await db.refresh(tenant)
+    servers_result = await db.execute(select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id))
+    catalog = catalog_from_servers(
+        list(servers_result.scalars().all()),
+        auto_hide_destructive=bool(tenant.mcp_auto_hide_destructive),
+    )
+    return DynamicToolSettingsResponse(
+        enabled=tenant.dynamic_tool_calling_enabled,
+        max_tools=tenant.dynamic_tool_max,
+        catalog_count=len(catalog),
+        catalog_tokens=tool_token_estimate(catalog),
+    )
+
+
+@router.get("/mcp/multiplex", response_model=McpMultiplexInfoResponse)
+async def get_mcp_multiplex_info(
+    request: Request,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpMultiplexInfoResponse:
+    from app.services.mcp_multiplex_service import build_multiplex_catalog, multiplex_public_path
+
+    servers_result = await db.execute(select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id))
+    servers = list(servers_result.scalars().all())
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    catalog = build_multiplex_catalog(servers, auto_hide_destructive=bool(tenant.mcp_auto_hide_destructive))
+    base = str(request.base_url).rstrip("/")
+    public_path = multiplex_public_path()
+    api_path = "/api/v1/mcp"
+    return McpMultiplexInfoResponse(
+        url=f"{base}{public_path}",
+        api_url=f"{base}{api_path}",
+        auth="Authorization: Bearer <client API key or JWT>",
+        tool_namespace="server_slug__tool_name",
+        server_count=len(servers),
+        tool_count=len(catalog),
+        sample_tools=[t["name"] for t in catalog[:8]],
+        instructions=(
+            "Point the MCP client at the multiplex URL with the same PySetu client API key used for /v1/chat/completions. "
+            "tools/list returns every registered server's tools with a server prefix. tools/call routes to the backing MCP server."
+        ),
+    )
+
+
+@router.get("/mcp/catalog", response_model=McpCatalogListResponse)
+async def list_mcp_catalog(
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpCatalogListResponse:
+    servers_result = await db.execute(select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id))
+    servers = list(servers_result.scalars().all())
+    entries = []
+    for raw in list_catalog_entries():
+        entries.append(
+            McpCatalogEntryResponse(
+                slug=raw["slug"],
+                name=raw["name"],
+                description=raw["description"],
+                category=raw["category"],
+                transport=raw["transport"],
+                default_endpoint=raw.get("default_endpoint"),
+                tool_names=list(raw.get("tool_names") or []),
+                auth_required=bool(raw.get("auth_required")),
+                vendor=str(raw.get("vendor") or ""),
+                installed=catalog_slug_installed(servers, raw["slug"]),
+            )
+        )
+    return McpCatalogListResponse(entries=entries)
+
+
+@router.post("/mcp/catalog/{slug}/install", response_model=MCPServerResponse, status_code=status.HTTP_201_CREATED)
+async def install_mcp_catalog_entry(
+    slug: str,
+    payload: McpCatalogInstallRequest,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> MCPServerResponse:
+    entry = get_catalog_entry(slug)
+    if entry is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Catalog entry not found")
+    servers_result = await db.execute(select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id))
+    if catalog_slug_installed(list(servers_result.scalars().all()), entry["slug"]):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Catalog entry is already installed")
+    spec = install_spec_from_entry(
+        entry,
+        endpoint_url=payload.endpoint_url,
+        name=payload.name,
+    )
+    server = await _create_mcp_server_from_spec(db, current_user.tenant_id, spec)
+    return _mcp_server_response(server)
+
+
+@router.post("/mcp/catalog/custom", response_model=MCPServerResponse, status_code=status.HTTP_201_CREATED)
+async def install_custom_mcp_server(
+    payload: McpCatalogCustomInstallRequest,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> MCPServerResponse:
+    try:
+        spec = custom_install_spec(
+            name=payload.name,
+            endpoint_url=payload.endpoint_url,
+            transport=payload.transport,
+            category=payload.category,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    server = await _create_mcp_server_from_spec(db, current_user.tenant_id, spec)
+    return _mcp_server_response(server)
+
+
+def _oauth_status_payload(state, *, server_id: str | None = None, server_name: str | None = None):
+    body = public_oauth_status(state)
+    body["secrets_backend"] = secrets_backend_name()
+    if server_id is not None:
+        return McpOAuthServerStatusResponse(server_id=server_id, server_name=server_name or "", **body)
+    return McpOAuthStatusResponse(**body)
+
+
+@router.get("/mcp/oauth", response_model=McpOAuthListResponse)
+async def list_mcp_oauth(
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpOAuthListResponse:
+    result = await db.execute(
+        select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id).order_by(MCPServer.name.asc())
+    )
+    servers = list(result.scalars().all())
+    items: list[McpOAuthServerStatusResponse] = []
+    for server in servers:
+        state = await load_oauth_state(db, current_user.tenant_id, server.id)
+        items.append(_oauth_status_payload(state, server_id=str(server.id), server_name=server.name))
+    return McpOAuthListResponse(servers=items, secrets_backend=secrets_backend_name())
+
+
+@router.get("/mcp/servers/{server_id}/oauth", response_model=McpOAuthStatusResponse)
+async def get_mcp_oauth(
+    server_id: str,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpOAuthStatusResponse:
+    server = await _get_mcp_server(db, current_user.tenant_id, server_id)
+    state = await load_oauth_state(db, current_user.tenant_id, server.id)
+    return _oauth_status_payload(state)
+
+
+@router.put("/mcp/servers/{server_id}/oauth", response_model=McpOAuthStatusResponse)
+async def upsert_mcp_oauth(
+    server_id: str,
+    payload: McpOAuthUpsertRequest,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpOAuthStatusResponse:
+    server = await _get_mcp_server(db, current_user.tenant_id, server_id)
+    try:
+        state = await save_oauth_state(db, current_user.tenant_id, server.id, payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return _oauth_status_payload(state)
+
+
+@router.post("/mcp/servers/{server_id}/oauth/refresh", response_model=McpOAuthStatusResponse)
+async def refresh_mcp_oauth(
+    server_id: str,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpOAuthStatusResponse:
+    server = await _get_mcp_server(db, current_user.tenant_id, server_id)
+    state = await load_oauth_state(db, current_user.tenant_id, server.id)
+    if state is None or not state.enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OAuth credentials are not configured")
+    try:
+        updated = await fetch_and_apply_token(state)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Token refresh failed: {exc}") from exc
+    await persist_token_state(db, current_user.tenant_id, server.id, updated)
+    return _oauth_status_payload(updated)
+
+
+@router.delete("/mcp/servers/{server_id}/oauth", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_mcp_oauth(
+    server_id: str,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    server = await _get_mcp_server(db, current_user.tenant_id, server_id)
+    await delete_oauth_state(db, current_user.tenant_id, server.id)
+
+
+@router.get("/mcp/tool-risk", response_model=McpToolRiskInventoryResponse)
+async def list_mcp_tool_risk(
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpToolRiskInventoryResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    auto_hide = bool(tenant.mcp_auto_hide_destructive)
+    servers_result = await db.execute(
+        select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id).order_by(MCPServer.name.asc())
+    )
+    items: list[McpToolRiskItem] = []
+    for server in servers_result.scalars().all():
+        policies = policies_from_config(server.connection_config)
+        for tool in annotate_tools(tools_from_server(server), policies, auto_hide_destructive=auto_hide):
+            items.append(
+                McpToolRiskItem(
+                    server_id=str(server.id),
+                    server_name=server.name,
+                    name=tool["name"],
+                    description=str(tool.get("description") or ""),
+                    risk=tool["risk"],
+                    hidden=bool(tool["hidden"]),
+                    auto_hidden=bool(tool["auto_hidden"]),
+                    visible=bool(tool["visible"]),
+                )
+            )
+    return McpToolRiskInventoryResponse(
+        auto_hide_destructive=auto_hide,
+        tools=items,
+        visible_count=sum(1 for item in items if item.visible),
+        hidden_count=sum(1 for item in items if not item.visible),
+    )
+
+
+@router.put("/mcp/tool-risk/settings", response_model=McpToolRiskInventoryResponse)
+async def update_mcp_tool_risk_settings(
+    payload: McpToolRiskSettingsUpdate,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpToolRiskInventoryResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    tenant.mcp_auto_hide_destructive = payload.auto_hide_destructive
+    await db.commit()
+    return await list_mcp_tool_risk(current_user, db)
+
+
+@router.put("/mcp/servers/{server_id}/tool-risk", response_model=McpToolRiskInventoryResponse)
+async def update_mcp_server_tool_risk(
+    server_id: str,
+    payload: McpToolRiskUpdateRequest,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpToolRiskInventoryResponse:
+    server = await _get_mcp_server(db, current_user.tenant_id, server_id)
+    try:
+        merged = merge_tool_policies(policies_from_config(server.connection_config), [item.model_dump() for item in payload.tools])
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    server.connection_config = apply_policies_to_config(server.connection_config, merged)
+    await db.commit()
+    return await list_mcp_tool_risk(current_user, db)
+
+
+async def _mcp_agent_settings_payload(tenant: Tenant, servers: list[MCPServer]) -> McpAgentSettingsResponse:
+    toggles = toggles_from_tenant(tenant.mcp_agent_toggles)
+    server_rows: list[McpAgentServerAccess] = []
+    for server in servers:
+        config = server.connection_config if isinstance(server.connection_config, dict) else {}
+        allowed = config.get("allowed_agents")
+        allowed_list = [str(item) for item in allowed] if isinstance(allowed, list) else []
+        server_rows.append(
+            McpAgentServerAccess(
+                server_id=str(server.id),
+                server_name=server.name,
+                allowed_agents=allowed_list,
+            )
+        )
+    return McpAgentSettingsResponse(agents=public_agent_settings(toggles), servers=server_rows)
+
+
+@router.get("/mcp/agent-settings", response_model=McpAgentSettingsResponse)
+async def get_mcp_agent_settings(
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpAgentSettingsResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    servers_result = await db.execute(
+        select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id).order_by(MCPServer.name.asc())
+    )
+    return await _mcp_agent_settings_payload(tenant, list(servers_result.scalars().all()))
+
+
+@router.put("/mcp/agent-settings", response_model=McpAgentSettingsResponse)
+async def update_mcp_agent_settings(
+    payload: McpAgentSettingsUpdate,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpAgentSettingsResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    tenant.mcp_agent_toggles = merge_agent_toggles(tenant.mcp_agent_toggles, payload.toggles)
+    await db.commit()
+    await db.refresh(tenant)
+    servers_result = await db.execute(
+        select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id).order_by(MCPServer.name.asc())
+    )
+    return await _mcp_agent_settings_payload(tenant, list(servers_result.scalars().all()))
+
+
+@router.put("/mcp/servers/{server_id}/allowed-agents", response_model=McpAgentSettingsResponse)
+async def update_mcp_server_allowed_agents(
+    server_id: str,
+    payload: McpAgentServerAccessUpdate,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpAgentSettingsResponse:
+    server = await _get_mcp_server(db, current_user.tenant_id, server_id)
+    server.connection_config = apply_allowed_agents_to_config(server.connection_config, payload.allowed_agents)
+    await db.commit()
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    servers_result = await db.execute(
+        select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id).order_by(MCPServer.name.asc())
+    )
+    return await _mcp_agent_settings_payload(tenant, list(servers_result.scalars().all()))
+
+
+@router.post("/mcp/agents/detect", response_model=McpAgentDetectResponse)
+async def detect_mcp_agent(
+    payload: McpAgentDetectRequest,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpAgentDetectResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    toggles = toggles_from_tenant(tenant.mcp_agent_toggles)
+    agent = detect_agent(payload.user_agent, payload.metadata)
+    labels = {item["slug"]: item["label"] for item in public_agent_settings(toggles)}
+    return McpAgentDetectResponse(
+        agent=agent,
+        mcp_enabled=is_mcp_enabled_for_agent(toggles, agent),
+        label=labels.get(agent, agent),
+    )
+
+
+@router.get("/mcp/portal", response_model=McpPortalListResponse)
+async def list_mcp_portal(
+    request: Request,
+    current_user: Annotated[User, Depends(_require_mcp_portal)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpPortalListResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    servers_result = await db.execute(
+        select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id).order_by(MCPServer.name.asc())
+    )
+    servers = list(servers_result.scalars().all())
+    toggles = toggles_from_tenant(tenant.mcp_agent_toggles)
+    agent = detect_agent(None, None)
+    servers = filter_servers_for_agent(servers, agent, toggles)
+    raw_entries = await list_portal_entries(db, current_user, tenant, servers)
+    entries = [McpPortalEntry(**item) for item in raw_entries]
+    from app.services.mcp_multiplex_service import multiplex_public_path
+
+    base = str(request.base_url).rstrip("/")
+    multiplex_url = f"{base}{multiplex_public_path()}"
+    return McpPortalListResponse(
+        enabled=bool(tenant.mcp_portal_enabled),
+        multiplex_url=multiplex_url,
+        entries=entries,
+    )
+
+
+@router.get("/mcp/portal/settings", response_model=McpPortalSettingsResponse)
+async def get_mcp_portal_settings(
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpPortalSettingsResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    return McpPortalSettingsResponse(enabled=bool(tenant.mcp_portal_enabled))
+
+
+@router.put("/mcp/portal/settings", response_model=McpPortalSettingsResponse)
+async def update_mcp_portal_settings(
+    payload: McpPortalSettingsUpdate,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpPortalSettingsResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    tenant.mcp_portal_enabled = bool(payload.enabled)
+    await db.commit()
+    return McpPortalSettingsResponse(enabled=bool(tenant.mcp_portal_enabled))
+
+
+@router.put("/mcp/servers/{server_id}/portal-visibility", response_model=MCPServerResponse)
+async def update_mcp_server_portal_visibility(
+    server_id: str,
+    payload: McpPortalVisibilityUpdate,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> MCPServerResponse:
+    server = await _get_mcp_server(db, current_user.tenant_id, server_id)
+    set_portal_visible(server, payload.portal_visible)
+    await db.commit()
+    await db.refresh(server)
+    return _mcp_server_response(server)
+
+
+@router.post("/mcp/portal/{server_id}/connect", response_model=McpPortalConnectResponse)
+async def connect_mcp_portal_server(
+    server_id: str,
+    payload: McpPortalConnectRequest,
+    current_user: Annotated[User, Depends(_require_mcp_portal)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpPortalConnectResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    if not tenant.mcp_portal_enabled:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="MCP portal is disabled for this tenant")
+    server = await _get_mcp_server(db, current_user.tenant_id, server_id)
+    if not portal_visible(server):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Integration is not available in the portal")
+    try:
+        await connect_user_token(db, current_user, server, payload.access_token)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    user_connected = await user_has_token(db, tenant.id, current_user.id, server.id)
+    tenant_connected = await tenant_has_token(db, server)
+    status_label = connection_status(
+        server,
+        user_connected=user_connected,
+        tenant_token_available=tenant_connected,
+    )
+    from app.services.mcp_portal_service import load_user_connection
+
+    row = await load_user_connection(db, current_user.id, server.id)
+    connected_at = row.connected_at.isoformat() if row and row.connected_at else datetime.now(UTC).isoformat()
+    return McpPortalConnectResponse(
+        server_id=str(server.id),
+        connection_status=status_label,
+        connected_at=connected_at,
+    )
+
+
+@router.delete("/mcp/portal/{server_id}/connect", status_code=status.HTTP_204_NO_CONTENT)
+async def disconnect_mcp_portal_server(
+    server_id: str,
+    current_user: Annotated[User, Depends(_require_mcp_portal)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    if not await disconnect_user(db, current_user, server_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No personal connection found")
+
+
+@router.post("/mcp/dynamic-tools/preview", response_model=DynamicToolPreviewResponse)
+async def preview_dynamic_tools(
+    payload: DynamicToolPreviewRequest,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DynamicToolPreviewResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    servers_result = await db.execute(select(MCPServer).where(MCPServer.tenant_id == current_user.tenant_id))
+    max_tools = payload.max_tools or tenant.dynamic_tool_max
+    result = apply_dynamic_tools_for_request(
+        list(servers_result.scalars().all()),
+        payload.query,
+        None,
+        enabled=True,
+        max_tools=max_tools,
+        auto_hide_destructive=bool(tenant.mcp_auto_hide_destructive),
+    )
+    return DynamicToolPreviewResponse(
+        enabled=tenant.dynamic_tool_calling_enabled,
+        catalog_count=result.catalog_count,
+        selected_count=result.selected_count,
+        selected_names=result.selected_names,
+        original_tokens=result.original_tokens,
+        compressed_tokens=result.compressed_tokens,
+        tokens_saved=result.tokens_saved,
+        savings_pct=result.savings_pct,
+    )
+
+
 @router.post("/mcp/servers/{server_id}/tools/invoke", response_model=McpToolInvokeResponse)
 async def invoke_mcp_server_tool(
     server_id: str,
@@ -790,7 +1452,12 @@ async def invoke_mcp_server_tool(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> McpToolInvokeResponse:
     server = await _get_mcp_server(db, current_user.tenant_id, server_id)
-    result = await invoke_mcp_tool(server, payload.tool_name, payload.arguments)
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    if not tool_is_visible(server, payload.tool_name, auto_hide_destructive=bool(tenant.mcp_auto_hide_destructive)):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tool is hidden by risk policy")
+    token = await resolve_effective_mcp_access_token(db, server, user_id=current_user.id)
+    result = await invoke_mcp_tool(server, payload.tool_name, payload.arguments, access_token=token)
     apply_tool_invoke(server, result)
     await db.commit()
     await db.refresh(server)
@@ -1280,6 +1947,8 @@ async def get_gateway_status(
             "/api/v1/chat/completions",
             "/v1/models",
             "/api/v1/models",
+            "/v1/mcp",
+            "/api/v1/mcp",
             "/v1beta/models/{model}:generateContent",
         ],
         proxy_mode=config.upstream,

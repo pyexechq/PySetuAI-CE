@@ -88,19 +88,19 @@
 |----|------|--------|-------|-------|
 | BL-061 | Managed system prompt store & enforce mode | Prompt Lifecycle | 8 | Done (Schema, CRUD API, Versioning, Gateway Injection & Full UI in S10-01/S10-02/S10-03) |
 | BL-062 | Custom intents — trainable content classifiers | Security / Policy | 8 | Done (Migration 038, Model, Service, Scan Engine, API & Policy Studio UI in S10-04/S10-05) |
-| BL-063 | Token saving — JSON→TOON / payload compression | Gateway | 8 | Opt-in per route; preserve responses |
-| BL-064 | Dynamic tool calling — relevant MCP tools only | MCP Governance | 8 | Tool ranking + token KPI |
+| BL-063 | Token saving — JSON→TOON / payload compression | Gateway | 8 | Done (S11-01 engine + S11-02 dashboard before/after) |
+| BL-064 | Dynamic tool calling — relevant MCP tools only | MCP Governance | 8 | Done (S11-03 ranking engine + gateway cap; S11-04 MCP Governance toggle & preview) |
 
 ## Phase 9 — MCP Platform & Deep Observability (planned)
 
 | ID | Item | Module | Phase | Notes |
 |----|------|--------|-------|-------|
-| BL-065 | MCP multiplex — single gateway URL | MCP Governance | 9 | Zero agent config change story |
-| BL-066 | MCP catalog — curated library + one-click install | MCP Governance | 9 | Custom MCP via transport URL |
-| BL-067 | MCP OAuth auth mediation / token broker | MCP Governance | 9 | Vault-backed credential broker |
-| BL-068 | Tool risk taxonomy (read/write/destructive) | MCP Governance | 9 | Auto-hide disabled tools |
-| BL-069 | Agent auto-detection + per-agent MCP toggles | MCP Governance | 9 | Claude/OpenAI/Gemini agents |
-| BL-070 | Self-service MCP / AI portal | MCP Governance | 9 | End-user browse + connect |
+| BL-065 | MCP multiplex — single gateway URL | MCP Governance | 9 | Done (S12-01: POST /v1/mcp JSON-RPC, server__tool routing, MCP Governance URL card) |
+| BL-066 | MCP catalog — curated library + one-click install | MCP Governance | 9 | Done (S12-02: curated catalog, one-click install, custom transport URL) |
+| BL-067 | MCP OAuth auth mediation / token broker | MCP Governance | 9 | Done (S12-03: vault-backed broker, client_credentials/refresh/static, inject Bearer on MCP calls) |
+| BL-068 | Tool risk taxonomy (read/write/destructive) | MCP Governance | 9 | Done (S12-04: classify + hide overrides, auto-hide destructive, omitted from multiplex/dynamic/invoke) |
+| BL-069 | Agent auto-detection + per-agent MCP toggles | MCP Governance | 9 | Done (S12-05: UA/metadata detect, tenant toggles, per-server allowlists, gateway filter) |
+| BL-070 | Self-service MCP / AI portal | MCP Governance | 9 | Done (S12-06: portal browse/connect, per-user tokens, admin visibility) |
 | BL-071 | Web search MCP + enterprise URL filtering | MCP Governance | 9 | Zscaler/FortiGate/Cisco hooks |
 | BL-072 | Per-user/team/model token & cost analytics | Observability | 9 | Depends BL-057 |
 | BL-073 | Full request/response log store | Audit Explorer | 9 | Retention + search + export |

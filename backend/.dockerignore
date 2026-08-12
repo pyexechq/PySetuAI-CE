@@ -1,4 +1,5 @@
 __pycache__
+**/__pycache__
 *.pyc
 .venv
 venv
@@ -6,3 +7,13 @@ venv
 *.md
 ._*
 **/._*
+._.*
+**/._.*
+.DS_Store
+**/.DS_Store
+.pytest_cache
+.pytest_cache/**
+**/.pytest_cache
+.pytest_deps
+.pytest_deps/**
+

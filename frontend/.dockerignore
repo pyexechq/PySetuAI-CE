@@ -5,3 +5,7 @@ node_modules
 .env*.local
 ._*
 **/._*
+._.*
+**/._.*
+.DS_Store
+**/.DS_Store

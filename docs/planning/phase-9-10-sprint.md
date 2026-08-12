@@ -1,7 +1,7 @@
 # Phase 9 & 10 Sprint Outline — MCP Platform & Security Parity
 
 **Sprints:** 12–14+ (planned)  
-**Status:** **Planning** — high-level; detail before Sprint 12 kickoff
+**Status:** **In progress** (Sprint 12)
 
 > Full backlog: [backlog.md](./backlog.md) BL-065–BL-082  
 > Matrix: [gateway-parity-roadmap.md](./gateway-parity-roadmap.md)
@@ -12,15 +12,15 @@
 
 ### Sprint 12 — MCP platform
 
-| ID | Task | Backlog |
-|----|------|---------|
-| S12-01 | MCP multiplex gateway URL + routing | BL-065 |
-| S12-02 | MCP catalog — curated entries + install flow | BL-066 |
-| S12-03 | OAuth auth mediation for MCP credentials | BL-067 |
-| S12-04 | Tool risk taxonomy + auto-hide | BL-068 |
-| S12-05 | Agent auto-detection + toggles | BL-069 |
-| S12-06 | Self-service MCP portal (end-user) | BL-070 |
-| S12-07 | Web search MCP + URL filter integrations | BL-071 |
+| ID | Task | Backlog | Status |
+|----|------|---------|--------|
+| S12-01 | MCP multiplex gateway URL + routing | BL-065 | Done |
+| S12-02 | MCP catalog — curated entries + install flow | BL-066 | Done |
+| S12-03 | OAuth auth mediation for MCP credentials | BL-067 | Done |
+| S12-04 | Tool risk taxonomy + auto-hide | BL-068 | Done |
+| S12-05 | Agent auto-detection + toggles | BL-069 | Done |
+| S12-06 | Self-service MCP portal (end-user) | BL-070 | Done |
+| S12-07 | Web search MCP + URL filter integrations | BL-071 | |
 
 ### Sprint 13 — Observability depth
 

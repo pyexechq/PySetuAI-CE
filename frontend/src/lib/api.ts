@@ -216,6 +216,13 @@ export interface ApiDashboardOverview {
     legacy_app_compatibility: number;
     route_breakdown: { route: string; count: number }[];
   };
+  token_saving?: {
+    requests_compressed: number;
+    original_tokens: number;
+    compressed_tokens: number;
+    tokens_saved: number;
+    savings_pct: number;
+  };
 }
 
 export interface ApiUser {
@@ -481,6 +488,8 @@ export interface ApiGatewaySettings {
   ai_token_limit_tpd: number | null;
   ai_token_budgets: Record<string, any> | null;
   allowed_api_origins: string[] | null;
+  token_saving_enabled: boolean;
+  token_saving_mode: string;
 }
 
 export interface ApiGatewaySettingsUpdate {
@@ -491,6 +500,8 @@ export interface ApiGatewaySettingsUpdate {
   ai_token_limit_tph?: number | null;
   ai_token_limit_tpd?: number | null;
   allowed_api_origins?: string[] | null;
+  token_saving_enabled?: boolean;
+  token_saving_mode?: string;
 }
 
 export const api = {
@@ -800,6 +811,124 @@ export const api = {
 
   invokeMcpServerTool: (token: string, serverId: string, body: ApiMcpToolInvokeRequest) =>
     apiFetch<ApiMcpToolInvokeResponse>(`/mcp/servers/${serverId}/tools/invoke`, { method: "POST", body: JSON.stringify(body) }, token),
+
+  getDynamicToolSettings: (token: string) =>
+    apiFetch<ApiDynamicToolSettings>("/mcp/dynamic-tools/settings", {}, token),
+
+  updateDynamicToolSettings: (token: string, body: { enabled?: boolean; max_tools?: number }) =>
+    apiFetch<ApiDynamicToolSettings>("/mcp/dynamic-tools/settings", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  previewDynamicTools: (token: string, body: { query: string; max_tools?: number }) =>
+    apiFetch<ApiDynamicToolPreview>("/mcp/dynamic-tools/preview", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  getMcpMultiplexInfo: (token: string) =>
+    apiFetch<ApiMcpMultiplexInfo>("/mcp/multiplex", {}, token),
+
+  getMcpCatalog: (token: string) =>
+    apiFetch<ApiMcpCatalogList>("/mcp/catalog", {}, token),
+
+  installMcpCatalogEntry: (token: string, slug: string, body: ApiMcpCatalogInstallRequest = {}) =>
+    apiFetch<ApiMcpServer>(`/mcp/catalog/${encodeURIComponent(slug)}/install`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  installCustomMcpServer: (token: string, body: ApiMcpCatalogCustomInstallRequest) =>
+    apiFetch<ApiMcpServer>("/mcp/catalog/custom", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  getMcpOAuthList: (token: string) =>
+    apiFetch<ApiMcpOAuthList>("/mcp/oauth", {}, token),
+
+  getMcpOAuth: (token: string, serverId: string) =>
+    apiFetch<ApiMcpOAuthStatus>(`/mcp/servers/${serverId}/oauth`, {}, token),
+
+  upsertMcpOAuth: (token: string, serverId: string, body: ApiMcpOAuthUpsertRequest) =>
+    apiFetch<ApiMcpOAuthStatus>(`/mcp/servers/${serverId}/oauth`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  refreshMcpOAuth: (token: string, serverId: string) =>
+    apiFetch<ApiMcpOAuthStatus>(`/mcp/servers/${serverId}/oauth/refresh`, { method: "POST" }, token),
+
+  deleteMcpOAuth: (token: string, serverId: string) =>
+    apiFetch<void>(`/mcp/servers/${serverId}/oauth`, { method: "DELETE" }, token),
+
+  getMcpAgentSettings: (token: string) =>
+    apiFetch<ApiMcpAgentSettings>("/mcp/agent-settings", {}, token),
+
+  updateMcpAgentSettings: (token: string, toggles: Record<string, boolean>) =>
+    apiFetch<ApiMcpAgentSettings>("/mcp/agent-settings", {
+      method: "PUT",
+      body: JSON.stringify({ toggles }),
+    }, token),
+
+  updateMcpServerAllowedAgents: (token: string, serverId: string, allowed_agents: string[]) =>
+    apiFetch<ApiMcpAgentSettings>(`/mcp/servers/${serverId}/allowed-agents`, {
+      method: "PUT",
+      body: JSON.stringify({ allowed_agents }),
+    }, token),
+
+  detectMcpAgent: (token: string, body: { user_agent?: string; metadata?: Record<string, unknown> }) =>
+    apiFetch<ApiMcpAgentDetect>("/mcp/agents/detect", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  getMcpPortal: (token: string) =>
+    apiFetch<ApiMcpPortalList>("/mcp/portal", {}, token),
+
+  getMcpPortalSettings: (token: string) =>
+    apiFetch<ApiMcpPortalSettings>("/mcp/portal/settings", {}, token),
+
+  updateMcpPortalSettings: (token: string, enabled: boolean) =>
+    apiFetch<ApiMcpPortalSettings>("/mcp/portal/settings", {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    }, token),
+
+  updateMcpServerPortalVisibility: (token: string, serverId: string, portal_visible: boolean) =>
+    apiFetch<ApiMcpServer>(`/mcp/servers/${serverId}/portal-visibility`, {
+      method: "PUT",
+      body: JSON.stringify({ portal_visible }),
+    }, token),
+
+  connectMcpPortalServer: (token: string, serverId: string, access_token: string) =>
+    apiFetch<ApiMcpPortalConnect>(`/mcp/portal/${serverId}/connect`, {
+      method: "POST",
+      body: JSON.stringify({ access_token }),
+    }, token),
+
+  disconnectMcpPortalServer: (token: string, serverId: string) =>
+    apiFetch<void>(`/mcp/portal/${serverId}/connect`, { method: "DELETE" }, token),
+
+  getMcpToolRisk: (token: string) =>
+    apiFetch<ApiMcpToolRiskInventory>("/mcp/tool-risk", {}, token),
+
+  updateMcpToolRiskSettings: (token: string, body: { auto_hide_destructive: boolean }) =>
+    apiFetch<ApiMcpToolRiskInventory>("/mcp/tool-risk/settings", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  updateMcpServerToolRisk: (
+    token: string,
+    serverId: string,
+    body: { tools: Array<{ name: string; risk?: string | null; hidden?: boolean | null }> },
+  ) =>
+    apiFetch<ApiMcpToolRiskInventory>(`/mcp/servers/${serverId}/tool-risk`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
 
   getAuditLogs: (token: string, params?: { search?: string; status?: string; since?: string; limit?: number; from_date?: string; to_date?: string; audit_id?: string }) => {
     const query = new URLSearchParams();
@@ -1355,6 +1484,169 @@ export const api = {
     apiFetch<ApiQAFileDefectResponse>(`/qa/test-cases/${caseId}/file-defect`, { method: "POST" }, token),
 };
 
+export interface ApiDynamicToolSettings {
+  enabled: boolean;
+  max_tools: number;
+  catalog_count: number;
+  catalog_tokens: number;
+}
+
+export interface ApiDynamicToolPreview {
+  enabled: boolean;
+  catalog_count: number;
+  selected_count: number;
+  selected_names: string[];
+  original_tokens: number;
+  compressed_tokens: number;
+  tokens_saved: number;
+  savings_pct: number;
+}
+
+export interface ApiMcpMultiplexInfo {
+  url: string;
+  api_url: string;
+  auth: string;
+  tool_namespace: string;
+  server_count: number;
+  tool_count: number;
+  sample_tools: string[];
+  instructions: string;
+}
+
+export interface ApiMcpCatalogEntry {
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  transport: string;
+  default_endpoint: string | null;
+  tool_names: string[];
+  auth_required: boolean;
+  vendor: string;
+  installed: boolean;
+}
+
+export interface ApiMcpCatalogList {
+  entries: ApiMcpCatalogEntry[];
+}
+
+export interface ApiMcpCatalogInstallRequest {
+  endpoint_url?: string | null;
+  name?: string | null;
+}
+
+export interface ApiMcpCatalogCustomInstallRequest {
+  name: string;
+  endpoint_url: string;
+  transport?: string;
+  category?: string;
+}
+
+export interface ApiMcpOAuthStatus {
+  configured: boolean;
+  enabled: boolean;
+  grant_type: string;
+  token_url: string;
+  client_id: string;
+  scopes: string;
+  has_client_secret: boolean;
+  has_refresh_token: boolean;
+  has_access_token: boolean;
+  token_expires_at: string | null;
+  token_fresh: boolean;
+  secrets_backend: string;
+  server_id?: string;
+  server_name?: string;
+}
+
+export interface ApiMcpOAuthList {
+  servers: Array<ApiMcpOAuthStatus & { server_id: string; server_name: string }>;
+  secrets_backend: string;
+}
+
+export interface ApiMcpOAuthUpsertRequest {
+  enabled?: boolean;
+  grant_type?: string;
+  token_url?: string | null;
+  client_id?: string | null;
+  scopes?: string | null;
+  client_secret?: string | null;
+  refresh_token?: string | null;
+  access_token?: string | null;
+}
+
+export interface ApiMcpToolRiskItem {
+  server_id: string;
+  server_name: string;
+  name: string;
+  description: string;
+  risk: string;
+  hidden: boolean;
+  auto_hidden: boolean;
+  visible: boolean;
+}
+
+export interface ApiMcpToolRiskInventory {
+  auto_hide_destructive: boolean;
+  tools: ApiMcpToolRiskItem[];
+  visible_count: number;
+  hidden_count: number;
+}
+
+export interface ApiMcpAgentItem {
+  slug: string;
+  label: string;
+  enabled: boolean;
+}
+
+export interface ApiMcpAgentServerAccess {
+  server_id: string;
+  server_name: string;
+  allowed_agents: string[];
+}
+
+export interface ApiMcpAgentSettings {
+  agents: ApiMcpAgentItem[];
+  servers: ApiMcpAgentServerAccess[];
+}
+
+export interface ApiMcpAgentDetect {
+  agent: string;
+  mcp_enabled: boolean;
+  label: string;
+}
+
+export interface ApiMcpPortalEntry {
+  server_id: string;
+  name: string;
+  category: string;
+  status: string;
+  tool_count: number;
+  tool_names: string[];
+  auth_required: boolean;
+  connection_status: string;
+  catalog_slug?: string | null;
+  vendor?: string;
+  description?: string;
+  portal_visible: boolean;
+}
+
+export interface ApiMcpPortalList {
+  enabled: boolean;
+  multiplex_url: string;
+  entries: ApiMcpPortalEntry[];
+}
+
+export interface ApiMcpPortalSettings {
+  enabled: boolean;
+}
+
+export interface ApiMcpPortalConnect {
+  server_id: string;
+  connection_status: string;
+  connected_at: string;
+}
+
 export interface ApiMcpServer {
   id: string;
   name: string;
@@ -1370,6 +1662,9 @@ export interface ApiMcpServer {
   connection_config: {
     auth_header?: string;
     timeout_sec?: number;
+    catalog_slug?: string;
+    portal_visible?: boolean;
+    allowed_agents?: string[];
     tool_schemas?: ApiMcpToolSchema[];
     mcp_session?: Record<string, unknown>;
   };
@@ -2203,6 +2498,19 @@ export interface ApiExecutiveSummary {
   frameworks_compliant: number;
   frameworks_total: number;
   top_risks: string[];
+  cost_optimization?: {
+    layers: {
+      id: string;
+      label: string;
+      tokens_saved: number;
+      estimated_usd: number;
+      requests: number;
+      share_pct: number;
+    }[];
+    total_tokens_saved: number;
+    total_estimated_usd: number;
+    narrative: string;
+  } | null;
 }
 
 export interface ApiReportQuery {

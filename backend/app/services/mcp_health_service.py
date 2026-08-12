@@ -22,7 +22,7 @@ class McpHealthResult:
     skipped: bool = False
 
 
-async def probe_mcp_server(server: MCPServer) -> McpHealthResult:
+async def probe_mcp_server(server: MCPServer, access_token: str | None = None) -> McpHealthResult:
     transport = (server.transport or "sse").strip().lower()
 
     if transport == "stdio":
@@ -44,7 +44,7 @@ async def probe_mcp_server(server: MCPServer) -> McpHealthResult:
         )
 
     timeout_sec = resolve_timeout_sec(server.connection_config)
-    headers = build_mcp_headers(server.connection_config)
+    headers = build_mcp_headers(server.connection_config, access_token=access_token)
     started = time.perf_counter()
 
     try:

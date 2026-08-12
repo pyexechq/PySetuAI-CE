@@ -15,6 +15,7 @@ class ChatCompletionRequest(BaseModel):
     routing_context: dict | None = None
     user: str | None = None
     metadata: dict | None = None
+    tools: list[dict] | None = None
 
 
 class ChatCompletionChoice(BaseModel):

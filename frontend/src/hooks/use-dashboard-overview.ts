@@ -32,6 +32,13 @@ export const EMPTY_DASHBOARD_OVERVIEW: ApiDashboardOverview = {
   top_agents: [],
   compliance_frameworks: [],
   security_trends: [],
+  token_saving: {
+    requests_compressed: 0,
+    original_tokens: 0,
+    compressed_tokens: 0,
+    tokens_saved: 0,
+    savings_pct: 0,
+  },
 };
 
 export function useDashboardOverview() {

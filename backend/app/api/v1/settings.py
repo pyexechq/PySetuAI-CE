@@ -223,6 +223,8 @@ async def get_gateway_settings(
         ai_token_limit_tpd=tenant.ai_token_limit_tpd,
         ai_token_budgets=tenant.ai_token_budgets,
         allowed_api_origins=tenant.allowed_api_origins,
+        token_saving_enabled=tenant.token_saving_enabled,
+        token_saving_mode=tenant.token_saving_mode,
     )
 
 
@@ -254,6 +256,12 @@ async def update_gateway_settings(
         tenant.ai_token_budgets = payload.ai_token_budgets
     if payload.allowed_api_origins is not None:
         tenant.allowed_api_origins = payload.allowed_api_origins
+    if payload.token_saving_enabled is not None:
+        tenant.token_saving_enabled = payload.token_saving_enabled
+    if payload.token_saving_mode is not None:
+        mode = payload.token_saving_mode
+        if mode in ("json_to_toon", "strip_markdown", "both"):
+            tenant.token_saving_mode = mode
 
     await db.commit()
     await db.refresh(tenant)
@@ -267,4 +275,6 @@ async def update_gateway_settings(
         ai_token_limit_tpd=tenant.ai_token_limit_tpd,
         ai_token_budgets=tenant.ai_token_budgets,
         allowed_api_origins=tenant.allowed_api_origins,
+        token_saving_enabled=tenant.token_saving_enabled,
+        token_saving_mode=tenant.token_saving_mode,
     )

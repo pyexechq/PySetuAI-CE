@@ -32,6 +32,14 @@ def _provider_secret_path(tenant_id: uuid.UUID, provider_id: uuid.UUID) -> str:
     return f"pysetu/tenants/{tenant_id}/providers/{provider_id}/api_key"
 
 
+def _mcp_oauth_secret_path(tenant_id: uuid.UUID, server_id: uuid.UUID, secret_name: str) -> str:
+    return f"pysetu/tenants/{tenant_id}/mcp/{server_id}/oauth/{secret_name}"
+
+
+def _user_mcp_secret_path(tenant_id: uuid.UUID, user_id: uuid.UUID, server_id: uuid.UUID) -> str:
+    return f"pysetu/tenants/{tenant_id}/users/{user_id}/mcp/{server_id}/access_token"
+
+
 def _validate_vault_settings() -> None:
     method = (settings.vault_auth_method or "token").strip().lower()
     if method not in {"token", "approle"}:
@@ -182,6 +190,56 @@ async def set_provider_secret(
         provider.api_key = None
         return
     provider.api_key = value
+
+
+async def get_mcp_oauth_secret(
+    tenant_id: uuid.UUID,
+    server_id: uuid.UUID,
+    secret_name: str,
+    db_value: str | None,
+) -> str | None:
+    if settings.vault_enabled:
+        value = await _read_vault(_mcp_oauth_secret_path(tenant_id, server_id, secret_name))
+        if value is not None:
+            return value
+    return db_value
+
+
+async def set_mcp_oauth_secret(
+    tenant_id: uuid.UUID,
+    server_id: uuid.UUID,
+    secret_name: str,
+    value: str | None,
+) -> str | None:
+    if settings.vault_enabled:
+        await _write_vault(_mcp_oauth_secret_path(tenant_id, server_id, secret_name), value)
+        return None
+    return value
+
+
+async def get_user_mcp_secret(
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    server_id: uuid.UUID,
+    db_value: str | None,
+) -> str | None:
+    if settings.vault_enabled:
+        value = await _read_vault(_user_mcp_secret_path(tenant_id, user_id, server_id))
+        if value is not None:
+            return value
+    return db_value
+
+
+async def set_user_mcp_secret(
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    server_id: uuid.UUID,
+    value: str | None,
+) -> str | None:
+    if settings.vault_enabled:
+        await _write_vault(_user_mcp_secret_path(tenant_id, user_id, server_id), value)
+        return None
+    return value
 
 
 async def provider_secret_status(

@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReportManagementModals } from "@/components/reports/report-management-modals";
+import { CompoundingCostCard } from "@/components/reports/compounding-cost-card";
 import { useReports } from "@/hooks/use-reports";
 import type { ReportCatalogEntry } from "@/lib/types/domain";
 import { api, ApiError } from "@/lib/api";
@@ -240,6 +241,8 @@ export function ReportsView() {
           </Card>
         ))}
       </div>
+
+      <CompoundingCostCard data={summary.cost_optimization} />
 
       {summary.top_risks.length > 0 && (
         <Card className="border-border/60 bg-card/50">

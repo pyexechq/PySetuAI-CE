@@ -14,6 +14,7 @@ from app.db.session import get_db
 from app.models.governance import AuditLog, ReportDefinition
 from app.models.tenant import User
 from app.schemas.reports import (
+    CompoundingCostSummary,
     ExecutiveSummaryResponse,
     ReportCatalogItem,
     ReportCatalogResponse,
@@ -32,6 +33,7 @@ from app.schemas.reports import (
     ReportUpdateRequest,
 )
 from app.services.compliance_service import build_compliance_frameworks
+from app.services.compounding_cost_service import summarize_compounding_savings
 from app.services.report_export_service import build_report_download
 from app.services.report_service import (
     QUERY_TEMPLATES,
@@ -109,6 +111,11 @@ async def executive_summary(
     )
     pii_n = pii_result.scalar() or 0
 
+    usage_rows = await db.execute(
+        select(AuditLog.usage_metadata).where(base, *range_filter, AuditLog.usage_metadata.is_not(None))
+    )
+    cost_optimization = CompoundingCostSummary(**summarize_compounding_savings([row[0] for row in usage_rows.all()]))
+
     frameworks = await build_compliance_frameworks(
         db,
         tenant_id,
@@ -130,6 +137,12 @@ async def executive_summary(
             ReportKpiResponse(label="Policy Blocks", value=f"{blocked_n:,}", change=f"{block_rate}%", trend="down"),
             ReportKpiResponse(label="Allowed Actions", value=f"{allowed_n:,}", change="+8.1%", trend="up"),
             ReportKpiResponse(label="High-Risk Events", value=f"{high_risk_n:,}", change="-3.2%", trend="down"),
+            ReportKpiResponse(
+                label="Stacked cost savings",
+                value=f"${cost_optimization.total_estimated_usd:,.2f}",
+                change=f"{cost_optimization.total_tokens_saved:,} tok",
+                trend="down",
+            ),
         ],
         compliance_score=avg_score,
         frameworks_compliant=frameworks_compliant,
@@ -139,6 +152,7 @@ async def executive_summary(
             "PII redaction in EU workloads",
             "MCP tool allowlist violations",
         ],
+        cost_optimization=cost_optimization,
     )
 
 

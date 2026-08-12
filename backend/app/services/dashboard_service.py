@@ -18,10 +18,12 @@ from app.schemas.dashboard import (
     DashboardTopAgentRow,
     DashboardTopPolicyRow,
     DashboardTrafficPoint,
+    DashboardTokenSavingSummary,
     DashboardUagMetrics,
     DashboardUagRouteItem,
 )
 from app.services.compliance_service import build_compliance_frameworks
+from app.services.token_saving_service import summarize_token_saving
 
 RISK_COLORS = {"low": "#22c55e", "medium": "#eab308", "high": "#f97316", "critical": "#ef4444"}
 
@@ -298,6 +300,18 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
         route_breakdown=uag_routes,
     )
 
+    token_saving_rows = await db.execute(
+        select(AuditLog.usage_metadata).where(
+            AuditLog.tenant_id == tenant_id,
+            AuditLog.timestamp >= current_start,
+            AuditLog.timestamp < today_end,
+            AuditLog.usage_metadata.is_not(None),
+        )
+    )
+    token_saving = DashboardTokenSavingSummary(
+        **summarize_token_saving([row[0] for row in token_saving_rows.all()])
+    )
+
     return DashboardOverviewResponse(
         metrics=metrics,
         traffic=traffic,
@@ -311,4 +325,5 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
         compliance_frameworks=compliance_frameworks,
         security_trends=security_trends,
         uag=uag_metrics,
+        token_saving=token_saving,
     )

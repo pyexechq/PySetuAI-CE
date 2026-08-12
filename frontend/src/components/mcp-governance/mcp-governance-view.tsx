@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { McpServerModal } from "@/components/mcp-governance/mcp-server-modal";
+import { DynamicToolCallingCard } from "@/components/mcp-governance/dynamic-tool-calling-card";
+import { McpMultiplexCard } from "@/components/mcp-governance/mcp-multiplex-card";
+import { McpCatalogCard } from "@/components/mcp-governance/mcp-catalog-card";
+import { McpOAuthBrokerCard } from "@/components/mcp-governance/mcp-oauth-broker-card";
+import { McpToolRiskCard } from "@/components/mcp-governance/mcp-tool-risk-card";
+import { McpAgentTogglesCard } from "@/components/mcp-governance/mcp-agent-toggles-card";
+import { McpPortalSettingsCard } from "@/components/mcp-governance/mcp-portal-settings-card";
 import { useMcpServers } from "@/hooks/use-mcp-servers";
 import { api, ApiError, type ApiMcpServer } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
@@ -162,6 +169,19 @@ export function McpGovernanceView() {
       </div>
 
       {actionError && <p className="text-sm text-red-400">{actionError}</p>}
+
+      <McpMultiplexCard />
+
+      <McpCatalogCard canEdit={canEdit} onInstalled={invalidateMcpServers} />
+
+      <McpOAuthBrokerCard canEdit={canEdit} />
+
+      <McpToolRiskCard canEdit={canEdit} />
+
+      <McpAgentTogglesCard canEdit={canEdit} />
+      <McpPortalSettingsCard canEdit={canEdit} />
+
+      <DynamicToolCallingCard canEdit={canEdit} />
 
       <div className="grid gap-4 sm:grid-cols-4">
         <Card className="border-border/60 bg-card/50">

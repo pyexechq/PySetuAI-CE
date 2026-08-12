@@ -34,6 +34,13 @@ class Tenant(Base):
     ai_token_limit_tph: Mapped[int | None] = mapped_column(Integer, nullable=True)
     ai_token_limit_tpd: Mapped[int | None] = mapped_column(Integer, nullable=True)
     ai_token_budgets: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    token_saving_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    token_saving_mode: Mapped[str] = mapped_column(String(32), default="both", nullable=False)
+    dynamic_tool_calling_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    dynamic_tool_max: Mapped[int] = mapped_column(Integer, default=8, nullable=False)
+    mcp_auto_hide_destructive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    mcp_agent_toggles: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    mcp_portal_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.telemetry import current_trace_id, get_tracer
-from app.models.governance import AuditLog, PolicyBundle, RoutingGroup
+from app.models.governance import AuditLog, MCPServer, PolicyBundle, RoutingGroup
 from app.schemas.openai import (
     ChatCompletionChoice,
     ChatCompletionRequest,
@@ -41,6 +41,13 @@ from app.services.ollama_client import OllamaError, list_ollama_models, resolve_
 from app.services.opa_service import evaluate_gateway_abac
 from app.services.policy_engine import inspect_for_gateway
 from app.services.prompt_injection_service import resolve_and_inject_prompt
+from app.services.token_saving_service import apply_token_saving, resolve_token_saving_config
+from app.services.dynamic_tool_service import (
+    apply_dynamic_tools_for_request,
+    resolve_dynamic_tool_config,
+    to_openai_tools,
+)
+from app.services.mcp_agent_service import detect_agent, filter_servers_for_agent, toggles_from_tenant
 from app.services.regional_adapters import call_bedrock_regional, call_vertex_regional
 from app.services.provider_metrics_service import record_provider_request
 from app.services.routing_context import build_routing_context
@@ -78,6 +85,18 @@ class PreparedChat:
     prompt_version: int | None = None
     prompt_enforce_mode: str | None = None
     prompt_warning: str | None = None
+    token_saving_enabled: bool = False
+    token_saving_mode: str | None = None
+    token_saving_original_tokens: int = 0
+    token_saving_compressed_tokens: int = 0
+    token_saving_pct: float = 0.0
+    dynamic_tools_enabled: bool = False
+    dynamic_tools_catalog_count: int = 0
+    dynamic_tools_selected_count: int = 0
+    dynamic_tools_original_tokens: int = 0
+    dynamic_tools_compressed_tokens: int = 0
+    dynamic_tools_pct: float = 0.0
+    dynamic_tools_payload: list | None = None
 
 
 def _estimate_tokens(text: str) -> int:
@@ -98,6 +117,23 @@ def _pysetu_meta(prepared: PreparedChat, **extra) -> dict:
         meta["prompt_version"] = prepared.prompt_version
     if prepared.prompt_warning:
         meta["prompt_warning"] = prepared.prompt_warning
+    if prepared.token_saving_enabled:
+        meta["token_saving"] = {
+            "enabled": True,
+            "mode": prepared.token_saving_mode,
+            "original_tokens": prepared.token_saving_original_tokens,
+            "compressed_tokens": prepared.token_saving_compressed_tokens,
+            "savings_pct": prepared.token_saving_pct,
+        }
+    if prepared.dynamic_tools_enabled:
+        meta["dynamic_tools"] = {
+            "enabled": True,
+            "catalog_count": prepared.dynamic_tools_catalog_count,
+            "selected_count": prepared.dynamic_tools_selected_count,
+            "original_tokens": prepared.dynamic_tools_original_tokens,
+            "compressed_tokens": prepared.dynamic_tools_compressed_tokens,
+            "savings_pct": prepared.dynamic_tools_pct,
+        }
     if prepared.policy_bundle_name:
         meta["policy_bundle"] = prepared.policy_bundle_name
     if prepared.client_api_key_name:
@@ -174,6 +210,31 @@ async def _write_audit(
     )
 
 
+def _token_saving_metadata(prepared: PreparedChat) -> dict | None:
+    if not prepared.token_saving_enabled:
+        return None
+    return {
+        "enabled": True,
+        "mode": prepared.token_saving_mode,
+        "original_tokens": prepared.token_saving_original_tokens,
+        "compressed_tokens": prepared.token_saving_compressed_tokens,
+        "savings_pct": prepared.token_saving_pct,
+    }
+
+
+def _dynamic_tools_metadata(prepared: PreparedChat) -> dict | None:
+    if not prepared.dynamic_tools_enabled:
+        return None
+    return {
+        "enabled": True,
+        "catalog_count": prepared.dynamic_tools_catalog_count,
+        "selected_count": prepared.dynamic_tools_selected_count,
+        "original_tokens": prepared.dynamic_tools_original_tokens,
+        "compressed_tokens": prepared.dynamic_tools_compressed_tokens,
+        "savings_pct": prepared.dynamic_tools_pct,
+    }
+
+
 def _build_usage_metadata(
     ctx: GatewayContext,
     request: ChatCompletionRequest | None = None,
@@ -183,10 +244,12 @@ def _build_usage_metadata(
     completion_tokens: int,
     total_tokens: int,
     latency_ms: int | None = None,
+    token_saving: dict | None = None,
+    dynamic_tools: dict | None = None,
 ) -> dict:
     end_user = request.user if request and request.user else (getattr(ctx.user, "external_subject", None) if ctx.user else None)
     metadata = request.metadata if request else None
-    return {
+    result = {
         "model": model,
         "prompt_tokens": prompt_tokens,
         "completion_tokens": completion_tokens,
@@ -199,6 +262,11 @@ def _build_usage_metadata(
         "metadata": metadata,
         "latency_ms": latency_ms,
     }
+    if token_saving:
+        result["token_saving"] = token_saving
+    if dynamic_tools:
+        result["dynamic_tools"] = dynamic_tools
+    return result
 
 
 async def _dispatch_gateway_block_alert(
@@ -257,6 +325,8 @@ async def prepare_chat_request(
     request: ChatCompletionRequest,
     ctx: GatewayContext,
     db: AsyncSession,
+    *,
+    user_agent: str | None = None,
 ) -> tuple[PreparedChat | None, InspectionResult | None, str | None]:
     uag_pipeline = await run_uag_pre_governance(
         db,
@@ -362,6 +432,47 @@ async def prepare_chat_request(
         await db.commit()
         return None, ingress, prompt_warn or "Ad-hoc system prompts are blocked by tenant policy."
 
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == ctx.tenant_id))
+    tenant = tenant_result.scalar_one_or_none()
+    token_saving_enabled, token_saving_mode = resolve_token_saving_config(
+        tenant_enabled=tenant.token_saving_enabled if tenant else False,
+        tenant_mode=tenant.token_saving_mode if tenant else "both",
+        request_metadata=request.metadata,
+    )
+    token_saving = apply_token_saving(
+        messages,
+        enabled=token_saving_enabled,
+        mode=token_saving_mode,
+    )
+    messages = token_saving.messages
+    if token_saving.enabled and token_saving.transformations > 0:
+        uag_trace.governance_actions.append("token_saving")
+    combined = "\n".join(m.content for m in messages)
+
+    dyn_enabled, dyn_max = resolve_dynamic_tool_config(
+        tenant_enabled=tenant.dynamic_tool_calling_enabled if tenant else False,
+        tenant_max_tools=tenant.dynamic_tool_max if tenant else 8,
+        request_metadata=request.metadata,
+    )
+    mcp_rows = await db.execute(select(MCPServer).where(MCPServer.tenant_id == ctx.tenant_id))
+    all_mcp_servers = list(mcp_rows.scalars().all())
+    agent = detect_agent(user_agent, request.metadata)
+    agent_toggles = toggles_from_tenant(tenant.mcp_agent_toggles if tenant else None)
+    mcp_servers = filter_servers_for_agent(all_mcp_servers, agent, agent_toggles)
+    if request.tools and not mcp_servers and all_mcp_servers:
+        uag_trace.governance_actions.append("mcp_agent_blocked")
+    dynamic_tools = apply_dynamic_tools_for_request(
+        mcp_servers,
+        combined,
+        request.tools,
+        enabled=dyn_enabled,
+        max_tools=dyn_max,
+        auto_hide_destructive=bool(tenant.mcp_auto_hide_destructive) if tenant else False,
+    )
+    dynamic_tools_payload = to_openai_tools(dynamic_tools.selected) if dynamic_tools.enabled else request.tools
+    if dynamic_tools.enabled:
+        uag_trace.governance_actions.append("dynamic_tools")
+
     routed_model, matched_rule, routing_strategy = await select_model(
         effective_request.model,
         db,
@@ -434,7 +545,7 @@ async def prepare_chat_request(
             model=canonical.model,
             requested_model=canonical.requested_model,
             messages=canonical.messages,
-            tools=canonical.tools,
+            tools=dynamic_tools_payload or canonical.tools,
             system_prompt=canonical.system_prompt,
             temperature=canonical.temperature,
             max_tokens=canonical.max_tokens,
@@ -463,6 +574,18 @@ async def prepare_chat_request(
         prompt_version=prompt_ver,
         prompt_enforce_mode=prompt_enforce,
         prompt_warning=prompt_warn,
+        token_saving_enabled=token_saving.enabled,
+        token_saving_mode=token_saving.mode if token_saving.enabled else None,
+        token_saving_original_tokens=token_saving.original_tokens,
+        token_saving_compressed_tokens=token_saving.compressed_tokens,
+        token_saving_pct=token_saving.savings_pct,
+        dynamic_tools_enabled=dynamic_tools.enabled,
+        dynamic_tools_catalog_count=dynamic_tools.catalog_count,
+        dynamic_tools_selected_count=dynamic_tools.selected_count,
+        dynamic_tools_original_tokens=dynamic_tools.original_tokens,
+        dynamic_tools_compressed_tokens=dynamic_tools.compressed_tokens,
+        dynamic_tools_pct=dynamic_tools.savings_pct,
+        dynamic_tools_payload=dynamic_tools_payload,
     )
 
     if upstream == "ollama":
@@ -520,6 +643,7 @@ async def _call_openai(
     api_key: str,
     stream: bool = False,
     api_base: str | None = None,
+    tools: list | None = None,
 ):
     payload = {
         "model": model,
@@ -527,12 +651,14 @@ async def _call_openai(
         "temperature": temperature or 0.7,
         "stream": stream,
     }
+    if tools:
+        payload["tools"] = tools
     url = resolve_chat_completions_url(api_base) if api_base else "https://api.openai.com/v1/chat/completions"
     return payload, url, {"Authorization": f"Bearer {api_key}"}
 
 
 async def _call_ollama_payload(
-    model: str, messages: list[ChatMessage], temperature: float | None, base_url: str, stream: bool
+    model: str, messages: list[ChatMessage], temperature: float | None, base_url: str, stream: bool, tools: list | None = None
 ):
     payload = {
         "model": model,
@@ -540,6 +666,8 @@ async def _call_ollama_payload(
         "temperature": temperature or 0.7,
         "stream": stream,
     }
+    if tools:
+        payload["tools"] = tools
     return payload, f"{base_url.rstrip('/')}/v1/chat/completions", {}
 
 
@@ -551,6 +679,7 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
             request.temperature,
             prepared.config.openai_api_key,
             api_base=prepared.config.openai_api_base,
+            tools=prepared.dynamic_tools_payload,
         )
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(url, headers=headers, json=payload)
@@ -600,7 +729,8 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
 
     if prepared.upstream == "ollama" and prepared.ollama_model:
         payload, url, _ = await _call_ollama_payload(
-            prepared.ollama_model, prepared.messages, request.temperature, prepared.config.ollama_base_url, False
+            prepared.ollama_model, prepared.messages, request.temperature, prepared.config.ollama_base_url, False,
+            tools=prepared.dynamic_tools_payload,
         )
         async with httpx.AsyncClient(timeout=180.0) as client:
             response = await client.post(url, json=payload)
@@ -720,6 +850,7 @@ async def stream_chat_completion(
                 prepared.config.openai_api_key,
                 stream=True,
                 api_base=prepared.config.openai_api_base,
+                tools=prepared.dynamic_tools_payload,
             )
             async with httpx.AsyncClient(timeout=180.0) as client:
                 async with client.stream("POST", url, headers=headers, json=payload) as response:
@@ -749,7 +880,8 @@ async def stream_chat_completion(
 
         elif prepared.upstream == "ollama" and prepared.ollama_model:
             payload, url, _ = await _call_ollama_payload(
-                prepared.ollama_model, prepared.messages, request.temperature, prepared.config.ollama_base_url, True
+                prepared.ollama_model, prepared.messages, request.temperature, prepared.config.ollama_base_url, True,
+                tools=prepared.dynamic_tools_payload,
             )
             async with httpx.AsyncClient(timeout=180.0) as client:
                 async with client.stream("POST", url, json=payload) as response:
@@ -855,6 +987,8 @@ async def stream_chat_completion(
                 completion_tokens=completion_tokens,
                 total_tokens=prompt_tokens + completion_tokens,
                 latency_ms=latency_ms,
+                token_saving=_token_saving_metadata(prepared),
+                dynamic_tools=_dynamic_tools_metadata(prepared),
             )
         )
         await db.commit()
@@ -873,11 +1007,13 @@ async def process_chat_completion(
     request: ChatCompletionRequest,
     ctx: GatewayContext,
     db: AsyncSession,
+    *,
+    user_agent: str | None = None,
 ) -> tuple[dict | None, InspectionResult | None, str | None]:
     with tracer.start_as_current_span("gateway.chat_completion") as span:
         span.set_attribute("pysetu.model", request.model)
         span.set_attribute("pysetu.stream", bool(request.stream))
-        prepared, ingress, error = await prepare_chat_request(request, ctx, db)
+        prepared, ingress, error = await prepare_chat_request(request, ctx, db, user_agent=user_agent)
         if error or prepared is None:
             span.set_attribute("pysetu.result", "blocked" if ingress and not ingress.allowed else "error")
             return None, ingress, error
@@ -1048,6 +1184,8 @@ async def process_chat_completion(
                 completion_tokens=response.usage.completion_tokens,
                 total_tokens=response.usage.total_tokens,
                 latency_ms=latency_ms,
+                token_saving=_token_saving_metadata(prepared),
+                dynamic_tools=_dynamic_tools_metadata(prepared),
             ),
         )
         await db.commit()

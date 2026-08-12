@@ -14,6 +14,7 @@ import {
   FlaskConical,
   ClipboardCheck,
   Radar,
+  Plug,
   type LucideIcon,
 } from "lucide-react";
 
@@ -51,6 +52,7 @@ export const mainNavGroups: NavGroup[] = [
     items: [
       { title: "Policy Studio", href: "/policy-studio", icon: Workflow },
       { title: "MCP Governance", href: "/mcp-governance", icon: Server },
+      { title: "MCP Portal", href: "/mcp-portal", icon: Plug },
       { title: "Governance Graph", href: "/governance-graph", icon: GitBranch },
       { title: "Governance Sandbox", href: "/studio", icon: FlaskConical },
     ],

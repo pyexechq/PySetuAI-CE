@@ -84,61 +84,63 @@ Build a commercial-grade Enterprise AI Control Plane competing with OpenRouter E
 - [x] Operator SLA / health dashboards (BL-055)
 - [x] Wire alert webhooks to gateway events (BL-075)
 
-## Phase 7 — Gateway Pipeline Parity (planned)
+## Phase 7 — Gateway Pipeline Parity (complete)
 
 _See [gateway-parity-roadmap.md](./gateway-parity-roadmap.md) · [phase-7-sprint.md](./phase-7-sprint.md)_
 
-- [ ] AI traffic rate limits — req/min/hr/day (BL-056)
-- [ ] Token budgets per tenant, team, model (BL-056)
-- [ ] Per-user / per-team usage metering & attribution (BL-057)
-- [ ] Domain allowlists for login and API access (BL-058)
-- [ ] Response-path guardrails parity (BL-059)
-- [ ] Routing groups — group-as-model, weighted pools, auto-failover (BL-060)
-- [ ] Regional routing groups (US/India, Bedrock, Vertex) — spike (BL-077)
+- [x] AI traffic rate limits — req/min/hr/day (BL-056) — S8-02 done
+- [x] Token budgets per tenant, team, model (BL-056) — S8-03 done
+- [x] Per-user / per-team usage metering & attribution (BL-057) — S8-01 done
+- [x] Domain allowlists for login and API access (BL-058) — S8-04 done
+- [x] Response-path guardrails parity (BL-059) — S8-05 done
+- [x] Routing groups — group-as-model, weighted pools, auto-failover (BL-060) — S9-01–03 done
+- [x] Regional routing groups (US/India, Bedrock, Vertex) — spike (BL-077) — S9-05 done
 
-## Phase 8 — Prompt Lifecycle & Cost Optimization (planned)
+## Phase 8 — Prompt Lifecycle & Cost Optimization (complete)
 
 _See [phase-8-sprint.md](./phase-8-sprint.md)_
 
-- [ ] Prompt store — versioned prompts, `{{variable}}` templates, enforce mode (BL-061)
-- [ ] Custom intents — trainable / configurable content classifiers (BL-062)
-- [ ] Token saving — JSON→TOON / payload compression (~43% target on eligible inputs) (BL-063)
-- [ ] Dynamic tool calling — relevant MCP tools only per request (BL-064)
+- [x] Prompt store — versioned prompts, `{{variable}}` templates, enforce mode (BL-061) — S10-01–03 done
+- [x] Custom intents — trainable / configurable content classifiers (BL-062) — S10-04–05 done
+- [x] Token saving — JSON→TOON / payload compression (~43% target on eligible inputs) (BL-063) — S11-01–02 done
+- [x] Dynamic tool calling — relevant MCP tools only per request (BL-064) — S11-03–05 done
 
-## Phase 9 — MCP Platform & Deep Observability (planned)
+## Phase 9 — MCP Platform & Deep Observability (in progress — Sprint 12)
 
-- [ ] MCP multiplex — single gateway URL for all MCP traffic (BL-065)
-- [ ] MCP catalog — curated library + one-click install + custom transport URL (BL-066)
-- [ ] MCP OAuth auth mediation / token broker (BL-067)
-- [ ] Tool risk taxonomy — read / write / destructive + auto-hide (BL-068)
-- [ ] Agent auto-detection + per-agent MCP toggles (BL-069)
-- [ ] Self-service MCP / AI portal for end users (BL-070)
-- [ ] Web search MCP + enterprise URL filtering (Zscaler/FortiGate/Cisco) (BL-071)
-- [ ] Per-user / team / model cost & token analytics (BL-072)
-- [ ] Full request/response log store + search (BL-073)
-- [ ] OTel-native trace replay (BL-074)
-- [ ] Telemetry facade API (`/telemetry/summary`, `/operations`, `/security`, `/traces`) (BL-076)
+_See [phase-9-10-sprint.md](./phase-9-10-sprint.md)_
+
+- [x] MCP multiplex — single gateway URL for all MCP traffic (BL-065) — S12-01 done
+- [x] MCP catalog — curated library + one-click install + custom transport URL (BL-066) — S12-02 done
+- [x] MCP OAuth auth mediation / token broker (BL-067) — S12-03 done
+- [x] Tool risk taxonomy — read / write / destructive + auto-hide (BL-068)
+- [x] Agent auto-detection + per-agent MCP toggles (BL-069)
+- [x] Self-service MCP / AI portal for end users (BL-070)
+- [ ] Web search MCP + enterprise URL filtering (Zscaler/FortiGate/Cisco) (BL-071) — S12-07
+- [ ] Per-user / team / model cost & token analytics (BL-072) — S13-01
+- [ ] Full request/response log store + search (BL-073) — S13-02
+- [ ] OTel-native trace replay (BL-074) — S13-03
+- [ ] Telemetry facade API (`/telemetry/summary`, `/operations`, `/security`, `/traces`) (BL-076) — S13-04
 
 ## Phase 10 — Enterprise Security Parity (planned)
 
-- [ ] Red team testing suite — adversarial prompt campaigns (BL-080)
-- [ ] PHI / PCI / financial data classifiers (BL-082)
-- [ ] Claude.ai compliance API sync (orgs, users, chats, DLP) (BL-081)
-- [ ] Gateway SLA metrics — overhead p99, uptime, connection pooling (BL-078)
-- [ ] Endpoint agent — TLS inspection + DLP (macOS/Windows) — optional track (BL-079)
+- [ ] Red team testing suite — adversarial prompt campaigns (BL-080) — S14-01
+- [ ] PHI / PCI / financial data classifiers (BL-082) — S14-02
+- [ ] Claude.ai compliance API sync (orgs, users, chats, DLP) (BL-081) — S14-03
+- [ ] Gateway SLA metrics — overhead p99, uptime, connection pooling (BL-078) — S14-05
+- [ ] Endpoint agent — TLS inspection + DLP (macOS/Windows) — optional track (BL-079) — S15+
 
 ## Milestones
 
 | Milestone | Target | Status |
 |-----------|--------|--------|
-| M1: Foundation Complete | Sprint 1 | Complete |
-| M2: Core Modules MVP | Sprint 3 | Complete (~UI + partial API) |
-| M3: Audit & Compliance | Sprint 5 | Complete (~UI + ingestion APIs) |
-| M4: Studio & Reports | Sprint 5 | Complete |
-| M5: Production Ready | Sprint 10 | In Progress — Phase 5 wrap-up (S6-08+) |
-| M6: Enterprise Operations | Sprint 7 | Planned — see phase-6-sprint.md |
-| M7: Universal AI Gateway v1 | Aug 2026 | Complete |
-| M8: Gateway Pipeline Parity | Sprint 9 | Planned — BL-056–BL-060 |
-| M9: Cost & Prompt Parity | Sprint 11 | Planned — BL-061–BL-064 |
-| M10: MCP Platform & Observability | Sprint 13 | Planned — BL-065–BL-076 |
-| M11: Enterprise Security Parity | Sprint 14+ | Planned — BL-077–BL-082 |
+| M1: Foundation Complete | Sprint 1 | ✅ Complete |
+| M2: Core Modules MVP | Sprint 3 | ✅ Complete (~UI + partial API) |
+| M3: Audit & Compliance | Sprint 5 | ✅ Complete (~UI + ingestion APIs) |
+| M4: Studio & Reports | Sprint 5 | ✅ Complete |
+| M5: Production Ready | Sprint 6 | ✅ Complete — Phase 5 (S6-01–09) |
+| M6: Enterprise Operations | Sprint 7 | ✅ Complete — Phase 6 |
+| M7: Universal AI Gateway v1 | Aug 2026 | ✅ Complete |
+| M8: Gateway Pipeline Parity | Sprint 9 | ✅ Complete — BL-056–BL-060 (Aug 12) |
+| M9: Cost & Prompt Parity | Sprint 11 | ✅ Complete — BL-061–BL-064 (Aug 13) |
+| M10: MCP Platform & Observability | Sprint 13 | 🔄 In Progress — Sprint 12 (S12-04+) |
+| M11: Enterprise Security Parity | Sprint 14+ | 📋 Planned — BL-077–BL-082 |

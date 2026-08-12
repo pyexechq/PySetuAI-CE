@@ -152,7 +152,7 @@ async def ensure_mcp_session(
     return session, False
 
 
-async def discover_mcp_tools(server: MCPServer) -> McpDiscoverResult:
+async def discover_mcp_tools(server: MCPServer, access_token: str | None = None) -> McpDiscoverResult:
     transport = (server.transport or "sse").strip().lower()
     if transport == "stdio":
         return McpDiscoverResult(
@@ -171,7 +171,7 @@ async def discover_mcp_tools(server: MCPServer) -> McpDiscoverResult:
         )
 
     timeout_sec = resolve_timeout_sec(server.connection_config)
-    headers = build_mcp_headers(server.connection_config, json_rpc=True)
+    headers = build_mcp_headers(server.connection_config, json_rpc=True, access_token=access_token)
     started = time.perf_counter()
 
     try:
@@ -227,7 +227,12 @@ async def discover_mcp_tools(server: MCPServer) -> McpDiscoverResult:
         return McpDiscoverResult(ok=False, tool_names=[], message=str(exc))
 
 
-async def invoke_mcp_tool(server: MCPServer, tool_name: str, arguments: dict | None = None) -> McpToolInvokeResult:
+async def invoke_mcp_tool(
+    server: MCPServer,
+    tool_name: str,
+    arguments: dict | None = None,
+    access_token: str | None = None,
+) -> McpToolInvokeResult:
     transport = (server.transport or "sse").strip().lower()
     if transport == "stdio":
         return McpToolInvokeResult(
@@ -245,7 +250,7 @@ async def invoke_mcp_tool(server: MCPServer, tool_name: str, arguments: dict | N
         return McpToolInvokeResult(ok=False, message="Tool name is required.")
 
     timeout_sec = resolve_timeout_sec(server.connection_config)
-    headers = build_mcp_headers(server.connection_config, json_rpc=True)
+    headers = build_mcp_headers(server.connection_config, json_rpc=True, access_token=access_token)
     started = time.perf_counter()
 
     try:

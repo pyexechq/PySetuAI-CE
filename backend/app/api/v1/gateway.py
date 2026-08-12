@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,7 @@ from app.core.gateway_deps import get_gateway_context
 from app.core.rate_limit import check_ai_rate_limits, check_ai_token_limits
 from app.core.telemetry import current_trace_id
 from app.db.session import get_db
-from app.models.governance import AuditLog, LLMProvider, RoutingGroup
+from app.models.governance import AuditLog, LLMProvider, MCPServer, RoutingGroup
 from app.models.tenant import Tenant, User
 from app.services.alert_webhook_service import build_gateway_alert_event, dispatch_tenant_alerts
 from app.schemas.openai import (
@@ -58,7 +58,9 @@ async def _handle_chat_completions(
     request: ChatCompletionRequest,
     ctx: GatewayContext,
     db: AsyncSession,
+    http_request: Request | None = None,
 ):
+    user_agent = http_request.headers.get("user-agent") if http_request else None
     tenant_result = await db.execute(select(Tenant).where(Tenant.id == ctx.tenant_id))
     tenant = tenant_result.scalar_one()
 
@@ -200,7 +202,7 @@ async def _handle_chat_completions(
         )
 
     if request.stream:
-        prepared, inspection, error_message = await prepare_chat_request(request, ctx, db)
+        prepared, inspection, error_message = await prepare_chat_request(request, ctx, db, user_agent=user_agent)
         if error_message and inspection and not inspection.allowed:
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -218,7 +220,7 @@ async def _handle_chat_completions(
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-PySetu-Stream": "true"},
         )
 
-    response, inspection, error_message = await process_chat_completion(request, ctx, db)
+    response, inspection, error_message = await process_chat_completion(request, ctx, db, user_agent=user_agent)
 
     if error_message and inspection and not inspection.allowed:
         return JSONResponse(
@@ -273,10 +275,11 @@ async def chat_completions_openai(
     request: ChatCompletionRequest,
     ctx: Annotated[GatewayContext, Depends(get_gateway_context)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    http_request: Request,
     mode: Annotated[str | None, Query()] = None,
 ):
     ctx.debug_mode = _is_debug_mode(mode)
-    return await _handle_chat_completions(request, ctx, db)
+    return await _handle_chat_completions(request, ctx, db, http_request)
 
 
 @admin_router.post("/chat/completions")
@@ -284,10 +287,70 @@ async def chat_completions_api(
     request: ChatCompletionRequest,
     ctx: Annotated[GatewayContext, Depends(get_gateway_context)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    http_request: Request,
     mode: Annotated[str | None, Query()] = None,
 ):
     ctx.debug_mode = _is_debug_mode(mode)
-    return await _handle_chat_completions(request, ctx, db)
+    return await _handle_chat_completions(request, ctx, db, http_request)
+
+
+async def _handle_mcp_multiplex(
+    request: Request,
+    ctx: GatewayContext,
+    db: AsyncSession,
+):
+    from app.services.mcp_client_service import McpToolInvokeResult, apply_tool_invoke
+    from app.services.mcp_multiplex_service import dispatch_mcp_request
+
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON-RPC body") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="JSON-RPC payload must be an object")
+
+    servers_result = await db.execute(select(MCPServer).where(MCPServer.tenant_id == ctx.tenant_id))
+    all_servers = list(servers_result.scalars().all())
+    from app.services.mcp_portal_service import resolve_effective_mcp_access_token
+    from app.services.mcp_agent_service import detect_agent, filter_servers_for_agent, toggles_from_tenant
+
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == ctx.tenant_id))
+    tenant = tenant_result.scalar_one_or_none()
+    auto_hide = bool(tenant.mcp_auto_hide_destructive) if tenant else False
+    agent = detect_agent(request.headers.get("user-agent"), None)
+    toggles = toggles_from_tenant(tenant.mcp_agent_toggles if tenant else None)
+    servers = filter_servers_for_agent(all_servers, agent, toggles)
+
+    async def access_token_for(server):
+        user_id = ctx.user.id if ctx.user else None
+        return await resolve_effective_mcp_access_token(db, server, user_id=user_id)
+
+    response = await dispatch_mcp_request(
+        payload, servers, access_token_for=access_token_for, auto_hide_destructive=auto_hide
+    )
+
+    if str(payload.get("method") or "") == "tools/call" and "result" in response:
+        meta = (response.get("result") or {}).get("_pysetu") or {}
+        server_name = meta.get("server")
+        for server in servers:
+            if server.name == server_name:
+                apply_tool_invoke(
+                    server,
+                    McpToolInvokeResult(ok=True, message="multiplex", latency_ms=int(meta.get("latency_ms") or 0)),
+                )
+                break
+        await db.commit()
+    return JSONResponse(response)
+
+
+@openai_router.post("/v1/mcp")
+@admin_router.post("/mcp")
+async def mcp_multiplex_gateway(
+    request: Request,
+    ctx: Annotated[GatewayContext, Depends(get_gateway_context)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    return await _handle_mcp_multiplex(request, ctx, db)
 
 
 @openai_router.post("/v1beta/models/{model_id}:generateContent")

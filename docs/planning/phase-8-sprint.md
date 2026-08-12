@@ -3,7 +3,7 @@
 **Sprints:** 10–11 (planned)  
 **Dates:** Feb 8 – Apr 4, 2027 (estimated)  
 **Goal:** Prompt store, custom intents, token compression, dynamic MCP tool calling  
-**Status:** **Planning**
+**Status:** **Complete** (Sprint 11 / M9)
 
 > Parity matrix: [gateway-parity-roadmap.md](./gateway-parity-roadmap.md)  
 > Prerequisites: Phase 7 metering (BL-057), routing groups (BL-060)
@@ -26,13 +26,13 @@
 
 ## Sprint 11 — Token saving & dynamic tool calling
 
-| ID | Task | Owner | Backlog | Acceptance |
-|----|------|-------|---------|------------|
-| S11-01 | Token saving engine — JSON→TOON / strip markdown | Backend | BL-063 | Opt-in; responses untouched; metrics |
-| S11-02 | Token saving dashboard — before/after on Dashboard | Frontend | BL-063, BL-072 | Show % savings per tenant |
-| S11-03 | Dynamic tool calling — rank/filter MCP tools per request | Backend | BL-064 | ≤N tools sent to model; token KPI |
-| S11-04 | Dynamic tool calling UI — MCP Governance config | Frontend | BL-064 | Toggle + preview token estimate |
-| S11-05 | Compounding cost report — routing + tools + compression | Reports | BL-063, BL-064 | Executive summary section |
+| ID | Task | Owner | Backlog | Acceptance | Status |
+|----|------|-------|---------|------------|--------|
+| S11-01 | Token saving engine — JSON→TOON / strip markdown | Backend | BL-063 | Opt-in; responses untouched; metrics | Done |
+| S11-02 | Token saving dashboard — before/after on Dashboard | Frontend | BL-063, BL-072 | Show % savings per tenant | Done |
+| S11-03 | Dynamic tool calling — rank/filter MCP tools per request | Backend | BL-064 | ≤N tools sent to model; token KPI | Done |
+| S11-04 | Dynamic tool calling UI — MCP Governance config | Frontend | BL-064 | Toggle + preview token estimate | Done |
+| S11-05 | Compounding cost report — routing + tools + compression | Reports | BL-063, BL-064 | Executive summary section | Done |
 
 **Sprint 11 exit:** M9 — Cost & Prompt Parity milestone; MCP tool call token reduction measured.
 

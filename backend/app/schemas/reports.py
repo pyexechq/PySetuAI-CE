@@ -11,6 +11,22 @@ class ReportKpiResponse(BaseModel):
     trend: str
 
 
+class CompoundingCostLayer(BaseModel):
+    id: str
+    label: str
+    tokens_saved: int = 0
+    estimated_usd: float = 0.0
+    requests: int = 0
+    share_pct: float = 0.0
+
+
+class CompoundingCostSummary(BaseModel):
+    layers: list[CompoundingCostLayer]
+    total_tokens_saved: int = 0
+    total_estimated_usd: float = 0.0
+    narrative: str = ""
+
+
 class ReportSchedule(BaseModel):
     enabled: bool = False
     frequency: str = "on_demand"
@@ -72,6 +88,7 @@ class ExecutiveSummaryResponse(BaseModel):
     frameworks_compliant: int
     frameworks_total: int
     top_risks: list[str]
+    cost_optimization: CompoundingCostSummary | None = None
 
 
 class ReportCatalogResponse(BaseModel):

@@ -55,21 +55,27 @@ def build_report_pdf(
     pdf.add_page()
 
     # Executive summary strip for governance reports
-    if category.lower() in {"executive", "compliance"}:
+    if category.lower() in {"executive", "compliance", "finance"}:
         pdf.set_fill_color(239, 246, 255)
         pdf.set_draw_color(191, 219, 254)
         pdf.rect(10, 28, 277, 18, style="FD")
         pdf.set_xy(14, 32)
         pdf.set_font("Helvetica", "B", 10)
         pdf.set_text_color(30, 64, 175)
-        pdf.cell(0, 6, "Governance Executive Summary", ln=True)
+        heading = "Compounding Cost Summary" if category.lower() == "finance" else "Governance Executive Summary"
+        pdf.cell(0, 6, heading, ln=True)
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(51, 65, 85)
         pdf.set_x(14)
+        extra = ""
+        if category.lower() == "finance" and rows:
+            last = rows[-1]
+            if last and str(last[0]).lower().startswith("total"):
+                extra = f"  ·  Stacked savings: {last[1]} tokens / ${last[2]}"
         pdf.cell(
             0,
             6,
-            f"Total records: {row_count:,}  ·  Exported rows: {min(len(rows), max_rows):,}",
+            f"Total records: {row_count:,}  ·  Exported rows: {min(len(rows), max_rows):,}{extra}",
             ln=True,
         )
         pdf.ln(6)

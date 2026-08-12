@@ -17,6 +17,7 @@ MANAGE_POLICIES = "manage_policies"
 VIEW_AUDIT_LOGS = "view_audit_logs"
 INGEST_AUDIT_LOGS = "ingest_audit_logs"
 MANAGE_MCP = "manage_mcp"
+USE_MCP = "use_mcp"
 USE_STUDIO = "use_studio"
 VIEW_COMPLIANCE = "view_compliance"
 MANAGE_LLM_PROVIDERS = "manage_llm_providers"
@@ -28,6 +29,7 @@ ALL_PERMISSIONS: tuple[str, ...] = (
     VIEW_AUDIT_LOGS,
     INGEST_AUDIT_LOGS,
     MANAGE_MCP,
+    USE_MCP,
     USE_STUDIO,
     VIEW_COMPLIANCE,
     MANAGE_LLM_PROVIDERS,
@@ -51,13 +53,14 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             VIEW_AUDIT_LOGS,
             INGEST_AUDIT_LOGS,
             MANAGE_MCP,
+            USE_MCP,
             USE_STUDIO,
             MANAGE_LLM_PROVIDERS,
         }
     ),
     "compliance_officer": frozenset({VIEW_AUDIT_LOGS, VIEW_COMPLIANCE}),
     "auditor": frozenset({VIEW_AUDIT_LOGS, VIEW_COMPLIANCE}),
-    "developer": frozenset({USE_STUDIO}),
+    "developer": frozenset({USE_STUDIO, USE_MCP}),
 }
 
 PERMISSION_LABELS: dict[str, str] = {
@@ -67,6 +70,7 @@ PERMISSION_LABELS: dict[str, str] = {
     VIEW_AUDIT_LOGS: "View audit logs",
     INGEST_AUDIT_LOGS: "Ingest audit logs",
     MANAGE_MCP: "Manage MCP servers",
+    USE_MCP: "Use MCP portal",
     USE_STUDIO: "Use Governance Sandbox",
     VIEW_COMPLIANCE: "View compliance",
     MANAGE_LLM_PROVIDERS: "Manage LLM providers",

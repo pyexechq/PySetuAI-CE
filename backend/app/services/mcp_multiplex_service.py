@@ -1,0 +1,161 @@
+"""MCP multiplex — one gateway URL for all tenant MCP servers (BL-065)."""
+
+from __future__ import annotations
+
+import re
+from typing import Any
+
+from app.services.dynamic_tool_service import catalog_from_servers
+
+MCP_PROTOCOL_VERSION = "2024-11-05"
+MULTIPLEX_SERVER_NAME = "pysetu-mcp-multiplex"
+_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+
+def server_slug(name: str) -> str:
+    slug = _SLUG_RE.sub("_", (name or "").strip().lower()).strip("_")
+    return slug or "server"
+
+
+def qualify_tool_name(slug: str, tool_name: str) -> str:
+    return f"{slug}__{tool_name}"
+
+
+def parse_qualified_name(name: str) -> tuple[str | None, str]:
+    if "__" in name:
+        slug, tool = name.split("__", 1)
+        return slug, tool
+    return None, name
+
+
+def resolve_tool_target(servers: list[Any], tool_name: str) -> tuple[Any, str] | None:
+    slug, original = parse_qualified_name(tool_name)
+    if slug:
+        for server in servers:
+            if server_slug(getattr(server, "name", "")) == slug:
+                names = [str(n) for n in (getattr(server, "tool_names", None) or [])]
+                schemas = ((getattr(server, "connection_config", None) or {}).get("tool_schemas") or [])
+                schema_names = [str(s.get("name")) for s in schemas if isinstance(s, dict) and s.get("name")]
+                if original in names or original in schema_names or not names:
+                    return server, original
+        return None
+
+    matches: list[tuple[Any, str]] = []
+    for server in servers:
+        names = [str(n) for n in (getattr(server, "tool_names", None) or [])]
+        schemas = ((getattr(server, "connection_config", None) or {}).get("tool_schemas") or [])
+        schema_names = [str(s.get("name")) for s in schemas if isinstance(s, dict) and s.get("name")]
+        if original in names or original in schema_names:
+            matches.append((server, original))
+    if len(matches) == 1:
+        return matches[0]
+    return None
+
+
+def build_multiplex_catalog(servers: list[Any], *, auto_hide_destructive: bool = False) -> list[dict[str, Any]]:
+    catalog: list[dict[str, Any]] = []
+    for server in servers:
+        slug = server_slug(getattr(server, "name", ""))
+        tools = catalog_from_servers([server], auto_hide_destructive=auto_hide_destructive)
+        for tool in tools:
+            catalog.append(
+                {
+                    "name": qualify_tool_name(slug, tool["name"]),
+                    "description": tool.get("description") or f"{getattr(server, 'name', slug)} / {tool['name']}",
+                    "inputSchema": tool.get("inputSchema") or {"type": "object"},
+                }
+            )
+    return catalog
+
+
+def jsonrpc_result(request_id: Any, result: Any) -> dict[str, Any]:
+    return {"jsonrpc": "2.0", "id": request_id, "result": result}
+
+
+def jsonrpc_error(request_id: Any, code: int, message: str) -> dict[str, Any]:
+    return {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
+
+
+def handle_jsonrpc(
+    payload: dict[str, Any],
+    servers: list[Any],
+    *,
+    auto_hide_destructive: bool = False,
+) -> dict[str, Any]:
+    request_id = payload.get("id")
+    method = str(payload.get("method") or "")
+    if method in {"initialize", "notifications/initialized"}:
+        return jsonrpc_result(
+            request_id,
+            {
+                "protocolVersion": MCP_PROTOCOL_VERSION,
+                "capabilities": {"tools": {"listChanged": False}},
+                "serverInfo": {"name": MULTIPLEX_SERVER_NAME, "version": "1.0"},
+            },
+        )
+    if method == "ping":
+        return jsonrpc_result(request_id, {})
+    if method == "tools/list":
+        return jsonrpc_result(request_id, {"tools": build_multiplex_catalog(servers, auto_hide_destructive=auto_hide_destructive)})
+    if method == "tools/call":
+        return jsonrpc_error(request_id, -32603, "tools/call must be handled asynchronously")
+    return jsonrpc_error(request_id, -32601, f"Method not found: {method}")
+
+
+def multiplex_public_path() -> str:
+    return "/v1/mcp"
+
+
+async def handle_tools_call(
+    payload: dict[str, Any],
+    servers: list[Any],
+    access_token_for=None,
+    *,
+    auto_hide_destructive: bool = False,
+) -> dict[str, Any]:
+    from app.services.mcp_client_service import invoke_mcp_tool
+    from app.services.mcp_tool_risk_service import tool_is_visible
+
+    request_id = payload.get("id")
+    params = payload.get("params") if isinstance(payload.get("params"), dict) else {}
+    tool_name = str(params.get("name") or "").strip()
+    arguments = params.get("arguments") if isinstance(params.get("arguments"), dict) else {}
+    if not tool_name:
+        return jsonrpc_error(request_id, -32602, "Tool name is required")
+    target = resolve_tool_target(servers, tool_name)
+    if target is None:
+        return jsonrpc_error(request_id, -32602, f"Unknown tool: {tool_name}")
+    server, original = target
+    if not tool_is_visible(server, original, auto_hide_destructive=auto_hide_destructive):
+        return jsonrpc_error(request_id, -32001, f"Tool is hidden by risk policy: {original}")
+    token = await access_token_for(server) if access_token_for else None
+    result = await invoke_mcp_tool(server, original, arguments, access_token=token)
+    if not result.ok:
+        return jsonrpc_error(request_id, -32000, result.message)
+    return jsonrpc_result(
+        request_id,
+        {
+            "content": [{"type": "text", "text": str(result.result)}],
+            "isError": False,
+            "structuredContent": result.result,
+            "_pysetu": {"server": getattr(server, "name", ""), "tool": original, "latency_ms": result.latency_ms},
+        },
+    )
+
+
+async def dispatch_mcp_request(
+    payload: dict[str, Any],
+    servers: list[Any],
+    access_token_for=None,
+    *,
+    auto_hide_destructive: bool = False,
+) -> dict[str, Any]:
+    method = str(payload.get("method") or "")
+    if method == "tools/call":
+        return await handle_tools_call(
+            payload,
+            servers,
+            access_token_for=access_token_for,
+            auto_hide_destructive=auto_hide_destructive,
+        )
+    return handle_jsonrpc(payload, servers, auto_hide_destructive=auto_hide_destructive)

@@ -1,5 +1,156 @@
 # PySetu AI — Test Results
 
+**Test Cycle:** QA-016 (Sprint 12 / MCP Portal BL-070) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 12 S12-06 Test Results (BL-070 Self-service MCP Portal)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (portal + related MCP suites) | **51 passed**, 0 failed |
+| Coverage | Portal visibility, connection status, per-user token connect, gateway token resolution |
+| Open defects | 0 blocking for S12-06 |
+| Completed Tasks | **S12-06 (portal API, per-user connections, Governance admin card, `/mcp-portal` UI)** |
+
+---
+
+**Test Cycle:** QA-015 (Sprint 12 / Agent MCP Toggles BL-069) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 12 S12-05 Test Results (BL-069 Agent Detection + Per-agent MCP)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (agent + related MCP suites) | **43 passed**, 0 failed |
+| Coverage | UA/metadata classification, tenant toggles, per-server allowlists, gateway server filter |
+| Open defects | 0 blocking for S12-05 |
+| Completed Tasks | **S12-05 (agent settings API, detection probe, gateway + multiplex filter, Governance UI)** |
+
+---
+
+**Test Cycle:** QA-014 (Sprint 12 / Tool Risk Taxonomy BL-068) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 12 S12-04 Test Results (BL-068 Read / Write / Destructive + Auto-hide)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (tool risk + multiplex + catalog + oauth + dynamic tools) | **35 passed**, 0 failed |
+| Coverage | Name/description classification, explicit hide, auto-hide destructive, policy merge overrides |
+| Open defects | 0 blocking for S12-04 |
+| Completed Tasks | **S12-04 (GET/PUT /mcp/tool-risk, per-server overrides, multiplex/dynamic/invoke hide)** |
+
+---
+
+**Test Cycle:** QA-013 (Sprint 12 / MCP OAuth Broker BL-067) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 12 S12-03 Test Results (BL-067 Vault-backed Token Broker)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (oauth + multiplex + catalog) | **22 passed**, 0 failed |
+| Coverage | Token freshness/skew, client_credentials & refresh forms, grant apply, public status never leaks secrets, broker token overrides static auth_header |
+| Open defects | 0 blocking for S12-03 |
+| Completed Tasks | **S12-03 (mcp_oauth_credentials + vault paths, GET/PUT/POST refresh/DELETE, MCP Governance broker card)** |
+
+---
+
+**Test Cycle:** QA-012 (Sprint 12 / MCP Catalog BL-066) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 12 S12-02 Test Results (BL-066 Curated Catalog + Install)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (catalog + multiplex + dynamic tools) | **21 passed**, 0 failed |
+| Coverage | Curated slugs, install spec + catalog_slug, already-installed detect, custom transport URL validation |
+| Open defects | 0 blocking for S12-02 |
+| Completed Tasks | **S12-02 (GET /mcp/catalog, POST /mcp/catalog/{slug}/install, POST /mcp/catalog/custom, MCP Governance catalog card)** |
+
+---
+
+**Test Cycle:** QA-011 (Sprint 12 / MCP Multiplex BL-065) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 12 S12-01 Test Results (BL-065 Single MCP Gateway URL)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (multiplex + related) | **18 passed**, 0 failed |
+| Coverage | Server slug, qualified tool names, catalog prefixing, initialize/tools/list JSON-RPC, unique unqualified resolve |
+| Open defects | 0 blocking for S12-01 |
+| Completed Tasks | **S12-01 (POST /v1/mcp + /api/v1/mcp, MCP Governance URL card)** |
+
+---
+
+**Test Cycle:** QA-010 (Sprint 11 Exit / Compounding Cost S11-05 / M9) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 11 S11-05 Test Results (Compounding Cost Report)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (compounding + token saving + dynamic tools) | **22 passed**, 0 failed |
+| Coverage | Stacked compression + tools USD, cheaper-model routing layer, narrative mentions all three layers |
+| Open defects | 0 blocking for Sprint 11 |
+| Milestone Status | **M9 — Cost & Prompt Parity APPROVED** |
+| Completed Tasks | **S11-05 (Executive compounding cost section + catalog PDF report)** |
+
+---
+
+**Test Cycle:** QA-009 (Sprint 11 / Dynamic Tool Calling BL-064) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 11 S11-03 / S11-04 Test Results (BL-064 Rank, Cap, Preview)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (dynamic tools + token saving + UAG) | **27 passed**, 0 failed |
+| Coverage | Cap at N, query-relevant ranking, ≥50% token KPI on large catalogs, catalog from schemas/names, request override, MCP settings + preview API |
+| Open defects | 0 blocking for S11-03 / S11-04 |
+| Completed Tasks | **S11-03, S11-04 (BL-064 Complete)** |
+
+---
+
+**Test Cycle:** QA-008 (Sprint 11 / Token Saving Dashboard S11-02) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 11 S11-02 Test Results (BL-063 Dashboard Before/After)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (token saving + summary) | **11 passed**, 0 failed |
+| Coverage | Aggregate original/compressed tokens, ignore zero-savings rows, dashboard overview `token_saving` payload |
+| Open defects | 0 blocking for S11-02 |
+| Completed Tasks | **S11-02 (Token saving dashboard Complete)** |
+
+---
+
+**Test Cycle:** QA-007 (Sprint 11 / Token Saving BL-063 Validation) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 11 S11-01 Test Results (BL-063 Token Saving Engine)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (token saving) | **8 passed**, 0 failed |
+| Coverage | TOON encode, markdown strip, JSON fence compression, tenant/request config resolution, gateway ingress wiring |
+| Open defects | 0 blocking for S11-01 |
+| Completed Tasks | **S11-01 (BL-063 Backend Complete)** |
+
+---
+
 **Test Cycle:** QA-006 (UI Polish / AG Grid Theme Alignment) — **PASSED**  
 **Completed:** Aug 12, 2026
 

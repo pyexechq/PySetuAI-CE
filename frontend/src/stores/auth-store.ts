@@ -71,10 +71,10 @@ export const useAuthStore = create<AuthState>()(
 export const roleRouteAccess: Record<UserRole, string[]> = {
   platform_admin: ["*"],
   tenant_admin: ["*"],
-  security_admin: ["/", "/ai-gateway", "/compatibility-center", "/mcp-governance", "/llm-router", "/policy-studio", "/governance-graph", "/data-protection", "/monitoring", "/audit-explorer", "/qa-dashboard", "/settings"],
+  security_admin: ["/", "/ai-gateway", "/compatibility-center", "/mcp-governance", "/mcp-portal", "/llm-router", "/policy-studio", "/governance-graph", "/data-protection", "/monitoring", "/audit-explorer", "/qa-dashboard", "/settings"],
   compliance_officer: ["/", "/compliance", "/audit-explorer", "/data-protection", "/reports", "/qa-dashboard", "/settings"],
   auditor: ["/", "/audit-explorer", "/compliance", "/reports", "/monitoring", "/qa-dashboard"],
-  developer: ["/", "/studio", "/llm-router", "/policy-studio", "/governance-graph", "/monitoring", "/qa-dashboard", "/settings"],
+  developer: ["/", "/studio", "/mcp-portal", "/llm-router", "/policy-studio", "/governance-graph", "/monitoring", "/qa-dashboard", "/settings"],
 };
 
 export function canAccessRoute(role: UserRole, path: string): boolean {

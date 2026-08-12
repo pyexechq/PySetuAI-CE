@@ -63,15 +63,29 @@ If port 8000 is in use, run `uvicorn app.main:app --reload --port 8001` and set 
 
 ### Full Stack (Docker)
 
+> **macOS external volume users:** If this repo lives on a volume under `/Volumes/`,
+> always use `make` instead of raw `docker compose --build`. macOS creates hidden
+> `._*` sidecar files with `xattr` metadata that Docker BuildKit cannot read, causing
+> `operation not permitted` errors. The Makefile runs `dot_clean` automatically.
+> See [`.agents/AGENTS.md`](.agents/AGENTS.md) for full details.
+
 ```bash
-# From repo root — builds and starts postgres, redis, backend, frontend
+# From repo root — clean + build + start all services
+make build
+
+# Or with raw docker compose (only on Linux / non-external volumes)
 docker compose --env-file .env.docker up --build -d
+```
 
-# View logs
-docker compose logs -f
-
-# Stop
-docker compose down
+```bash
+# Common make targets
+make build          # dot_clean + rebuild all services
+make build-backend  # dot_clean + rebuild backend only
+make migrate        # run alembic upgrade head inside container
+make ps             # show container status
+make logs           # tail all logs
+make restart        # full down + clean + rebuild
+make down           # stop all containers
 ```
 
 | Service  | URL |
@@ -79,6 +93,7 @@ docker compose down
 | Frontend | http://localhost:3000 |
 | Backend API | http://localhost:8001 |
 | API Docs | http://localhost:8001/docs |
+| Mailhog (email) | http://localhost:8025 |
 
 Sign in with `admin@acme.com` / `demo1234` (tenant: `acme`).
 
@@ -152,6 +167,8 @@ PySetu AI/
 │   ├── helm/pysetu/   # Kubernetes Helm chart (BL-031)
 │   └── opa/policies/      # OPA Rego policies (Docker Compose)
 ├── docs/              # Architecture, planning, progress, ADRs
+├── .agents/AGENTS.md  # Agent rules — Docker, Alembic, macOS volume gotchas
+├── Makefile           # Docker helpers (use instead of raw docker compose --build)
 ├── docker-compose.yml
 └── README.md
 ```

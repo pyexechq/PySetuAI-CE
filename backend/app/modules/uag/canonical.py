@@ -116,6 +116,9 @@ def apply_messages_to_request(request: ChatCompletionRequest, messages: list[Cha
         max_tokens=request.max_tokens,
         stream=request.stream,
         routing_context=request.routing_context,
+        user=request.user,
+        metadata=request.metadata,
+        tools=request.tools,
     )
 
 

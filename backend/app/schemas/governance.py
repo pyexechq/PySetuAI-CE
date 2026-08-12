@@ -129,6 +129,221 @@ class McpDiscoverToolsResponse(BaseModel):
     checked_at: str
 
 
+class DynamicToolSettingsResponse(BaseModel):
+    enabled: bool = False
+    max_tools: int = 8
+    catalog_count: int = 0
+    catalog_tokens: int = 0
+
+
+class DynamicToolSettingsUpdate(BaseModel):
+    enabled: bool | None = None
+    max_tools: int | None = None
+
+
+class DynamicToolPreviewRequest(BaseModel):
+    query: str
+    max_tools: int | None = None
+
+
+class DynamicToolPreviewResponse(BaseModel):
+    enabled: bool
+    catalog_count: int
+    selected_count: int
+    selected_names: list[str]
+    original_tokens: int
+    compressed_tokens: int
+    tokens_saved: int
+    savings_pct: float
+
+
+class McpMultiplexInfoResponse(BaseModel):
+    url: str
+    api_url: str
+    auth: str
+    tool_namespace: str
+    server_count: int
+    tool_count: int
+    sample_tools: list[str]
+    instructions: str
+
+
+class McpCatalogEntryResponse(BaseModel):
+    slug: str
+    name: str
+    description: str
+    category: str
+    transport: str
+    default_endpoint: str | None = None
+    tool_names: list[str] = []
+    auth_required: bool = False
+    vendor: str = ""
+    installed: bool = False
+
+
+class McpCatalogListResponse(BaseModel):
+    entries: list[McpCatalogEntryResponse]
+
+
+class McpCatalogInstallRequest(BaseModel):
+    endpoint_url: str | None = None
+    name: str | None = None
+
+
+class McpCatalogCustomInstallRequest(BaseModel):
+    name: str
+    endpoint_url: str
+    transport: str = "sse"
+    category: str = "Custom"
+
+
+class McpOAuthStatusResponse(BaseModel):
+    configured: bool = False
+    enabled: bool = False
+    grant_type: str = "client_credentials"
+    token_url: str = ""
+    client_id: str = ""
+    scopes: str = ""
+    has_client_secret: bool = False
+    has_refresh_token: bool = False
+    has_access_token: bool = False
+    token_expires_at: str | None = None
+    token_fresh: bool = False
+    secrets_backend: str = "database"
+
+
+class McpOAuthServerStatusResponse(McpOAuthStatusResponse):
+    server_id: str
+    server_name: str
+
+
+class McpOAuthListResponse(BaseModel):
+    servers: list[McpOAuthServerStatusResponse]
+    secrets_backend: str = "database"
+
+
+class McpOAuthUpsertRequest(BaseModel):
+    enabled: bool | None = True
+    grant_type: str = "client_credentials"
+    token_url: str | None = None
+    client_id: str | None = None
+    scopes: str | None = None
+    client_secret: str | None = None
+    refresh_token: str | None = None
+    access_token: str | None = None
+
+
+class McpToolRiskItem(BaseModel):
+    server_id: str
+    server_name: str
+    name: str
+    description: str = ""
+    risk: str
+    hidden: bool = False
+    auto_hidden: bool = False
+    visible: bool = True
+
+
+class McpToolRiskInventoryResponse(BaseModel):
+    auto_hide_destructive: bool = False
+    tools: list[McpToolRiskItem]
+    visible_count: int = 0
+    hidden_count: int = 0
+
+
+class McpToolRiskSettingsUpdate(BaseModel):
+    auto_hide_destructive: bool
+
+
+class McpToolRiskOverride(BaseModel):
+    name: str
+    risk: str | None = None
+    hidden: bool | None = None
+
+
+class McpToolRiskUpdateRequest(BaseModel):
+    tools: list[McpToolRiskOverride]
+
+
+class McpAgentItem(BaseModel):
+    slug: str
+    label: str
+    enabled: bool
+
+
+class McpAgentServerAccess(BaseModel):
+    server_id: str
+    server_name: str
+    allowed_agents: list[str] = []
+
+
+class McpAgentSettingsResponse(BaseModel):
+    agents: list[McpAgentItem]
+    servers: list[McpAgentServerAccess]
+
+
+class McpAgentSettingsUpdate(BaseModel):
+    toggles: dict[str, bool]
+
+
+class McpAgentServerAccessUpdate(BaseModel):
+    allowed_agents: list[str] = []
+
+
+class McpAgentDetectRequest(BaseModel):
+    user_agent: str | None = None
+    metadata: dict | None = None
+
+
+class McpAgentDetectResponse(BaseModel):
+    agent: str
+    mcp_enabled: bool
+    label: str
+
+
+class McpPortalEntry(BaseModel):
+    server_id: str
+    name: str
+    category: str
+    status: str
+    tool_count: int
+    tool_names: list[str] = []
+    auth_required: bool
+    connection_status: str
+    catalog_slug: str | None = None
+    vendor: str = ""
+    description: str = ""
+    portal_visible: bool = True
+
+
+class McpPortalListResponse(BaseModel):
+    enabled: bool
+    multiplex_url: str
+    entries: list[McpPortalEntry]
+
+
+class McpPortalSettingsResponse(BaseModel):
+    enabled: bool
+
+
+class McpPortalSettingsUpdate(BaseModel):
+    enabled: bool
+
+
+class McpPortalVisibilityUpdate(BaseModel):
+    portal_visible: bool
+
+
+class McpPortalConnectRequest(BaseModel):
+    access_token: str
+
+
+class McpPortalConnectResponse(BaseModel):
+    server_id: str
+    connection_status: str
+    connected_at: str
+
+
 class PolicyRuleUpdateRequest(BaseModel):
     id: str
     name: str

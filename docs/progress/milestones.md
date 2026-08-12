@@ -9,9 +9,9 @@
 | M5 | Studio & Analytics | Sandbox testing, reports, UAG simulator | Nov 2026 | In Progress (~55%) |
 | M6 | Production Ready | K8s, air-gap, hardening | Dec 2026 | In Progress |
 | M7 | Universal AI Gateway v1 | Protocol translation, Compatibility Center | Aug 2026 | Complete |
-| M8 | Gateway Pipeline Parity | Rate limits, budgets, routing groups, failover | Sprint 9 | Planned |
-| M9 | Cost & Prompt Parity | Prompt store, token saving, dynamic tool calling | Sprint 11 | Planned |
-| M10 | MCP Platform & Observability | Catalog, multiplex, per-user analytics, trace replay | Sprint 13 | Planned |
+| M8 | Gateway Pipeline Parity | Rate limits, budgets, routing groups, failover | Sprint 9 | Complete |
+| M9 | Cost & Prompt Parity | Prompt store, token saving, dynamic tool calling | Sprint 11 | Complete |
+| M10 | MCP Platform & Observability | Catalog, multiplex, per-user analytics, trace replay | Sprint 13 | In Progress (S12-01–S12-06) |
 | M11 | Enterprise Security Parity | Red team, PHI/PCI, regional routing, SLA | Sprint 14+ | Planned |
 
 > Parity detail: [gateway-parity-roadmap.md](../planning/gateway-parity-roadmap.md)

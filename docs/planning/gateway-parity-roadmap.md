@@ -1,6 +1,6 @@
 # Gateway & Platform Parity Roadmap
 
-**Last updated:** Aug 11, 2026  
+**Last updated:** Aug 13, 2026  
 **Purpose:** Close the gap vs. full-stack AI gateway platforms (OpenRouter Enterprise, Lakera, Prompt Security, QuirlAI-class products) while keeping PySetu’s MCP governance and air-gap differentiators.
 
 **Related:** [product-roadmap.md](./product-roadmap.md) · [backlog.md](./backlog.md) · [phase-7-sprint.md](./phase-7-sprint.md)
@@ -32,7 +32,7 @@ Legend: **Have** · **Partial** (extend) · **Gap** (net-new)
 | Response-path guardrails (ingress + egress) | Have ✓ | Have | BL-059 ✓ |
 | Custom intents (trainable classifiers) | Gap | Have | BL-062 |
 | Prompt store (versioned, `{{vars}}`, enforce) | Gap | Have | BL-061 |
-| Token saving (JSON→TOON / compression) | Gap | Have | BL-063 |
+| Token saving (JSON→TOON / compression) | Partial | Have | BL-063 |
 | Weighted routing groups | Partial | Have | BL-050, BL-060 |
 | Group name as model parameter | Gap | Have | BL-060 |
 | Auto-failover across providers | Gap | Have | BL-060 |
@@ -42,29 +42,29 @@ Legend: **Have** · **Partial** (extend) · **Gap** (net-new)
 
 | Capability | Today | Target | Backlog |
 |------------|-------|--------|---------|
-| Select relevant MCP tools per request (~200 vs 15K tokens) | Gap | Have | BL-064 |
-| Automatic tool ranking / filtering | Gap | Have | BL-064 |
-| Measurable token reduction KPIs | Gap | Have | BL-064, BL-072 |
+| Select relevant MCP tools per request (~200 vs 15K tokens) | Have ✓ | Have | BL-064 |
+| Automatic tool ranking / filtering | Have ✓ | Have | BL-064 |
+| Measurable token reduction KPIs | Partial | Have | BL-064, BL-072 |
 
 ### 3 — MCP platform
 
 | Capability | Today | Target | Backlog |
 |------------|-------|--------|---------|
-| MCP multiplex (single gateway URL) | Partial | Have | BL-065 |
-| Curated MCP library + one-click install | Gap | Have | BL-066 |
-| Custom MCP via transport URL | Partial | Have | BL-066 |
-| OAuth auth mediation for MCP tools | Gap | Have | BL-067 |
-| Tool risk taxonomy (read/write/destructive) | Partial | Have | BL-068 |
-| Agent auto-detection + per-agent MCP toggles | Gap | Have | BL-069 |
-| Self-service MCP / AI portal | Partial | Have | BL-070 |
+| MCP multiplex (single gateway URL) | Have ✓ | Have | BL-065 |
+| Curated MCP library + one-click install | Have ✓ | Have | BL-066 |
+| Custom MCP via transport URL | Have ✓ | Have | BL-066 |
+| OAuth auth mediation for MCP tools | Have ✓ | Have | BL-067 |
+| Tool risk taxonomy (read/write/destructive) | Have ✓ | Have | BL-068 |
+| Agent auto-detection + per-agent MCP toggles | Have ✓ | Have | BL-069 |
+| Self-service MCP / AI portal | Have ✓ | Have | BL-070 |
 | Web search MCP + enterprise URL filtering | Gap | Have | BL-071 |
 
 ### 4 — Cost & routing
 
 | Capability | Today | Target | Backlog |
 |------------|-------|--------|---------|
-| Token saving dashboard (before/after) | Gap | Have | BL-063, BL-072 |
-| Compounding savings narrative (routing + tools + compression) | Gap | Have | BL-063, BL-064, BL-060 |
+| Token saving dashboard (before/after) | Partial | Have | BL-063, BL-072 |
+| Compounding savings narrative (routing + tools + compression) | Have ✓ | Have | BL-063, BL-064, BL-060 |
 | Gateway overhead / SLA operator metrics | Partial | Have | BL-055, BL-078 |
 | Connection pooling / latency optimization | Gap | Have | BL-078 |
 

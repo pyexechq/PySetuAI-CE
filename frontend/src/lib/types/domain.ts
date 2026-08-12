@@ -91,6 +91,9 @@ export interface McpServer {
   connectionConfig: {
     auth_header?: string;
     timeout_sec?: number;
+    catalog_slug?: string;
+    portal_visible?: boolean;
+    allowed_agents?: string[];
     tool_schemas?: {
       name: string;
       description?: string | null;
@@ -181,6 +184,23 @@ export interface ExecutiveSummary {
   frameworks_compliant: number;
   frameworks_total: number;
   top_risks: string[];
+  cost_optimization?: CompoundingCostSummary | null;
+}
+
+export interface CompoundingCostLayer {
+  id: string;
+  label: string;
+  tokens_saved: number;
+  estimated_usd: number;
+  requests: number;
+  share_pct: number;
+}
+
+export interface CompoundingCostSummary {
+  layers: CompoundingCostLayer[];
+  total_tokens_saved: number;
+  total_estimated_usd: number;
+  narrative: string;
 }
 
 export interface PromptVersion {
