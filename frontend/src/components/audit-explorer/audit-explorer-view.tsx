@@ -19,6 +19,9 @@ import { formatTime } from "@/lib/date-utils";
 import { Download, Pause, Play, Radio, Search, Filter } from "lucide-react";
 import { SiemConnectorsPanel } from "@/components/audit-explorer/siem-connectors-panel";
 import { TranslationTracePanel } from "@/components/audit-explorer/translation-trace-panel";
+import { RequestLogPanel } from "@/components/audit-explorer/request-log-panel";
+import { RequestLogSettingsCard } from "@/components/audit-explorer/request-log-settings-card";
+import { TraceReplayPanel } from "@/components/audit-explorer/trace-replay-panel";
 
 const AuditLogGrid = dynamic(
   () => import("@/components/audit-explorer/audit-log-grid").then((mod) => mod.AuditLogGrid),
@@ -161,6 +164,12 @@ export function AuditExplorerView() {
       </Card>
 
       <TranslationTracePanel entry={selectedLog} />
+
+      <TraceReplayPanel entry={selectedLog} />
+
+      <RequestLogPanel entry={selectedLog} />
+
+      <RequestLogSettingsCard />
 
       <SiemConnectorsPanel />
     </div>

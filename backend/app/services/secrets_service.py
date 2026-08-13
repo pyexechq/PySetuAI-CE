@@ -14,6 +14,7 @@ from app.config import settings
 from app.models.governance import LLMProvider, TenantIntegration
 from app.services.integration_service import mask_secret
 
+MCP_URL_FILTER_VENDOR_KEY = "mcp_url_filter_vendor_key"
 OPENAI_SECRET = "openai_api_key"
 GEMINI_SECRET = "gemini_api_key"
 AI_ASSIST_SECRET = "ai_assist_api_key"

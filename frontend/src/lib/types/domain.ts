@@ -74,6 +74,7 @@ export interface RoutingRule {
   condition: string;
   targetModel: string;
   status: "active" | "draft" | "disabled";
+  responseFormat: "openai" | "anthropic" | "vertex" | "auto";
 }
 
 export interface McpServer {
@@ -120,6 +121,7 @@ export interface AuditLogEntry {
   status: "allowed" | "blocked" | "review";
   risk: "low" | "medium" | "high";
   details: string;
+  has_request_log?: boolean;
 }
 
 export interface DataClassification {

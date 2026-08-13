@@ -13,6 +13,8 @@ import {
 } from "recharts";
 import { Activity, Clock, ShieldAlert, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TelemetryOperationsCard } from "@/components/monitoring/telemetry-operations-card";
+import { GatewaySlaCard } from "@/components/monitoring/gateway-sla-card";
 import { useObservability } from "@/hooks/use-observability";
 import { formatNumber } from "@/lib/utils";
 
@@ -73,6 +75,10 @@ export function MonitoringOverviewTab() {
         <StatusChip label="Blocked" value={overview.blocked_today} variant="destructive" />
         <StatusChip label="Under review" value={overview.under_review_today} variant="warning" />
       </div>
+
+      <TelemetryOperationsCard />
+
+      <GatewaySlaCard />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="border-border/60 bg-card/50 lg:col-span-2">

@@ -77,6 +77,33 @@ class UserMcpConnection(Base):
     connected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class McpSsoInjectionConfig(Base):
+    __tablename__ = "mcp_sso_injection_configs"
+    __table_args__ = (UniqueConstraint("tenant_id", "server_id", name="uq_mcp_sso_injection_tenant_server"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    server_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("mcp_servers.id", ondelete="CASCADE"), index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    header_name: Mapped[str] = mapped_column(String(128), default="Authorization", nullable=False)
+    header_format: Mapped[str] = mapped_column(String(256), default="Bearer {token}", nullable=False)
+    claim_extract: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class McpToolDenyRule(Base):
+    __tablename__ = "mcp_tool_deny_rules"
+    __table_args__ = (UniqueConstraint("tenant_id", "role", "server_id", "tool_name", name="uq_mcp_tool_deny_tenant_role_tool"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    role: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    server_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("mcp_servers.id", ondelete="CASCADE"), index=True)
+    tool_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    reason: Mapped[str] = mapped_column(String(512), default="Explicit deny by admin", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 
@@ -92,6 +119,20 @@ class AuditLog(Base):
     usage_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     source: Mapped[str] = mapped_column(String(64), default="internal", index=True)
     external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class AuditLogBody(Base):
+    __tablename__ = "audit_log_bodies"
+    __table_args__ = (UniqueConstraint("audit_log_id", name="uq_audit_log_bodies_audit_log_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    audit_log_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("audit_logs.id"), index=True)
+    request_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    response_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    guardrail_events: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    tool_events: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
 class SiemConnector(Base):
@@ -155,6 +196,21 @@ class RoutingRule(Base):
     condition: Mapped[str] = mapped_column(Text, nullable=False)
     target_model: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active")
+    response_format: Mapped[str] = mapped_column(String(20), default="auto", server_default="auto")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class RoutingRuleClientKey(Base):
+    __tablename__ = "routing_rule_client_keys"
+    __table_args__ = (UniqueConstraint("routing_rule_id", "client_api_key_id", name="uq_routing_rule_client_key"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    routing_rule_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("routing_rules.id", ondelete="CASCADE"), index=True
+    )
+    client_api_key_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("client_api_keys.id", ondelete="CASCADE"), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

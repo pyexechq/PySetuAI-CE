@@ -36,7 +36,7 @@ Legend: **Have** · **Partial** (extend) · **Gap** (net-new)
 | Weighted routing groups | Partial | Have | BL-050, BL-060 |
 | Group name as model parameter | Gap | Have | BL-060 |
 | Auto-failover across providers | Gap | Have | BL-060 |
-| Regional routing (US/India, Bedrock, Vertex) | Partial | Have | BL-077 |
+| Regional routing (Bedrock + Vertex) | Have | Have | BL-077 ✓ |
 
 ### 2 — Dynamic tool calling (MCP)
 
@@ -57,7 +57,12 @@ Legend: **Have** · **Partial** (extend) · **Gap** (net-new)
 | Tool risk taxonomy (read/write/destructive) | Have ✓ | Have | BL-068 |
 | Agent auto-detection + per-agent MCP toggles | Have ✓ | Have | BL-069 |
 | Self-service MCP / AI portal | Have ✓ | Have | BL-070 |
-| Web search MCP + enterprise URL filtering | Gap | Have | BL-071 |
+| Web search MCP + enterprise URL filtering | Have ✓ | Have | BL-071 |
+| **REST-to-MCP auto-proxy** (OpenAPI/Postman/GraphQL → MCP) | Have ✓ | Have | **BL-083** — UI wizard + backend spec-proxy |
+| **SSO context credential injection** (OIDC token → REST backend; LLM never sees key) | Partial | Have | **BL-084** |
+| **Tool-level RBAC explicit deny lists** (per group, per tool) | Partial | Have | **BL-085** |
+| **Trust score fleet donut chart** (Low/Medium/High distribution) | Have ✓ | Have | **BL-090** |
+| **MCP governance alert feed** (high-risk calls, access anomalies, blocks) | Have ✓ | Have | **BL-089** |
 
 ### 4 — Cost & routing
 
@@ -65,18 +70,22 @@ Legend: **Have** · **Partial** (extend) · **Gap** (net-new)
 |------------|-------|--------|---------|
 | Token saving dashboard (before/after) | Partial | Have | BL-063, BL-072 |
 | Compounding savings narrative (routing + tools + compression) | Have ✓ | Have | BL-063, BL-064, BL-060 |
-| Gateway overhead / SLA operator metrics | Partial | Have | BL-055, BL-078 |
-| Connection pooling / latency optimization | Gap | Have | BL-078 |
+| Gateway overhead / SLA operator metrics | Have | Have | BL-055, BL-078 ✓ |
+| Connection pooling / latency optimization | Have | Have | BL-078 ✓ — shared HTTP pool reuse instrumented |
+| **Enhanced visual routing engine** (SVG fan-out, traffic %, cloud/air-gap badges) | Have ✓ | Have | **BL-086** |
+| **Per-rule response format UI** (OpenAI/Anthropic/Vertex/Universal) | Have ✓ | Have | **BL-087** |
+| **API key ↔ routing rule binding** (explicit assignment panel) | Have ✓ | Have | **BL-088** |
+| **Model performance tab in Router** (latency + throughput per model) | Have ✓ | Have | **BL-091** |
 
 ### 5 — Observability & alerting
 
 | Capability | Today | Target | Backlog |
 |------------|-------|--------|---------|
-| Per-user / team / model token & cost analytics | Partial | Have | BL-072 |
-| Full request logs (prompt, response, tool, guardrail) | Partial | Have | BL-073 |
-| Trace replay (OTel-native, stage-by-stage) | Partial | Have | BL-074, BL-025 ✓ |
+| Per-user / team / model token & cost analytics | Have | Have | BL-072 ✓ |
+| Full request logs (prompt, response, tool, guardrail) | Have | Have | BL-073 ✓ |
+| Trace replay (OTel-native, stage-by-stage) | Have | Have | BL-074 ✓ |
 | Real-time alerts (blocks, budget, latency, outage) | Partial | Have | BL-075 |
-| Telemetry facade (`/telemetry/*`) | Gap | Have | BL-076 |
+| Telemetry facade (`/telemetry/*`) | Have | Have | BL-076 ✓ |
 | Live ops dashboard (requests, tokens, p50, blocks) | Partial | Have | BL-076, Monitoring ✓ |
 
 ### 6 — CISO / security bundle
@@ -84,11 +93,11 @@ Legend: **Have** · **Partial** (extend) · **Gap** (net-new)
 | Capability | Today | Target | Backlog |
 |------------|-------|--------|---------|
 | PII block / redact / monitor | Partial | Have | BL-014 ✓ |
-| PHI / PCI / financial classifiers | Gap | Have | BL-082 |
+| PHI / PCI / financial classifiers | Have | Have | BL-082 ✓ |
 | Prompt injection & jailbreak (every call) | Have | Have | BL-023 ✓ |
 | Red team testing (adversarial prompt suite) | Partial | Have | BL-080 |
 | Endpoint agent (TLS inspect + DLP desktop) | Gap | Have | BL-079 |
-| Claude.ai org compliance API sync | Gap | Have | BL-081 |
+| Claude.ai org compliance API sync | Partial | Have | BL-081 — local sync adapter complete; provider credential/pull integration remains |
 | Automatic compliance evidence from pipeline | Partial | Have | BL-052 |
 
 ---
@@ -147,6 +156,22 @@ Legend: **Have** · **Partial** (extend) · **Gap** (net-new)
 
 ---
 
+### Phase 11 — HelixGuard Parity: LLM Router & MCP UX (Sprints 13–16)
+
+**Goal:** Close UX and capability gaps identified against HelixGuard AI. Turn any REST API into an MCP server and elevate LLM Router to a visual, self-service control plane.
+
+> **Source:** HelixGuard AI dashboard analysis — Aug 13, 2026
+
+| Sprint | Focus | Items |
+|--------|-------|-------|
+| 13 | MCP governance quick wins | BL-085 (tool deny lists), BL-089 (MCP alert feed), BL-090 (trust donut) |
+| 14 | LLM Router & MCP UX polish | BL-084 (SSO injection), BL-086 (visual router), BL-087 (format config), BL-088 (key binding), BL-091 (perf tab) |
+| 15–16 | REST-to-MCP flagship | BL-083 (OpenAPI/Postman/GraphQL auto-proxy wizard) |
+
+**Exit criteria:** Any REST API with an OpenAPI spec can be registered as an MCP server via 3-step wizard; SSO token injection active for REST-backed MCP servers; LLM Router shows visual fan-out diagram with traffic %; tool-level RBAC deny lists available per RBAC group.
+
+---
+
 ## Dependencies
 
 ```mermaid
@@ -183,6 +208,7 @@ flowchart LR
 | M9 | Cost & Prompt Parity | Sprint 11 | BL-061–BL-064, BL-062 |
 | M10 | MCP Platform & Observability | Sprint 13 | BL-065–BL-076 |
 | M11 | Enterprise Security Parity | Sprint 14+ | BL-077–BL-082, BL-079 optional |
+| **M12** | **HelixGuard Parity — LLM Router & MCP UX** | **Sprint 15–16** | **BL-083–BL-091** | **Complete — BL-083–BL-091 delivered; BL-079 remains optional** |
 
 ---
 

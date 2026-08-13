@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,22 +12,11 @@ from app.db.session import get_db
 from app.models.governance import AuditLog, LLMProvider
 from app.models.tenant import User
 from app.schemas.governance import ObservabilityOverviewResponse, TraceSpanResponse, TraceSummaryResponse
+from app.services.trace_replay_service import build_trace_from_audit_log
 
 router = APIRouter()
 
 _require_observability = require_any_permission(USE_STUDIO, VIEW_AUDIT_LOGS)
-
-
-def extract_trace_id(details: str | None, log_id: uuid.UUID | str) -> str:
-    """Pull OpenTelemetry trace id from audit details regardless of field order."""
-    text = details or ""
-    marker = "trace_id="
-    if marker in text:
-        fragment = text.split(marker, 1)[1]
-        trace_id = fragment.split(";", 1)[0].strip()
-        if trace_id:
-            return trace_id
-    return f"trace-{str(log_id)[:8]}"
 
 
 def _resolve_range(from_date: str | None, to_date: str | None) -> tuple[datetime, datetime]:
@@ -152,66 +141,30 @@ async def observability_traces(
         .limit(limit)
     )
     logs = result.scalars().all()
-    traces: list[TraceSummaryResponse] = []
-
-    for log in logs:
-        trace_id = extract_trace_id(log.details, log.id)
-        duration = 120 + (hash(str(log.id)) % 800)
-        spans = [
-            TraceSpanResponse(
-                name="ingress",
-                service="AI Gateway",
-                duration_ms=max(20, duration // 4),
-                status="ok" if log.status == "allowed" else log.status,
-            ),
-            TraceSpanResponse(
-                name="policy.inspect",
-                service="Policy Engine",
-                duration_ms=max(15, duration // 5),
-                status="ok" if log.status != "blocked" else "error",
-            ),
-        ]
-        if log.action == "MCP Tool Call":
-            spans.append(
-                TraceSpanResponse(
-                    name="mcp.invoke",
-                    service=log.resource.split("/")[0] if "/" in log.resource else "MCP Broker",
-                    duration_ms=max(30, duration // 3),
-                    status="ok" if log.status == "allowed" else log.status,
-                )
-            )
-        if "LLM" in log.action:
-            spans.append(
-                TraceSpanResponse(
-                    name="llm.complete",
-                    service=log.resource.split("/")[0] if "/" in log.resource else "LLM Router",
-                    duration_ms=max(50, duration // 2),
-                    status="ok" if log.status == "allowed" else log.status,
-                )
-            )
-        spans.append(
-            TraceSpanResponse(
-                name="audit.emit",
-                service="Audit Log",
-                duration_ms=8,
-                status="ok",
-            )
-        )
-
-        traces.append(
-            TraceSummaryResponse(
-                id=str(log.id),
-                trace_id=trace_id,
-                timestamp=log.timestamp.isoformat(),
-                actor=log.actor,
-                action=log.action,
-                resource=log.resource,
-                status=log.status,
-                risk=log.risk,
-                duration_ms=duration,
-                span_count=len(spans),
-                spans=spans,
-            )
-        )
-
+    traces = [TraceSummaryResponse(**build_trace_from_audit_log(log)) for log in logs]
     return traces
+
+
+@router.get("/observability/traces/{audit_id}", response_model=TraceSummaryResponse)
+async def observability_trace_detail(
+    audit_id: str,
+    current_user: Annotated[User, Depends(_require_observability)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TraceSummaryResponse:
+    try:
+        audit_uuid = uuid.UUID(audit_id.strip())
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="audit_id must be a valid UUID",
+        ) from exc
+    result = await db.execute(
+        select(AuditLog).where(
+            AuditLog.id == audit_uuid,
+            AuditLog.tenant_id == current_user.tenant_id,
+        )
+    )
+    log = result.scalar_one_or_none()
+    if log is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trace not found")
+    return TraceSummaryResponse(**build_trace_from_audit_log(log))

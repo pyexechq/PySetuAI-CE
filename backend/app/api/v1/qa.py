@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import require_qa_dashboard_enabled
@@ -20,11 +20,39 @@ from app.schemas.qa import (
     QATestCycleSummary,
     QATestCycleUpdateRequest,
 )
+from app.schemas.red_team import RedTeamCampaignResponse
 from app.services import qa_service
+from app.services.red_team_service import campaign_csv, run_campaign
 
 router = APIRouter(dependencies=[Depends(require_qa_dashboard_enabled)])
 
 # QA is available to authenticated tenant users when the module is enabled.
+
+
+@router.get("/qa/red-team/run", response_model=RedTeamCampaignResponse)
+async def run_red_team_campaign(
+    _current_user: Annotated[User, Depends(require_qa_dashboard_enabled)],
+) -> RedTeamCampaignResponse:
+    return run_campaign()
+
+
+@router.get("/qa/red-team/export")
+async def export_red_team_campaign(
+    _current_user: Annotated[User, Depends(require_qa_dashboard_enabled)],
+    format: str = Query(default="csv", pattern="^(csv|json)$"),
+) -> Response:
+    report = run_campaign()
+    if format == "json":
+        return Response(
+            content=report.model_dump_json(indent=2),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=pysetuai-red-team-report.json"},
+        )
+    return Response(
+        content=campaign_csv(report),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=pysetuai-red-team-report.csv"},
+    )
 
 
 @router.get("/qa/overview", response_model=QAOverviewResponse)

@@ -1,8 +1,8 @@
 import os
 from typing import Any
-import httpx
 
 from app.schemas.openai import ChatMessage
+from app.services.http_client_pool import get_http_client
 
 SUPPORTED_BEDROCK_REGIONS = {"us-east-1", "eu-central-1", "ap-south-1"}
 DEFAULT_BEDROCK_REGION = "us-east-1"
@@ -59,9 +59,9 @@ async def call_bedrock_regional(
         "X-Amz-Target": f"AmazonBedrockControlPlane.{model_id}",
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        res = await client.post(url, json=payload, headers=headers)
-        res.raise_for_status()
-        data = res.json()
-        content = data.get("content", [{}])[0].get("text", "")
-        return content, model_id, effective_region
+    client = await get_http_client()
+    res = await client.post(url, json=payload, headers=headers, timeout=60.0)
+    res.raise_for_status()
+    data = res.json()
+    content = data.get("content", [{}])[0].get("text", "")
+    return content, model_id, effective_region

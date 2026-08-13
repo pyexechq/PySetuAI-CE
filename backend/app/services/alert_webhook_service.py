@@ -69,6 +69,8 @@ def build_gateway_alert_event(
         "gateway.egress.block": "Gateway response blocked by egress policy",
         "gateway.rate_limit.block": "AI rate limit exceeded",
         "gateway.token_budget.block": "AI token budget limit exceeded",
+        "gateway.latency.high": "LLM latency above threshold",
+        "gateway.upstream.outage": "Upstream LLM provider outage",
     }
     event: dict[str, Any] = {
         "title": title_by_action.get(action, "PySetu gateway alert"),

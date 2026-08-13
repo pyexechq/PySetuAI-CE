@@ -313,6 +313,7 @@ async def _handle_mcp_multiplex(
     all_servers = list(servers_result.scalars().all())
     from app.services.mcp_portal_service import resolve_effective_mcp_access_token
     from app.services.mcp_agent_service import detect_agent, filter_servers_for_agent, toggles_from_tenant
+    from app.services.secrets_service import MCP_URL_FILTER_VENDOR_KEY, get_tenant_secret
 
     tenant_result = await db.execute(select(Tenant).where(Tenant.id == ctx.tenant_id))
     tenant = tenant_result.scalar_one_or_none()
@@ -325,8 +326,11 @@ async def _handle_mcp_multiplex(
         user_id = ctx.user.id if ctx.user else None
         return await resolve_effective_mcp_access_token(db, server, user_id=user_id)
 
+    vendor_key = await get_tenant_secret(db, ctx.tenant_id, MCP_URL_FILTER_VENDOR_KEY)
     response = await dispatch_mcp_request(
-        payload, servers, access_token_for=access_token_for, auto_hide_destructive=auto_hide
+        payload, servers, access_token_for=access_token_for, auto_hide_destructive=auto_hide,
+        url_filter_policy=tenant.mcp_url_filters if tenant else None,
+        vendor_api_key=vendor_key,
     )
 
     if str(payload.get("method") or "") == "tools/call" and "result" in response:

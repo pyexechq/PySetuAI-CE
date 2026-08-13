@@ -62,6 +62,35 @@ def test_build_gateway_alert_event_includes_trace_and_tenant() -> None:
     assert "blocked" in event["title"].lower()
 
 
+def test_build_gateway_alert_event_latency_title() -> None:
+    event = build_gateway_alert_event(
+        action="gateway.latency.high",
+        actor="user@acme.com",
+        resource="gpt-4o /chat",
+        status="review",
+        risk="medium",
+        details="LLM latency 45000ms exceeded 30000ms threshold",
+    )
+    assert event["title"] == "LLM latency above threshold"
+    assert event["action"] == "gateway.latency.high"
+    assert event["status"] == "review"
+    assert event["risk"] == "medium"
+
+
+def test_build_gateway_alert_event_outage_title() -> None:
+    event = build_gateway_alert_event(
+        action="gateway.upstream.outage",
+        actor="user@acme.com",
+        resource="gpt-4o /chat",
+        status="review",
+        risk="high",
+        details="All provider targets failed",
+    )
+    assert event["title"] == "Upstream LLM provider outage"
+    assert event["action"] == "gateway.upstream.outage"
+    assert event["risk"] == "high"
+
+
 def test_gateway_block_action_maps_audit_actions() -> None:
     assert gateway_block_action("LLM Request", injection=True) == "gateway.injection.block"
     assert gateway_block_action("ABAC Policy") == "gateway.abac.block"

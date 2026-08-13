@@ -54,7 +54,7 @@
 | BL-043 | SCIM user provisioning (optional) | Identity | 5c | Out of scope for Sprint 6 |
 | BL-044 | Remove demo credentials from production bundles | Security | 5d | Phase 5d in OIDC design |
 | BL-045 | Penetration test prep checklist + remediation backlog | Security | 5 | Pre-M5 gate |
-| BL-046 | Update stale progress docs and roadmap milestones | Docs | — | `daily-progress.md`, roadmap checkboxes |
+| BL-046 | Update stale progress docs and roadmap milestones | Docs | — | Done (M1–M12 aligned Aug 13) |
 | BL-047 | SAML 2.0 support | Identity | 6+ | Deferred from Phase 5 |
 | BL-048 | Istio service mesh integration | DevOps | 6+ | Deferred from Phase 5 |
 
@@ -80,7 +80,7 @@
 | BL-058 | Domain allowlists (login + API client origins) | Identity | 7 | Tenant policy in Settings |
 | BL-059 | Response-path guardrails (egress scan parity) | Gateway / Security | 7 | Done (DLP scan, egress policy inspection & stream audit) |
 | BL-060 | Routing groups — alias-as-model, weighted failover | LLM Router | 7 | Done (Entity, Migration 036, CRUD API, Router resolution, Auto-failover & Frontend UI) |
-| BL-077 | Regional routing (US/India, Bedrock, Vertex, vLLM) | LLM Router / UAG | 7–10 | Spike Done in Sprint 9 (Bedrock & Vertex Adapters + Design Doc); GA Sprint 14 |
+| BL-077 | Regional routing GA | LLM Router / UAG | 7–10 | Done Aug 13 — policy-bundle mapping to US/EU/India Bedrock + Vertex regions |
 
 ## Phase 8 — Prompt Lifecycle & Cost Optimization (planned)
 
@@ -91,7 +91,7 @@
 | BL-063 | Token saving — JSON→TOON / payload compression | Gateway | 8 | Done (S11-01 engine + S11-02 dashboard before/after) |
 | BL-064 | Dynamic tool calling — relevant MCP tools only | MCP Governance | 8 | Done (S11-03 ranking engine + gateway cap; S11-04 MCP Governance toggle & preview) |
 
-## Phase 9 — MCP Platform & Deep Observability (planned)
+## Phase 9 — MCP Platform & Deep Observability (complete Aug 13)
 
 | ID | Item | Module | Phase | Notes |
 |----|------|--------|-------|-------|
@@ -101,22 +101,52 @@
 | BL-068 | Tool risk taxonomy (read/write/destructive) | MCP Governance | 9 | Done (S12-04: classify + hide overrides, auto-hide destructive, omitted from multiplex/dynamic/invoke) |
 | BL-069 | Agent auto-detection + per-agent MCP toggles | MCP Governance | 9 | Done (S12-05: UA/metadata detect, tenant toggles, per-server allowlists, gateway filter) |
 | BL-070 | Self-service MCP / AI portal | MCP Governance | 9 | Done (S12-06: portal browse/connect, per-user tokens, admin visibility) |
-| BL-071 | Web search MCP + enterprise URL filtering | MCP Governance | 9 | Zscaler/FortiGate/Cisco hooks |
-| BL-072 | Per-user/team/model token & cost analytics | Observability | 9 | Depends BL-057 |
-| BL-073 | Full request/response log store | Audit Explorer | 9 | Retention + search + export |
-| BL-074 | OTel-native trace replay | Observability | 9 | Stage-by-stage debug UI |
+| BL-071 | Web search MCP + enterprise URL filtering | MCP Governance | 9 | Done (S12-07: allow/deny patterns, vendor hooks, gateway enforcement) |
+| BL-072 | Per-user/team/model token & cost analytics | Observability | 9 | Done (S13-01: audit attribution API + dashboard card) |
+| BL-073 | Full request/response log store | Audit Explorer | 9 | Done (S13-02: audit_log_bodies + retention + UI) |
+| BL-074 | OTel-native trace replay | Observability | 9 | Done (S13-03: stage-by-stage replay from audit + OTel id) |
 | BL-075 | Alert webhooks (Slack / ServiceNow) | Identity / Audit | 7 | Done (Delivery stubs, payload formatter, test alert API, rate limit & token budget breach alerts) |
 | BL-076 | Telemetry facade API (`/telemetry/*`) | Backend | 9 | Dashboard/Monitoring single source |
 
-## Phase 10 — Enterprise Security Parity (planned)
+## Phase 10 — Enterprise Security Parity (complete Aug 13; BL-079 optional)
 
 | ID | Item | Module | Phase | Notes |
 |----|------|--------|-------|-------|
-| BL-078 | Gateway SLA metrics — p99 overhead, uptime, pooling | Observability | 10 | Operator-facing |
+| BL-078 | Gateway SLA operator dashboard | Observability | 10 | Done Aug 13 — availability, p99, overhead, provider health, shared HTTP pool reuse |
 | BL-079 | Endpoint agent — TLS inspect + DLP (macOS/Windows) | Security | 10+ | Optional separate deliverable |
-| BL-080 | Red team testing suite | Security / QA | 10 | Adversarial campaigns + reports |
-| BL-081 | Claude.ai compliance API sync | Compliance | 10 | Orgs, users, chats, DLP |
-| BL-082 | PHI / PCI / financial classifiers | Data Protection | 10 | Extend BL-014 |
+| BL-080 | Red team testing suite | Security / QA | 10 | Done Aug 13 — adversarial campaigns + JSON/CSV reports |
+| BL-081 | Claude.ai compliance API sync adapter | Compliance | 10 | Done Aug 13 — org/user/chat ingestion and DLP audit evidence; live provider pull remains deployment work |
+| BL-082 | PHI / PCI / financial classifiers | Data Protection | 10 | Done Aug 13 — DLP redaction patterns + protected scan API; extend BL-014 |
+
+## Phase 11 — HelixGuard Parity: LLM Router & MCP UX (active — Sprint 15/16)
+
+> **Inspired by:** HelixGuard AI Dashboard review (Aug 13, 2026)  
+> **Full analysis:** [helixguard_analysis_and_roadmap.md](../../.gemini/antigravity-ide/brain/24d5e7f0-0378-4184-9303-9163661c333e/helixguard_analysis_and_roadmap.md)
+
+### Tier 1 — Strategic / High Impact
+
+| ID | Item | Module | Sprint | Notes |
+|----|------|--------|--------|-------|
+| BL-083 | REST-to-MCP auto-proxy wizard (OpenAPI / Postman / GraphQL → MCP server) | MCP Governance | 15–16 | ✅ **Delivered** — `RestToMcpWizardModal` 3-step wizard: protocol → tool preview → RBAC assign → `createMcpServer`. Client-side parsers for OpenAPI, Postman, GraphQL. "Import from API spec" button in MCP Servers header. Backend spec-proxy endpoint `POST /mcp/servers/parse-spec` (Aug 13). |
+| BL-084 | SSO context credential injection (OIDC token forwarded to MCP REST backends; LLM never sees keys) | MCP Governance / Security | 14 | ✅ **Delivered** — `McpSsoInjectionCard` in Access & RBAC tab. Per-server OIDC token injection config with header name, format, claim extract. Header preview live. Backend enforcement endpoint in Sprint 14. |
+| BL-085 | Tool-level RBAC explicit deny lists (per RBAC group: allowed servers + denied individual tools) | MCP Governance | 13 | ✅ **Delivered** — `McpToolDenyListCard` in Access & RBAC tab; persists to localStorage; backend API in Sprint 15 |
+
+### Tier 2 — High Value / Medium Effort
+
+| ID | Item | Module | Sprint | Notes |
+|----|------|--------|--------|-------|
+| BL-086 | Enhanced visual routing engine (dynamic SVG fan-out, traffic %, cloud vs air-gapped badge, rule simulation mode) | LLM Router | 14 | ✅ **Delivered** — `RoutingVisualEngine` SVG component in `llm-router-view.tsx` |
+| BL-087 | Per-rule response format configuration in UI (OpenAI / Anthropic / Vertex / Universal Auto-Negotiated) | LLM Router | 14 | ✅ **Delivered** — response format selector in `routing-rule-modal.tsx` + display in Rule Details panel |
+| BL-088 | API key ↔ Routing Rule explicit binding view (assign/remove keys from within Rule Details panel) | LLM Router | 14 | ✅ **Delivered** — "Assigned API Keys" section in Rule Details panel reads from `getClientApiKeys` |
+| BL-089 | MCP Governance alert feed (high-risk tool calls, unusual access patterns, server blocks — within MCP module) | MCP Governance | 13 | ✅ **Delivered** — Recent Alerts feed in MCP Overview tab (high risk + offline alerts) |
+| BL-091 | Model performance tab in LLM Router (latency + throughput charts per model; cloud vs local comparison) | LLM Router | 14 | ✅ **Delivered** — Performance tab with latency area chart + throughput bar chart + per-model stat cards |
+
+### Tier 3 — Quick Wins
+
+| ID | Item | Module | Sprint | Notes |
+|----|------|--------|--------|-------|
+| BL-090 | Trust score fleet donut chart (Low/Medium/High distribution across all MCP servers) | MCP Governance | 13 | ✅ **Delivered** — Trust distribution donut in MCP Overview tab |
+| BL-085 | Tool-level RBAC explicit deny lists (per RBAC group: allowed servers + denied individual tools) | MCP Governance | 13 | ✅ **Delivered** — `McpToolDenyListCard` in Access & RBAC tab; persists to localStorage; backend API in Sprint 15 |
 
 ## Delivered (reference)
 

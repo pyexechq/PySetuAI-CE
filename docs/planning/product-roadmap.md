@@ -19,7 +19,7 @@ Build a commercial-grade Enterprise AI Control Plane competing with OpenRouter E
 - [x] Settings module basics
 - [x] Rich UI mockups for 9 core modules
 - [x] Database migrations (Alembic)
-- [ ] Tenant-scoped API middleware (for Phase 2 module APIs)
+- [x] Tenant-scoped API middleware (JWT `tenant_id` on module APIs)
 
 ## Phase 2 — Core Governance
 
@@ -32,9 +32,9 @@ Build a commercial-grade Enterprise AI Control Plane competing with OpenRouter E
 - [x] Tenant integration settings (API keys per tenant)
 - [x] Ollama local inference integration
 - [x] Policy Studio interactive builder (React Flow drag-and-drop) — S4-04 / BL-010
-- [ ] LLM Router backend (dynamic rule CRUD, cost optimization)
-- [ ] MCP Governance backend (registration, live trust/risk scoring)
-- [ ] Data Protection (PII/DLP engine integration)
+- [x] LLM Router backend (dynamic rule CRUD, cost optimization) — BL-050
+- [x] MCP Governance backend (registration, live trust/risk scoring) — BL-051
+- [x] Data Protection (PII/DLP engine integration) — BL-014 / BL-082
 
 ## Phase 3 — Audit & Compliance
 
@@ -43,8 +43,8 @@ Build a commercial-grade Enterprise AI Control Plane competing with OpenRouter E
 - [x] AI Security Center UI (analytics)
 - [x] Audit log API (tenant-scoped, from PostgreSQL)
 - [x] Observability UI + overview/traces API
-- [ ] Audit Explorer AG Grid + full request/response trace
-- [ ] Compliance Center backend (live framework scoring)
+- [x] Audit Explorer AG Grid + full request/response trace — BL-021 / BL-073
+- [x] Compliance Center backend (live framework scoring) — BL-052
 - [x] OpenTelemetry real instrumentation (S3-05)
 
 ## Phase 4 — Studio & Analytics
@@ -53,11 +53,11 @@ Build a commercial-grade Enterprise AI Control Plane competing with OpenRouter E
 - [x] Reports catalog UI + executive summary API
 - [x] Report builder, query editor, schedule config, delivery recipients
 - [x] CSV export via report run API
-- [ ] Report PDF export (BL-030)
-- [ ] Scheduled report job runner — Celery/cron (BL-035)
-- [ ] Scheduled email delivery to recipients (BL-034)
-- [ ] Executive reporting PDF templates (BL-036)
-- [ ] Async "generating" report status workflow (BL-035)
+- [x] Report PDF export (BL-030)
+- [x] Scheduled report job runner — Celery/cron (BL-035)
+- [x] Scheduled email delivery to recipients (BL-034)
+- [x] Executive reporting PDF templates (BL-036)
+- [x] Async "generating" report status workflow (BL-035)
 
 ## Phase 5 — Production
 
@@ -82,7 +82,7 @@ Build a commercial-grade Enterprise AI Control Plane competing with OpenRouter E
 - [x] Compliance framework live scoring (BL-052)
 - [x] Platform onboarding + invite emails + usage hooks (BL-054 / BL-053)
 - [x] Operator SLA / health dashboards (BL-055)
-- [x] Wire alert webhooks to gateway events (BL-075)
+- [x] Wire alert webhooks to gateway events — rate limit, token budget, latency, outage (BL-075) — S9-06 / S13-05 done
 
 ## Phase 7 — Gateway Pipeline Parity (complete)
 
@@ -105,7 +105,7 @@ _See [phase-8-sprint.md](./phase-8-sprint.md)_
 - [x] Token saving — JSON→TOON / payload compression (~43% target on eligible inputs) (BL-063) — S11-01–02 done
 - [x] Dynamic tool calling — relevant MCP tools only per request (BL-064) — S11-03–05 done
 
-## Phase 9 — MCP Platform & Deep Observability (in progress — Sprint 12)
+## Phase 9 — MCP Platform & Deep Observability (complete — Sprint 13)
 
 _See [phase-9-10-sprint.md](./phase-9-10-sprint.md)_
 
@@ -115,19 +115,37 @@ _See [phase-9-10-sprint.md](./phase-9-10-sprint.md)_
 - [x] Tool risk taxonomy — read / write / destructive + auto-hide (BL-068)
 - [x] Agent auto-detection + per-agent MCP toggles (BL-069)
 - [x] Self-service MCP / AI portal for end users (BL-070)
-- [ ] Web search MCP + enterprise URL filtering (Zscaler/FortiGate/Cisco) (BL-071) — S12-07
-- [ ] Per-user / team / model cost & token analytics (BL-072) — S13-01
-- [ ] Full request/response log store + search (BL-073) — S13-02
-- [ ] OTel-native trace replay (BL-074) — S13-03
-- [ ] Telemetry facade API (`/telemetry/summary`, `/operations`, `/security`, `/traces`) (BL-076) — S13-04
+- [x] Web search MCP + enterprise URL filtering (BL-071)
+- [x] Per-user / team / model cost & token analytics (BL-072) — S13-01 done
+- [x] Full request/response log store + search (BL-073) — S13-02 done
+- [x] OTel-native trace replay (BL-074) — S13-03 done
+- [x] Telemetry facade API (`/telemetry/summary`, `/operations`, `/security`, `/traces`) (BL-076) — S13-04 done
+- [x] Live monitoring ops panel — requests, tokens, p50, blocks (BL-076) — S13-06 done
 
-## Phase 10 — Enterprise Security Parity (planned)
+## Phase 10 — Enterprise Security Parity (complete — Sprint 14)
 
-- [ ] Red team testing suite — adversarial prompt campaigns (BL-080) — S14-01
-- [ ] PHI / PCI / financial data classifiers (BL-082) — S14-02
-- [ ] Claude.ai compliance API sync (orgs, users, chats, DLP) (BL-081) — S14-03
-- [ ] Gateway SLA metrics — overhead p99, uptime, connection pooling (BL-078) — S14-05
+- [x] Red team testing suite — adversarial prompt campaigns and JSON/CSV export (BL-080) — S14-01 done Aug 13
+- [x] PHI / PCI / financial data classifiers in DLP pipeline and scan API (BL-082) — S14-02 done Aug 13
+- [x] Claude.ai compliance sync adapter (orgs, users, chats, DLP evidence) (BL-081) — S14-03 done Aug 13
+- [x] Regional routing GA — policy-bundle routing for US/EU/India across Bedrock and Vertex (BL-077) — S14-04 done Aug 13
+- [x] Gateway SLA operator dashboard — availability, p99 latency, overhead, provider health, pooling status (BL-078) — S14-05 done Aug 13
 - [ ] Endpoint agent — TLS inspection + DLP (macOS/Windows) — optional track (BL-079) — S15+
+
+## Phase 11 — HelixGuard Parity: LLM Router & MCP UX (complete — Sprint 15/16)
+
+> **Inspired by:** HelixGuard AI dashboard analysis (Aug 13, 2026) — [full analysis doc](../../.gemini/antigravity-ide/brain/24d5e7f0-0378-4184-9303-9163661c333e/helixguard_analysis_and_roadmap.md)
+
+_Delivered M12 scope:_
+
+- [x] REST-to-MCP auto-proxy wizard + spec-proxy endpoint (BL-083)
+- [x] SSO context credential injection (BL-084)
+- [x] Tool-level RBAC explicit deny lists (BL-085)
+- [x] Enhanced visual routing engine (BL-086)
+- [x] Per-rule response format UI (BL-087)
+- [x] API key ↔ routing rule binding (BL-088)
+- [x] MCP Governance alert feed (BL-089)
+- [x] Trust score fleet donut (BL-090)
+- [x] Model performance tab in LLM Router (BL-091)
 
 ## Milestones
 
@@ -142,5 +160,6 @@ _See [phase-9-10-sprint.md](./phase-9-10-sprint.md)_
 | M7: Universal AI Gateway v1 | Aug 2026 | ✅ Complete |
 | M8: Gateway Pipeline Parity | Sprint 9 | ✅ Complete — BL-056–BL-060 (Aug 12) |
 | M9: Cost & Prompt Parity | Sprint 11 | ✅ Complete — BL-061–BL-064 (Aug 13) |
-| M10: MCP Platform & Observability | Sprint 13 | 🔄 In Progress — Sprint 12 (S12-04+) |
-| M11: Enterprise Security Parity | Sprint 14+ | 📋 Planned — BL-077–BL-082 |
+| M10: MCP Platform & Observability | Sprint 13 | ✅ Complete Aug 13 — BL-065–BL-076 |
+| M11: Enterprise Security Parity | Sprint 14+ | ✅ Complete Aug 13 — BL-077–BL-082 (BL-079 optional) |
+| M12: HelixGuard Parity — LLM Router & MCP UX | Sprint 15–16 | ✅ Complete — BL-083–BL-091 delivered; BL-079 remains optional (Aug 13, 2026) |

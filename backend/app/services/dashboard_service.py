@@ -23,6 +23,7 @@ from app.schemas.dashboard import (
     DashboardUagRouteItem,
 )
 from app.services.compliance_service import build_compliance_frameworks
+from app.services.cost_analytics_service import build_cost_analytics, llm_usage_items_from_models
 from app.services.token_saving_service import summarize_token_saving
 
 RISK_COLORS = {"low": "#22c55e", "medium": "#eab308", "high": "#f97316", "critical": "#ef4444"}
@@ -165,36 +166,46 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
     llm_requests_period = await _count_period(
         db, tenant_id, current_start, today_end, action_contains="LLM"
     )
-    provider_rows = await db.execute(
-        select(LLMProvider)
-        .where(LLMProvider.tenant_id == tenant_id, LLMProvider.is_active.is_(True))
-        .order_by(LLMProvider.percentage.desc())
-        .limit(6)
-    )
-    providers = provider_rows.scalars().all()
+    cost_payload = await build_cost_analytics(db, tenant_id, days=30)
     llm_usage: list[DashboardLlmUsageItem] = []
-    for p in providers:
-        share = p.percentage / 100 if p.percentage else 0.0
-        period_requests = max(0, int(llm_requests_period * share)) if llm_requests_period else 0
-        if period_requests == 0 and p.total_requests:
-            period_requests = max(1, int(p.total_requests * share))
-        avg_tokens = AVG_TOKENS_PER_REQUEST
-        total_tokens = period_requests * avg_tokens
-        cost_rate = _COST_PER_1K_TOKENS.get(p.provider_type, _COST_PER_1K_TOKENS["custom"])
-        cost_usd = round(total_tokens / 1000 * cost_rate, 2)
-        llm_usage.append(
-            DashboardLlmUsageItem(
-                model=p.name,
-                percentage=p.percentage,
-                requests=period_requests,
-                total_tokens=total_tokens,
-                avg_tokens_per_request=float(avg_tokens),
-                cost_usd=cost_usd,
-            )
+    if cost_payload["summary"]["requests"] > 0:
+        raw_items = llm_usage_items_from_models(
+            cost_payload["by_model"],
+            cost_payload["summary"]["total_tokens"],
         )
+        llm_usage = [DashboardLlmUsageItem(**item) for item in raw_items]
+        summary_tokens = cost_payload["summary"]["total_tokens"]
+        summary_cost = round(cost_payload["summary"]["total_cost_usd"], 2)
+    else:
+        provider_rows = await db.execute(
+            select(LLMProvider)
+            .where(LLMProvider.tenant_id == tenant_id, LLMProvider.is_active.is_(True))
+            .order_by(LLMProvider.percentage.desc())
+            .limit(6)
+        )
+        providers = provider_rows.scalars().all()
+        for p in providers:
+            share = p.percentage / 100 if p.percentage else 0.0
+            period_requests = max(0, int(llm_requests_period * share)) if llm_requests_period else 0
+            if period_requests == 0 and p.total_requests:
+                period_requests = max(1, int(p.total_requests * share))
+            avg_tokens = AVG_TOKENS_PER_REQUEST
+            total_tokens = period_requests * avg_tokens
+            cost_rate = _COST_PER_1K_TOKENS.get(p.provider_type, _COST_PER_1K_TOKENS["custom"])
+            cost_usd = round(total_tokens / 1000 * cost_rate, 2)
+            llm_usage.append(
+                DashboardLlmUsageItem(
+                    model=p.name,
+                    percentage=p.percentage,
+                    requests=period_requests,
+                    total_tokens=total_tokens,
+                    avg_tokens_per_request=float(avg_tokens),
+                    cost_usd=cost_usd,
+                )
+            )
+        summary_tokens = sum(item.total_tokens for item in llm_usage)
+        summary_cost = round(sum(item.cost_usd for item in llm_usage), 2)
 
-    summary_tokens = sum(item.total_tokens for item in llm_usage)
-    summary_cost = round(sum(item.cost_usd for item in llm_usage), 2)
     llm_usage_summary = DashboardLlmUsageSummary(
         total_tokens=summary_tokens,
         token_utilization_pct=round(min(100.0, summary_tokens / MONTHLY_TOKEN_QUOTA * 100), 1),

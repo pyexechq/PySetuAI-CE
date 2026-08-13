@@ -225,6 +225,32 @@ export interface ApiDashboardOverview {
   };
 }
 
+export interface ApiCostAnalyticsBucket {
+  key: string;
+  label: string;
+  requests: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cost_usd: number;
+}
+
+export interface ApiCostAnalytics {
+  generated_at: string;
+  period_days: number;
+  summary: {
+    requests: number;
+    total_tokens: number;
+    total_cost_usd: number;
+    avg_cost_per_request_usd: number;
+    avg_tokens_per_request: number;
+  };
+  by_model: ApiCostAnalyticsBucket[];
+  by_user: ApiCostAnalyticsBucket[];
+  by_team: ApiCostAnalyticsBucket[];
+  daily_trend: Array<{ date: string; requests: number; total_tokens: number; cost_usd: number }>;
+}
+
 export interface ApiUser {
   id: string;
   email: string;
@@ -779,6 +805,9 @@ export const api = {
   getDashboardOverview: (token: string) =>
     apiFetch<ApiDashboardOverview>("/dashboard/overview", {}, token),
 
+  getCostAnalytics: (token: string, days = 30) =>
+    apiFetch<ApiCostAnalytics>(`/dashboard/cost-analytics?days=${days}`, {}, token),
+
   getDashboardMetricInsight: (token: string, metricKey: string) =>
     apiFetch<ApiDashboardMetricInsight>(`/dashboard/metrics/${metricKey}/insights`, {}, token),
 
@@ -790,6 +819,27 @@ export const api = {
 
   getMcpServers: (token: string) =>
     apiFetch<ApiMcpServer[]>("/mcp/servers", {}, token),
+
+  getMcpSsoInjection: (token: string, serverId: string) =>
+    apiFetch<ApiMcpSsoInjectionConfig>(`/mcp/servers/${serverId}/sso-injection`, {}, token),
+
+  updateMcpSsoInjection: (token: string, serverId: string, body: ApiMcpSsoInjectionConfigRequest) =>
+    apiFetch<ApiMcpSsoInjectionConfig>(`/mcp/servers/${serverId}/sso-injection`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  getMcpToolDenyLists: (token: string) =>
+    apiFetch<ApiMcpToolDenyRule[]>("/rbac/tool-deny-lists", {}, token),
+
+  createMcpToolDenyRule: (token: string, body: ApiMcpToolDenyRuleRequest) =>
+    apiFetch<ApiMcpToolDenyRule>("/rbac/tool-deny-lists", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  deleteMcpToolDenyRule: (token: string, ruleId: string) =>
+    apiFetch<void>(`/rbac/tool-deny-lists/${ruleId}`, { method: "DELETE" }, token),
 
   createMcpServer: (token: string, body: ApiMcpServerCreateRequest) =>
     apiFetch<ApiMcpServer>("/mcp/servers", { method: "POST", body: JSON.stringify(body) }, token),
@@ -911,6 +961,21 @@ export const api = {
   disconnectMcpPortalServer: (token: string, serverId: string) =>
     apiFetch<void>(`/mcp/portal/${serverId}/connect`, { method: "DELETE" }, token),
 
+  getMcpUrlFilters: (token: string) =>
+    apiFetch<ApiMcpUrlFilterSettings>("/mcp/url-filters", {}, token),
+
+  updateMcpUrlFilters: (token: string, body: ApiMcpUrlFilterSettingsUpdate) =>
+    apiFetch<ApiMcpUrlFilterSettings>("/mcp/url-filters", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  probeMcpUrlFilter: (token: string, url: string) =>
+    apiFetch<ApiMcpUrlFilterProbe>("/mcp/url-filters/probe", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }, token),
+
   getMcpToolRisk: (token: string) =>
     apiFetch<ApiMcpToolRiskInventory>("/mcp/tool-risk", {}, token),
 
@@ -941,6 +1006,22 @@ export const api = {
     const qs = query.toString();
     return apiFetch<ApiAuditLog[]>(`/audit/logs${qs ? `?${qs}` : ""}`, {}, token);
   },
+
+  getAuditLogBody: (token: string, auditId: string) =>
+    apiFetch<ApiAuditLogBody>(`/audit/logs/${auditId}/body`, {}, token),
+
+  getRequestLogSettings: (token: string) =>
+    apiFetch<ApiRequestLogSettings>("/audit/request-log-settings", {}, token),
+
+  updateRequestLogSettings: (token: string, retentionDays: number) =>
+    apiFetch<ApiRequestLogSettings>(
+      "/audit/request-log-settings",
+      { method: "PUT", body: JSON.stringify({ retention_days: retentionDays }) },
+      token,
+    ),
+
+  purgeRequestLogs: (token: string) =>
+    apiFetch<{ purged: number; stored_entries: number }>("/audit/purge-request-logs", { method: "POST" }, token),
 
   getAuditIngestSources: (token: string, days = 7) =>
     apiFetch<ApiAuditIngestSource[]>(`/audit/ingest/sources?days=${days}`, {}, token),
@@ -1101,6 +1182,16 @@ export const api = {
   deleteRoutingRule: (token: string, ruleId: string) =>
     apiFetch<void>(`/llm/routing-rules/${ruleId}`, { method: "DELETE" }, token),
 
+  // BL-088: per-rule client API key assignment
+  getRoutingRuleClientKeys: (token: string, ruleId: string) =>
+    apiFetch<ApiClientApiKey[]>(`/llm/routing-rules/${ruleId}/client-keys`, {}, token),
+
+  assignRoutingRuleClientKey: (token: string, ruleId: string, keyId: string) =>
+    apiFetch<ApiClientApiKey[]>(`/llm/routing-rules/${ruleId}/client-keys/${keyId}`, { method: "POST" }, token),
+
+  unassignRoutingRuleClientKey: (token: string, ruleId: string, keyId: string) =>
+    apiFetch<ApiClientApiKey[]>(`/llm/routing-rules/${ruleId}/client-keys/${keyId}`, { method: "DELETE" }, token),
+
   getRoutingGroups: (token: string) =>
     apiFetch<ApiRoutingGroup[]>("/routing-groups", {}, token),
 
@@ -1252,6 +1343,30 @@ export const api = {
     const query = new URLSearchParams({ limit: String(limit) });
     appendDateRange(query, params);
     return apiFetch<ApiTraceSummary[]>(`/observability/traces?${query.toString()}`, {}, token);
+  },
+
+  getObservabilityTraceDetail: (token: string, auditId: string) =>
+    apiFetch<ApiTraceSummary>(`/observability/traces/${auditId}`, {}, token),
+
+  getTelemetryOperations: (token: string, params?: ApiDateRangeParams) => {
+    const query = new URLSearchParams();
+    appendDateRange(query, params);
+    const qs = query.toString();
+    return apiFetch<ApiTelemetryOperations>(`/telemetry/operations${qs ? `?${qs}` : ""}`, {}, token);
+  },
+
+  getTelemetrySla: (token: string, params?: ApiDateRangeParams) => {
+    const query = new URLSearchParams();
+    appendDateRange(query, params);
+    const qs = query.toString();
+    return apiFetch<ApiGatewaySla>(`/telemetry/sla${qs ? `?${qs}` : ""}`, {}, token);
+  },
+
+  getTelemetrySummary: (token: string, params?: ApiDateRangeParams) => {
+    const query = new URLSearchParams();
+    appendDateRange(query, params);
+    const qs = query.toString();
+    return apiFetch<ApiTelemetrySummary>(`/telemetry/summary${qs ? `?${qs}` : ""}`, {}, token);
   },
 
   getIntegrations: (token: string) =>
@@ -1647,6 +1762,29 @@ export interface ApiMcpPortalConnect {
   connected_at: string;
 }
 
+export interface ApiMcpUrlFilterSettings {
+  enabled: boolean;
+  mode: string;
+  patterns: string[];
+  block_private_ips: boolean;
+  web_search_enabled: boolean;
+  vendor: string;
+  vendor_endpoint: string;
+  vendor_configured?: boolean;
+}
+
+export interface ApiMcpUrlFilterSettingsUpdate extends Partial<ApiMcpUrlFilterSettings> {
+  vendor_api_key?: string;
+}
+
+export interface ApiMcpUrlFilterProbe {
+  url: string;
+  host: string;
+  allowed: boolean;
+  mode: string;
+  private_host: boolean;
+}
+
 export interface ApiMcpServer {
   id: string;
   name: string;
@@ -1670,6 +1808,31 @@ export interface ApiMcpServer {
   };
   trust_score: number;
   risk_score: number;
+}
+
+export interface ApiMcpSsoInjectionConfigRequest {
+  enabled: boolean;
+  header_name: string;
+  header_format: string;
+  claim_extract: string;
+}
+
+export interface ApiMcpSsoInjectionConfig extends ApiMcpSsoInjectionConfigRequest {
+  server_id: string;
+  updated_at: string;
+}
+
+export interface ApiMcpToolDenyRuleRequest {
+  role: string;
+  server_id: string;
+  tool_name: string;
+  reason: string;
+}
+
+export interface ApiMcpToolDenyRule extends ApiMcpToolDenyRuleRequest {
+  id: string;
+  server_name: string;
+  created_at: string;
 }
 
 export interface ApiMcpServerCreateRequest {
@@ -1761,6 +1924,21 @@ export interface ApiAuditLog {
   status: string;
   risk: string;
   details: string;
+  has_request_log?: boolean;
+}
+
+export interface ApiAuditLogBody {
+  audit_log_id: string;
+  request_payload: Record<string, unknown> | null;
+  response_payload: Record<string, unknown> | null;
+  guardrail_events: Record<string, unknown> | null;
+  tool_events: Array<Record<string, unknown>> | null;
+  created_at: string | null;
+}
+
+export interface ApiRequestLogSettings {
+  retention_days: number;
+  stored_entries: number;
 }
 
 export interface ApiAuditIngestSource {
@@ -2100,6 +2278,7 @@ export interface ApiRoutingRule {
   condition: string;
   target_model: string;
   status: string;
+  response_format: "openai" | "anthropic" | "vertex" | "auto";
 }
 
 export interface ApiProviderRebalanceResponse {
@@ -2137,6 +2316,7 @@ export interface ApiRoutingRuleCreateRequest {
   condition: string;
   target_model: string;
   status?: string;
+  response_format?: "openai" | "anthropic" | "vertex" | "auto";
 }
 
 export interface ApiRoutingRuleUpdateRequest {
@@ -2145,6 +2325,7 @@ export interface ApiRoutingRuleUpdateRequest {
   condition?: string;
   target_model?: string;
   status?: string;
+  response_format?: "openai" | "anthropic" | "vertex" | "auto";
 }
 
 export interface ApiRoutingGroupMember {
@@ -2305,11 +2486,78 @@ export interface ApiObservabilityOverview {
   daily_trend: { date: string; total: number; blocked: number }[];
 }
 
+export interface ApiTelemetrySummary {
+  generated_at: string;
+  period_days: number;
+  total_events: number;
+  allowed: number;
+  blocked: number;
+  under_review: number;
+  block_rate: number;
+  avg_latency_ms: number;
+  p95_latency_ms: number;
+  total_tokens: number;
+  total_cost_usd: number;
+  active_models: number;
+  by_action: { action: string; count: number }[];
+  by_risk: { risk: string; count: number }[];
+  daily_trend: { date: string; total: number; blocked: number }[];
+}
+
+export interface ApiTelemetryBlockedEvent {
+  id: string;
+  timestamp: string;
+  actor: string;
+  action: string;
+  resource: string;
+  risk: string;
+  details: string;
+}
+
+export interface ApiTelemetryOperations {
+  generated_at: string;
+  requests_total: number;
+  requests_allowed: number;
+  requests_blocked: number;
+  requests_review: number;
+  tokens_total: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  p50_latency_ms: number;
+  p95_latency_ms: number;
+  block_rate: number;
+  by_action: { action: string; count: number }[];
+  by_status: { status: string; count: number }[];
+  recent_blocked: ApiTelemetryBlockedEvent[];
+}
+
+export interface ApiGatewaySla {
+  generated_at: string;
+  period_days: number;
+  requests_total: number;
+  successful_requests: number;
+  failed_requests: number;
+  availability_percent: number;
+  error_rate_percent: number;
+  p50_latency_ms: number;
+  p95_latency_ms: number;
+  p99_latency_ms: number;
+  average_gateway_overhead_ms: number;
+  providers_active: number;
+  pooling_instrumented: boolean;
+  pool_reuse_rate_percent: number | null;
+  pool_note: string;
+}
+
 export interface ApiTraceSpan {
   name: string;
   service: string;
   duration_ms: number;
   status: string;
+  stage?: string;
+  offset_ms?: number;
+  detail?: string | null;
+  attributes?: Record<string, unknown> | null;
 }
 
 export interface ApiTraceSummary {
@@ -2324,6 +2572,8 @@ export interface ApiTraceSummary {
   duration_ms: number;
   span_count: number;
   spans: ApiTraceSpan[];
+  otel_trace_id?: string | null;
+  audit_id?: string | null;
 }
 
 export interface ApiIntegrationSettings {

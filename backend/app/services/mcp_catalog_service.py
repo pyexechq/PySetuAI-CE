@@ -56,7 +56,7 @@ CATALOG_ENTRIES: list[dict[str, Any]] = [
     {
         "slug": "fetch",
         "name": "Fetch",
-        "description": "HTTP fetch for public URLs. Pair with enterprise URL filters in a later sprint.",
+        "description": "HTTP fetch for public URLs. Governed by tenant URL allow/deny lists and vendor hooks.",
         "category": "Web",
         "transport": "sse",
         "default_endpoint": "https://mcp.fetch.local/sse",

@@ -1,5 +1,191 @@
 # PySetu AI — Test Results
 
+**Test Cycle:** QA-028 (Sprint 15 / REST-to-MCP spec proxy BL-083) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 15 BL-083 Test Results (REST-to-MCP auto-proxy backend)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (`test_mcp_spec_proxy.py` + MCP catalog/url-filter/tool-risk regressions) | **29 passed**, 0 failed |
+| API surface | Permission-protected `POST /mcp/servers/parse-spec` |
+| Coverage | OpenAPI 3.x, Swagger 2.0 host/basePath, Postman v2 folders, GraphQL SDL query/mutation, error paths |
+| Tool naming | Matches client wizard (`to_tool_name`) |
+| Completed Tasks | **BL-083 (backend spec-proxy endpoint)** |
+
+---
+
+**Test Cycle:** QA-027 (Sprint 14 / Gateway SLA dashboard BL-078) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 14 S14-05 Test Results (BL-078 gateway SLA dashboard)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (`test_sla_service.py` + telemetry/regional regressions) | **18 passed**, 0 failed |
+| TypeScript (`tsc --noEmit`) | **0 errors** |
+| API surface | Permission-protected `GET /telemetry/sla` |
+| Coverage | Availability, error rate, p50/p95/p99 latency, gateway overhead, active providers, US fallback, pooling status |
+| Frontend | Gateway SLA card added to Monitoring Overview with 30-second refresh |
+| Pooling | Shared application HTTP client with reuse counters and shutdown cleanup |
+| Completed Tasks | **S14-05 (BL-078)** |
+
+**Test Cycle:** QA-026 (Sprint 14 / Regional routing GA BL-077) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 14 S14-04 Test Results (BL-077 regional routing GA)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (`test_regional_routing_service.py` + regional adapters + gateway) | **11 passed**, 0 failed |
+| Coverage | US/EU/India policy-bundle mapping, provider-native endpoints, US fallback, Bedrock and Vertex gateway branches |
+| Routing behavior | Active policy bundle now supplies the region to both regional adapters; no-bundle requests default to US |
+| Open defects | 0 blocking for S14-04 |
+| Completed Tasks | **S14-04 (BL-077)** |
+
+**Test Cycle:** QA-025 (Sprint 14 / Claude compliance sync BL-081) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 14 S14-03 Test Results (BL-081 Claude compliance sync)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (`test_claude_compliance_service.py` + compliance/DLP regressions) | **17 passed**, 0 failed |
+| Coverage | Organization/user/chat aggregation, PHI/PCI/financial DLP findings, clean-chat control, tenant-scoped audit evidence path |
+| API surface | Permission-protected `POST /compliance/claude/sync` |
+| Open defects | 0 blocking for S14-03 |
+| Scope note | Normalized sync adapter is complete; live Anthropic credential management and scheduled provider pull remain deployment work |
+| Completed Tasks | **S14-03 (BL-081)** |
+
+**Test Cycle:** QA-024 (Sprint 14 / PHI-PCI-financial classifiers BL-082) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 14 S14-02 Test Results (BL-082 data protection classifiers)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (`test_data_protection_service.py` + gateway/compliance regressions) | **14 passed**, 0 failed |
+| Coverage | PHI keyword patterns, PCI card numbers, financial account terms, redaction, benign financial language |
+| API surface | Permission-protected `POST /data-protection/scan` |
+| Open defects | 0 blocking for S14-02 |
+| Scope note | Deterministic regex classifiers; regulated-data certification and ML recall benchmarking remain future work |
+| Completed Tasks | **S14-02 (BL-082)** |
+
+**Test Cycle:** QA-023 (Sprint 14 / Red-team baseline BL-080) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 14 S14-01 Test Results (BL-080 red-team testing suite)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (`test_red_team_service.py` + QA/security regressions) | **11 passed**, 0 failed |
+| Coverage | Five detector-backed adversarial cases plus one benign control; aggregate scoring; CSV export |
+| API surface | Authenticated `GET /qa/red-team/run`; JSON/CSV `GET /qa/red-team/export` |
+| Open defects | 0 blocking for S14-01 |
+| Completed Tasks | **S14-01 (BL-080)** |
+
+**Test Cycle:** QA-022 (Sprint 13 / Alert Webhooks + Live Ops Panel) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 13 S13-05/S13-06 Test Results (BL-075 latency/outage alerts · BL-076 live ops panel)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (`test_alert_webhooks.py` + telemetry + observability) | **20 passed**, 0 failed |
+| TypeScript (`tsc --noEmit`) | **0 errors** |
+| Live smoke | App healthy; `/telemetry/operations` live data; alert titles for `gateway.latency.high` / `gateway.upstream.outage` |
+| Coverage | Latency (30s threshold) + outage alert dispatch from non-stream & stream paths; live ops panel (requests/tokens/p50/blocks/recent blocked) |
+| Open defects | 0 blocking for S13-05/S13-06 |
+| Completed Tasks | **S13-05 (alert actions + gateway wiring), S13-06 (telemetry ops card in Monitoring Overview)** |
+
+---
+
+**Test Cycle:** QA-021 (Sprint 13 / Telemetry Facade BL-076) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 13 S13-04 Test Results (BL-076 Telemetry facade `/telemetry/*`)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (`test_telemetry_facade.py` + related suites) | **21 passed**, 0 failed |
+| Live smoke | `/telemetry/summary` `/operations` `/security` `/traces` all 200 with auth; 401 without |
+| Coverage | Summary (events/latency/tokens/cost), operations panel (requests/tokens/p50/blocks), security analytics, trace summaries |
+| Open defects | 0 blocking for S13-04 |
+| Completed Tasks | **S13-04 (telemetry facade schemas, service aggregation, `/telemetry/*` routes, RBAC)** |
+
+---
+
+**Test Cycle:** QA-020 (Sprint 13 / Trace Replay BL-074) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 13 S13-03 Test Results (BL-074 OTel trace replay)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (`test_trace_replay.py` + observability traces) | **7 passed**, 0 failed |
+| TypeScript (`tsc --noEmit`) | **0 errors** |
+| Coverage | Stage-by-stage spans from audit/UAG/failover, OTel trace id, detail API, Monitoring + Audit Explorer UI |
+| Open defects | 0 blocking for S13-03 |
+| Completed Tasks | **S13-03 (trace_replay_service, `/observability/traces/{id}`, timeline UI)** |
+
+---
+
+**Test Cycle:** QA-019 (Sprint 13 / Request Log Retention BL-073) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 13 S13-02 Test Results (BL-073 Full request/response log retention)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (`test_request_log_retention.py` + cost analytics) | **5 passed**, 0 failed |
+| TypeScript (`tsc --noEmit`) | **0 errors** |
+| Coverage | Payload serialization, guardrail events, truncation, gateway capture, audit API + explorer UI |
+| Open defects | 0 blocking for S13-02 |
+| Completed Tasks | **S13-02 (audit_log_bodies table, retention settings, purge, request log panel)** |
+
+---
+
+**Test Cycle:** QA-018 (Sprint 13 / Cost Analytics BL-072) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 13 S13-01 Test Results (BL-072 Per-user/team/model cost analytics)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (`test_cost_analytics.py`) | **2 passed**, 0 failed |
+| TypeScript (`tsc --noEmit`) | **0 errors** |
+| Coverage | Audit `usage_metadata` aggregation by model/user/team, daily trend, dashboard API + card |
+| Open defects | 0 blocking for S13-01 |
+| Completed Tasks | **S13-01 (cost analytics service, `/dashboard/cost-analytics`, dashboard card, overview LLM usage from audit)** |
+
+---
+
+**Test Cycle:** QA-017 (Sprint 12 / URL Filters BL-071) — **PASSED**  
+**Completed:** Aug 13, 2026
+
+### Sprint 12 S12-07 Test Results (BL-071 Web Search + URL Filters)
+
+| Metric | Value |
+|--------|-------|
+| Pass rate | **100%** |
+| pytest (URL filters + Sprint 12 MCP suites) | **59 passed**, 0 failed |
+| Coverage | Denylist/allowlist, private IP block, web-search gate, vendor hook, multiplex + invoke enforcement |
+| Open defects | 0 blocking for S12-07 |
+| Completed Tasks | **S12-07 (URL filter API, vendor hooks, gateway enforcement, Governance UI)** |
+
+---
+
 **Test Cycle:** QA-016 (Sprint 12 / MCP Portal BL-070) — **PASSED**  
 **Completed:** Aug 13, 2026
 

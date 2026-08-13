@@ -23,7 +23,12 @@ from app.schemas.auth import (
     UserResponse,
     UserProfileUpdate,
 )
-from app.schemas.dashboard import DashboardMetricInsightResponse, DashboardOverviewResponse
+from app.schemas.dashboard import (
+    CostAnalyticsResponse,
+    DashboardMetricInsightResponse,
+    DashboardOverviewResponse,
+)
+from app.services.cost_analytics_service import build_cost_analytics
 from app.services.dashboard_metric_insights_service import build_metric_insight
 from app.schemas.oidc import OidcAuthorizeResponse, OidcCallbackRequest, OidcPublicProviderResponse
 from app.services.dashboard_service import build_dashboard_overview
@@ -230,6 +235,16 @@ async def get_dashboard_overview(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DashboardOverviewResponse:
     return await build_dashboard_overview(db, current_user.tenant_id)
+
+
+@router.get("/dashboard/cost-analytics", response_model=CostAnalyticsResponse)
+async def get_cost_analytics(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    days: int = Query(30, ge=1, le=90),
+) -> CostAnalyticsResponse:
+    payload = await build_cost_analytics(db, current_user.tenant_id, days=days)
+    return CostAnalyticsResponse(**payload)
 
 
 @router.get("/dashboard/metrics/{metric_key}/insights", response_model=DashboardMetricInsightResponse)

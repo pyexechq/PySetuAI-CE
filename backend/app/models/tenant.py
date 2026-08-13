@@ -41,6 +41,8 @@ class Tenant(Base):
     mcp_auto_hide_destructive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     mcp_agent_toggles: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     mcp_portal_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    mcp_url_filters: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    request_log_retention_days: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

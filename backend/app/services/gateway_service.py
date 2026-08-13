@@ -40,6 +40,11 @@ from app.services.llm_router import select_model
 from app.services.ollama_client import OllamaError, list_ollama_models, resolve_ollama_model
 from app.services.opa_service import evaluate_gateway_abac
 from app.services.policy_engine import inspect_for_gateway
+from app.services.request_log_service import (
+    build_guardrail_events,
+    serialize_chat_request,
+    serialize_chat_response,
+)
 from app.services.prompt_injection_service import resolve_and_inject_prompt
 from app.services.token_saving_service import apply_token_saving, resolve_token_saving_config
 from app.services.dynamic_tool_service import (
@@ -49,6 +54,8 @@ from app.services.dynamic_tool_service import (
 )
 from app.services.mcp_agent_service import detect_agent, filter_servers_for_agent, toggles_from_tenant
 from app.services.regional_adapters import call_bedrock_regional, call_vertex_regional
+from app.services.regional_routing_service import resolve_provider_region
+from app.services.http_client_pool import get_http_client
 from app.services.provider_metrics_service import record_provider_request
 from app.services.routing_context import build_routing_context
 from app.services.secrets_service import apply_provider_gateway_credentials
@@ -188,26 +195,40 @@ async def _write_audit(
     details: str,
     *,
     usage_metadata: dict | None = None,
-) -> None:
+    request_log: dict | None = None,
+) -> uuid.UUID:
     trace_id = current_trace_id()
     audit_details = f"trace_id={trace_id}; {details}" if trace_id else details
     if ctx.policy_bundle_name:
         audit_details = f"bundle={ctx.policy_bundle_name}; {audit_details}"
     if ctx.client_api_key_name:
         audit_details = f"client_key={ctx.client_api_key_name}; {audit_details}"
-    db.add(
-        AuditLog(
-            tenant_id=ctx.tenant_id,
-            timestamp=datetime.now(UTC),
-            actor=ctx.actor,
-            action=action,
-            resource=resource,
-            status=status,
-            risk=risk,
-            details=audit_details,
-            usage_metadata=usage_metadata,
-        )
+    log = AuditLog(
+        tenant_id=ctx.tenant_id,
+        timestamp=datetime.now(UTC),
+        actor=ctx.actor,
+        action=action,
+        resource=resource,
+        status=status,
+        risk=risk,
+        details=audit_details,
+        usage_metadata=usage_metadata,
     )
+    db.add(log)
+    await db.flush()
+    if request_log:
+        from app.services.request_log_service import store_request_log_body
+
+        await store_request_log_body(
+            db,
+            tenant_id=ctx.tenant_id,
+            audit_log_id=log.id,
+            request_payload=request_log.get("request_payload"),
+            response_payload=request_log.get("response_payload"),
+            guardrail_events=request_log.get("guardrail_events"),
+            tool_events=request_log.get("tool_events"),
+        )
+    return log.id
 
 
 def _token_saving_metadata(prepared: PreparedChat) -> dict | None:
@@ -293,6 +314,36 @@ async def _dispatch_gateway_block_alert(
         await dispatch_tenant_alerts(db, ctx.tenant_id, event)
     except Exception as exc:
         logger.warning("Gateway alert dispatch failed for tenant %s: %s", ctx.tenant_id, exc)
+
+
+# Alert when a single LLM call exceeds this wall-clock latency (ms).
+LATENCY_ALERT_THRESHOLD_MS = 30_000
+
+
+async def _dispatch_gateway_telemetry_alert(
+    db: AsyncSession,
+    ctx: GatewayContext,
+    *,
+    action: str,
+    resource: str,
+    risk: str,
+    details: str,
+) -> None:
+    """Dispatch a non-blocking operational alert (latency / outage) to tenant webhooks."""
+    trace_id = current_trace_id()
+    event = build_gateway_alert_event(
+        action=action,
+        actor=ctx.actor,
+        resource=resource,
+        status="review",
+        risk=risk,
+        details=details,
+        trace_id=trace_id,
+    )
+    try:
+        await dispatch_tenant_alerts(db, ctx.tenant_id, event)
+    except Exception as exc:
+        logger.warning("Gateway telemetry alert dispatch failed for tenant %s: %s", ctx.tenant_id, exc)
 
 
 async def _load_bundle(db: AsyncSession, bundle_id) -> PolicyBundle | None:
@@ -389,6 +440,10 @@ async def prepare_chat_request(
             "blocked",
             ingress.risk,
             detail_text,
+            request_log={
+                "request_payload": serialize_chat_request(request),
+                "guardrail_events": build_guardrail_events(ingress=ingress),
+            },
         )
         await db.commit()
         await _dispatch_gateway_block_alert(
@@ -681,10 +736,10 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
             api_base=prepared.config.openai_api_base,
             tools=prepared.dynamic_tools_payload,
         )
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            data = response.json()
+        client = await get_http_client()
+        response = await client.post(url, headers=headers, json=payload, timeout=120.0)
+        response.raise_for_status()
+        data = response.json()
         choice = data["choices"][0]
         usage = data.get("usage", {})
         return ChatCompletionResponse(
@@ -732,10 +787,10 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
             prepared.ollama_model, prepared.messages, request.temperature, prepared.config.ollama_base_url, False,
             tools=prepared.dynamic_tools_payload,
         )
-        async with httpx.AsyncClient(timeout=180.0) as client:
-            response = await client.post(url, json=payload)
-            response.raise_for_status()
-            data = response.json()
+        client = await get_http_client()
+        response = await client.post(url, json=payload, timeout=180.0)
+        response.raise_for_status()
+        data = response.json()
         choice = data["choices"][0]
         usage = data.get("usage", {})
         return ChatCompletionResponse(
@@ -759,6 +814,7 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
     if prepared.upstream == "bedrock":
         text, bedrock_model, region = await call_bedrock_regional(
             prepared.messages,
+            region=resolve_provider_region("bedrock", prepared.config.policy_bundle_name),
             model_id=prepared.routed_model,
             temperature=request.temperature,
         )
@@ -780,6 +836,7 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
     if prepared.upstream == "vertex":
         text, vertex_model, region = await call_vertex_regional(
             prepared.messages,
+            region=resolve_provider_region("vertex", prepared.config.policy_bundle_name),
             model_id=prepared.routed_model,
             temperature=request.temperature,
         )
@@ -852,8 +909,8 @@ async def stream_chat_completion(
                 api_base=prepared.config.openai_api_base,
                 tools=prepared.dynamic_tools_payload,
             )
-            async with httpx.AsyncClient(timeout=180.0) as client:
-                async with client.stream("POST", url, headers=headers, json=payload) as response:
+            client = await get_http_client()
+            async with client.stream("POST", url, headers=headers, json=payload, timeout=180.0) as response:
                     response.raise_for_status()
                     async for line in response.aiter_lines():
                         if not line.startswith("data: "):
@@ -883,8 +940,8 @@ async def stream_chat_completion(
                 prepared.ollama_model, prepared.messages, request.temperature, prepared.config.ollama_base_url, True,
                 tools=prepared.dynamic_tools_payload,
             )
-            async with httpx.AsyncClient(timeout=180.0) as client:
-                async with client.stream("POST", url, json=payload) as response:
+            client = await get_http_client()
+            async with client.stream("POST", url, json=payload, timeout=180.0) as response:
                     response.raise_for_status()
                     async for line in response.aiter_lines():
                         if not line.startswith("data: "):
@@ -915,6 +972,15 @@ async def stream_chat_completion(
 
         audit_details = f"Streamed to {model_name} via {prepared.upstream}"
         latency_ms = max(1, int((time.perf_counter() - started) * 1000))
+        if latency_ms >= LATENCY_ALERT_THRESHOLD_MS:
+            await _dispatch_gateway_telemetry_alert(
+                db,
+                ctx,
+                action="gateway.latency.high",
+                resource=f"{prepared.routed_model} /chat",
+                risk="medium",
+                details=f"LLM latency {latency_ms}ms exceeded {LATENCY_ALERT_THRESHOLD_MS}ms threshold (streamed)",
+            )
         prompt_tokens = _estimate_tokens(prepared.combined)
         full_text_str = "".join(full_text)
         completion_tokens = _estimate_tokens(full_text_str)
@@ -989,7 +1055,21 @@ async def stream_chat_completion(
                 latency_ms=latency_ms,
                 token_saving=_token_saving_metadata(prepared),
                 dynamic_tools=_dynamic_tools_metadata(prepared),
-            )
+            ),
+            request_log={
+                "request_payload": serialize_chat_request(request),
+                "response_payload": {
+                    "model": prepared.routed_model,
+                    "content": inspect_content_text,
+                    "stream": True,
+                    "usage": {
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "total_tokens": total_tokens,
+                    },
+                },
+                "guardrail_events": build_guardrail_events(ingress=prepared.ingress, egress=egress),
+            },
         )
         await db.commit()
 
@@ -1001,6 +1081,14 @@ async def stream_chat_completion(
         await record_provider_request(db, ctx.tenant_id, prepared.routed_model, latency_ms, success=False)
         await _write_audit(db, ctx, "LLM Request", f"{prepared.routed_model} /chat", "review", "medium", str(exc))
         await db.commit()
+        await _dispatch_gateway_telemetry_alert(
+            db,
+            ctx,
+            action="gateway.upstream.outage",
+            resource=f"{prepared.routed_model} /chat",
+            risk="high",
+            details=f"Upstream provider error during streaming: {exc}",
+        )
 
 
 async def process_chat_completion(
@@ -1072,9 +1160,27 @@ async def process_chat_completion(
             audit_msg = f"All provider targets failed: {failover_summary}"
             await _write_audit(db, ctx, "LLM Request", f"{prepared.routed_model} /chat", "review", "medium", audit_msg)
             await db.commit()
+            await _dispatch_gateway_telemetry_alert(
+                db,
+                ctx,
+                action="gateway.upstream.outage",
+                resource=f"{prepared.routed_model} /chat",
+                risk="high",
+                details=f"All provider targets failed: {failover_summary}",
+            )
             return None, prepared.ingress, f"Upstream provider error: {last_exception}"
 
         latency_ms = max(1, int((time.perf_counter() - started) * 1000))
+
+        if latency_ms >= LATENCY_ALERT_THRESHOLD_MS:
+            await _dispatch_gateway_telemetry_alert(
+                db,
+                ctx,
+                action="gateway.latency.high",
+                resource=f"{prepared.routed_model} /chat",
+                risk="medium",
+                details=f"LLM latency {latency_ms}ms exceeded {LATENCY_ALERT_THRESHOLD_MS}ms threshold",
+            )
 
         region = infer_region_from_bundle(ctx.policy_bundle_name)
         raw_response_text = response.choices[0].message.content
@@ -1094,6 +1200,11 @@ async def process_chat_completion(
                 "blocked",
                 egress.risk,
                 "Output blocked by egress policy",
+                request_log={
+                    "request_payload": serialize_chat_request(request),
+                    "response_payload": serialize_chat_response(response),
+                    "guardrail_events": build_guardrail_events(ingress=prepared.ingress, egress=egress),
+                },
             )
             await db.commit()
             await _dispatch_gateway_block_alert(
@@ -1187,6 +1298,11 @@ async def process_chat_completion(
                 token_saving=_token_saving_metadata(prepared),
                 dynamic_tools=_dynamic_tools_metadata(prepared),
             ),
+            request_log={
+                "request_payload": serialize_chat_request(request),
+                "response_payload": serialize_chat_response(response),
+                "guardrail_events": build_guardrail_events(ingress=prepared.ingress, egress=egress),
+            },
         )
         await db.commit()
         span.set_attribute("pysetu.result", audit_status)

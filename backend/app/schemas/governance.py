@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PolicyTreeNode(BaseModel):
@@ -94,6 +94,31 @@ class MCPServerUpdateRequest(BaseModel):
     endpoint_url: str | None = None
     transport: str | None = None
     connection_config: dict | None = None
+
+
+class McpSsoInjectionConfigRequest(BaseModel):
+    enabled: bool = False
+    header_name: str = Field(default="Authorization", min_length=1, max_length=128)
+    header_format: str = Field(default="Bearer {token}", min_length=1, max_length=256)
+    claim_extract: str = Field(default="", max_length=128)
+
+
+class McpSsoInjectionConfigResponse(McpSsoInjectionConfigRequest):
+    server_id: str
+    updated_at: str
+
+
+class McpToolDenyRuleRequest(BaseModel):
+    role: str = Field(min_length=1, max_length=50)
+    server_id: str
+    tool_name: str = Field(min_length=1, max_length=255)
+    reason: str = Field(default="Explicit deny by admin", max_length=512)
+
+
+class McpToolDenyRuleResponse(McpToolDenyRuleRequest):
+    id: str
+    server_name: str
+    created_at: str
 
 
 class McpHealthCheckResponse(BaseModel):
@@ -344,6 +369,60 @@ class McpPortalConnectResponse(BaseModel):
     connected_at: str
 
 
+class McpUrlFilterSettingsResponse(BaseModel):
+    enabled: bool
+    mode: str
+    patterns: list[str]
+    block_private_ips: bool
+    web_search_enabled: bool
+    vendor: str
+    vendor_endpoint: str
+    vendor_configured: bool = False
+
+
+class McpUrlFilterSettingsUpdate(BaseModel):
+    enabled: bool | None = None
+    mode: str | None = None
+    patterns: list[str] | None = None
+    block_private_ips: bool | None = None
+    web_search_enabled: bool | None = None
+    vendor: str | None = None
+    vendor_endpoint: str | None = None
+    vendor_api_key: str | None = None
+
+
+class McpUrlFilterProbeRequest(BaseModel):
+    url: str
+
+
+class McpUrlFilterProbeResponse(BaseModel):
+    url: str
+    host: str
+    allowed: bool
+    mode: str
+    private_host: bool
+
+
+class McpSpecTool(BaseModel):
+    name: str
+    description: str
+    method: str | None = None
+    path: str | None = None
+    tags: list[str] = []
+
+
+class McpSpecParseRequest(BaseModel):
+    protocol: str
+    spec_url: str | None = None
+    spec_text: str | None = None
+
+
+class McpSpecParseResponse(BaseModel):
+    protocol: str
+    tools: list[McpSpecTool]
+    endpoint_url: str = ""
+
+
 class PolicyRuleUpdateRequest(BaseModel):
     id: str
     name: str
@@ -403,6 +482,30 @@ class AuditLogResponse(BaseModel):
     status: str
     risk: str
     details: str
+    has_request_log: bool = False
+
+
+class AuditLogBodyResponse(BaseModel):
+    audit_log_id: str
+    request_payload: dict | None = None
+    response_payload: dict | None = None
+    guardrail_events: dict | None = None
+    tool_events: list[dict] | None = None
+    created_at: str | None = None
+
+
+class RequestLogSettingsResponse(BaseModel):
+    retention_days: int
+    stored_entries: int
+
+
+class RequestLogSettingsUpdateRequest(BaseModel):
+    retention_days: int = Field(ge=1, le=365)
+
+
+class RequestLogPurgeResponse(BaseModel):
+    purged: int
+    stored_entries: int
 
 
 class RoutingModelResponse(BaseModel):
@@ -474,6 +577,7 @@ class RoutingRuleResponse(BaseModel):
     condition: str
     target_model: str
     status: str
+    response_format: str
 
 
 class RoutingRuleCreateRequest(BaseModel):
@@ -482,6 +586,7 @@ class RoutingRuleCreateRequest(BaseModel):
     condition: str
     target_model: str
     status: str = "draft"
+    response_format: str = "auto"
 
 
 class RoutingRuleUpdateRequest(BaseModel):
@@ -490,6 +595,7 @@ class RoutingRuleUpdateRequest(BaseModel):
     condition: str | None = None
     target_model: str | None = None
     status: str | None = None
+    response_format: str | None = None
 
 
 class GatewayStatusResponse(BaseModel):
@@ -539,6 +645,10 @@ class TraceSpanResponse(BaseModel):
     service: str
     duration_ms: int
     status: str
+    stage: str = ""
+    offset_ms: int = 0
+    detail: str | None = None
+    attributes: dict | None = None
 
 
 class TraceSummaryResponse(BaseModel):
@@ -553,3 +663,5 @@ class TraceSummaryResponse(BaseModel):
     duration_ms: int
     span_count: int
     spans: list[TraceSpanResponse]
+    otel_trace_id: str | None = None
+    audit_id: str | None = None

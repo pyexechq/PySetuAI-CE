@@ -1,7 +1,7 @@
-# Current Sprint — Sprint 12 Kickoff (Phase 9)
+# Current Sprint — Sprint 15/16 (Phase 11)
 
 **Updated:** Aug 13, 2026  
-**Active focus:** Phase 9 MCP platform — web search MCP + URL filters (BL-071)
+**Active focus:** M12 HelixGuard Parity complete (BL-083–BL-091). Optional remaining: BL-079 endpoint agent; ops BL-038 / BL-039 / BL-044.
 
 > Phase 8 complete: [phase-8-sprint.md](./phase-8-sprint.md)  
 > Phase 9–10 plan: [phase-9-10-sprint.md](./phase-9-10-sprint.md)
@@ -43,5 +43,28 @@
 - ~~**S12-04 (BL-068)**: Tool risk taxonomy + auto-hide~~ (Done)
 - ~~**S12-05 (BL-069)**: Agent auto-detection + toggles~~ (Done)
 - ~~**S12-06 (BL-070)**: Self-service MCP portal (end-user)~~ (Done)
-- **S12-07 (BL-071)**: Web search MCP + URL filter integrations
-- **S12-07 (BL-071)**: Web search MCP + URL filter integrations
+- ~~**S12-07 (BL-071)**: Web search MCP + URL filter integrations~~ (Done)
+
+## Sprint 13 — Observability depth (kickoff)
+
+- ~~**S13-01 (BL-072)**: Per-user/team/model cost analytics UI~~ (Done)
+- ~~**S13-02 (BL-073)**: Full request/response log retention~~ (Done)
+- ~~**S13-03 (BL-074)**: OTel trace replay UI~~ (Done)
+- ~~**S13-04 (BL-076)**: Telemetry facade `/telemetry/*`~~ (Done — summary / operations / security / traces)
+- ~~**S13-05 (BL-075)**: Complete alert webhook wiring — latency + upstream outage~~ (Done)
+- ~~**S13-06 (BL-076)**: Live monitoring ops panel — requests, tokens, p50, blocks~~ (Done)
+
+**M10 — MCP Platform & Observability:** Complete (S13-01–06, Aug 13).
+
+## Sprint 14 — Enterprise Security Parity (closed Aug 13)
+
+- ~~**S14-01 (BL-080)**: Red-team baseline campaigns with detector-backed scoring and JSON/CSV export~~ (Done Aug 13)
+- ~~**S14-02 (BL-082)**: PHI / PCI / financial data classifiers and protected scan API~~ (Done Aug 13)
+- ~~**S14-03 (BL-081)**: Claude compliance sync adapter for organizations, users, chats, and DLP evidence~~ (Done Aug 13)
+- ~~**S14-04 (BL-077)**: Policy-bundle regional routing for Bedrock and Vertex~~ (Done Aug 13)
+- ~~**S14-05 (BL-078)**: Gateway SLA operator dashboard for availability, p99, overhead, provider health, and shared HTTP pool reuse~~ (Done Aug 13)
+
+## Sprint 15/16 — HelixGuard Parity (closed Aug 13)
+
+- ~~**BL-083**: REST-to-MCP auto-proxy wizard~~ (Done)
+- ~~**BL-084–BL-091**: LLM Router and MCP UX enhancements~~ (Done)

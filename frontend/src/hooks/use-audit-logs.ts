@@ -16,6 +16,7 @@ function mapLog(log: {
   status: string;
   risk: string;
   details: string;
+  has_request_log?: boolean;
 }): AuditLogEntry {
   return {
     id: log.id,
@@ -26,6 +27,7 @@ function mapLog(log: {
     status: log.status as AuditLogEntry["status"],
     risk: log.risk as AuditLogEntry["risk"],
     details: log.details,
+    has_request_log: log.has_request_log ?? false,
   };
 }
 

@@ -111,6 +111,41 @@ class DashboardTokenSavingSummary(BaseModel):
     savings_pct: float = 0.0
 
 
+class CostAnalyticsBucket(BaseModel):
+    key: str
+    label: str
+    requests: int
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    cost_usd: float
+
+
+class CostAnalyticsDailyPoint(BaseModel):
+    date: str
+    requests: int
+    total_tokens: int
+    cost_usd: float
+
+
+class CostAnalyticsSummary(BaseModel):
+    requests: int
+    total_tokens: int
+    total_cost_usd: float
+    avg_cost_per_request_usd: float
+    avg_tokens_per_request: float
+
+
+class CostAnalyticsResponse(BaseModel):
+    generated_at: str
+    period_days: int
+    summary: CostAnalyticsSummary
+    by_model: list[CostAnalyticsBucket]
+    by_user: list[CostAnalyticsBucket]
+    by_team: list[CostAnalyticsBucket]
+    daily_trend: list[CostAnalyticsDailyPoint]
+
+
 class DashboardMetricInsightResponse(BaseModel):
     metric_key: str
     title: str

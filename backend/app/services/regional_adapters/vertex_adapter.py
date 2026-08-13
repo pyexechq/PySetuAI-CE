@@ -1,8 +1,8 @@
 import os
 from typing import Any
-import httpx
 
 from app.schemas.openai import ChatMessage
+from app.services.http_client_pool import get_http_client
 
 SUPPORTED_VERTEX_REGIONS = {"us-central1", "europe-west3", "asia-south1"}
 DEFAULT_VERTEX_REGION = "us-central1"
@@ -66,12 +66,12 @@ async def call_vertex_regional(
         "Authorization": f"Bearer {token}",
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        res = await client.post(url, json=payload, headers=headers)
-        res.raise_for_status()
-        data = res.json()
-        candidates = data.get("candidates", [])
-        if not candidates:
-            return "", model_id, effective_region
-        text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-        return text, model_id, effective_region
+    client = await get_http_client()
+    res = await client.post(url, json=payload, headers=headers, timeout=60.0)
+    res.raise_for_status()
+    data = res.json()
+    candidates = data.get("candidates", [])
+    if not candidates:
+        return "", model_id, effective_region
+    text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+    return text, model_id, effective_region

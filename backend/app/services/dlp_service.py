@@ -9,12 +9,20 @@ SSN_PATTERN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 US_PHONE_PATTERN = re.compile(r"\b\d{3}-\d{3}-\d{4}\b")
 EU_ID_PATTERN = re.compile(r"\b[A-Z]{2}\d{6,12}\b")
+PHI_PATTERN = re.compile(r"\b(?:patient|diagnosis|treatment|medical record|medical history|mrn)\b", re.IGNORECASE)
+PCI_CARD_PATTERN = re.compile(r"\b(?:\d[ -]?){13,19}\b")
+FINANCIAL_PATTERN = re.compile(
+    r"\b(?:bank account|account number|routing number|iban|swift|sort code|credit score)\b", re.IGNORECASE
+)
 
 CLASSIFIERS: list[tuple[str, re.Pattern[str]]] = [
     ("SSN", SSN_PATTERN),
     ("Email", EMAIL_PATTERN),
     ("US Phone", US_PHONE_PATTERN),
     ("EU Personal ID", EU_ID_PATTERN),
+    ("PHI", PHI_PATTERN),
+    ("PCI Card", PCI_CARD_PATTERN),
+    ("Financial Account", FINANCIAL_PATTERN),
 ]
 
 

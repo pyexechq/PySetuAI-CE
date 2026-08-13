@@ -273,7 +273,7 @@ These are **net-new items** derived from HelixGuard analysis, not yet covered by
 2. **Routing groups with auto-failover** — weighted pools and auto-failover (BL-060) are more sophisticated.
 3. **Token saving engine** — JSON→TOON compression (BL-063) is a unique differentiation.
 4. **Auth mediation** — OAuth credential broker for MCP (BL-067) is more production-hardened.
-5. **OTel trace replay** — BL-074 will surpass HelixGuard's basic audit trail.
+5. **OTel trace replay** — BL-074 done (S13-03): stage-by-stage replay from audit + OTel trace id in Monitoring and Audit Explorer.
 
 ### Key Takeaway
 > PySetuAI is **ahead on backend engineering** (dynamic tools, compression, failover, OTel) and needs to **close the UI/UX gap** on two specific features: the REST-to-MCP wizard (BL-083) and the visual routing engine (BL-086). These are the features that would most impress enterprise buyers evaluating both products side-by-side.

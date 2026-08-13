@@ -22,10 +22,25 @@ from app.core.rbac import (
     require_permission,
 )
 from app.db.session import get_db
-from app.models.governance import AuditLog, LLMProvider, MCPServer, Policy, RoutingRule
+from app.models.governance import (
+    AuditLog,
+    AuditLogBody,
+    ClientApiKey,
+    LLMProvider,
+    MCPServer,
+    Policy,
+    PolicyBundle,
+    RoutingGroup,
+    RoutingRule,
+    RoutingRuleClientKey,
+)
 from app.models.tenant import Tenant, User
 from app.schemas.governance import (
     AuditLogResponse,
+    AuditLogBodyResponse,
+    RequestLogSettingsResponse,
+    RequestLogSettingsUpdateRequest,
+    RequestLogPurgeResponse,
     GatewayStatusResponse,
     IngressBindingResponse,
     LLMProviderCreateRequest,
@@ -56,6 +71,12 @@ from app.schemas.governance import (
     McpAgentServerAccessUpdate,
     McpPortalConnectRequest,
     McpPortalConnectResponse,
+    McpUrlFilterProbeRequest,
+    McpUrlFilterProbeResponse,
+    McpUrlFilterSettingsResponse,
+    McpUrlFilterSettingsUpdate,
+    McpSpecParseRequest,
+    McpSpecParseResponse,
     McpPortalListResponse,
     McpPortalEntry,
     McpPortalSettingsResponse,
@@ -86,9 +107,17 @@ from app.schemas.governance import (
     RoutingRuleResponse,
     RoutingRuleUpdateRequest,
 )
+from app.schemas.access import ClientApiKeyResponse
 from app.schemas.openai import InspectionResult
+from app.services.client_api_key_service import client_key_response, get_client_api_key
 from app.services.integration_service import get_or_create_integration
 from app.services.policy_engine import _evaluate_rules
+from app.services.request_log_service import (
+    get_request_log_body,
+    get_request_log_settings,
+    purge_expired_request_logs,
+    update_request_log_retention,
+)
 from app.services.mcp_agent_service import (
     apply_allowed_agents_to_config,
     detect_agent,
@@ -147,9 +176,18 @@ from app.services.mcp_portal_service import (
     connection_status,
     server_auth_required,
 )
+from app.services.mcp_url_filter_service import (
+    evaluate_tool_access,
+    merge_url_filters,
+    probe_url,
+    public_url_filters,
+)
+from app.services.mcp_spec_proxy_service import parse_spec
 from app.services.secrets_service import (
     GEMINI_SECRET,
+    MCP_URL_FILTER_VENDOR_KEY,
     OPENAI_SECRET,
+    get_tenant_secret,
     provider_secret_status,
     secrets_backend_name,
     set_provider_secret,
@@ -766,6 +804,19 @@ async def create_mcp_server(
     await db.commit()
     await db.refresh(server)
     return _mcp_server_response(server)
+
+
+@router.post("/mcp/servers/parse-spec", response_model=McpSpecParseResponse)
+async def parse_mcp_spec(
+    payload: McpSpecParseRequest,
+    current_user: Annotated[User, Depends(_require_mcp)],
+) -> McpSpecParseResponse:
+    """Parse an OpenAPI / Postman / GraphQL spec into MCP tool definitions (BL-083)."""
+    try:
+        result = await parse_spec(payload.protocol, payload.spec_url, payload.spec_text)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return McpSpecParseResponse(**result)
 
 
 @router.put("/mcp/servers/{server_id}", response_model=MCPServerResponse)
@@ -1414,6 +1465,55 @@ async def disconnect_mcp_portal_server(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No personal connection found")
 
 
+async def _url_filter_vendor_key(db: AsyncSession, tenant_id) -> str | None:
+    return await get_tenant_secret(db, tenant_id, MCP_URL_FILTER_VENDOR_KEY)
+
+
+@router.get("/mcp/url-filters", response_model=McpUrlFilterSettingsResponse)
+async def get_mcp_url_filters(
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpUrlFilterSettingsResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    vendor_key = await _url_filter_vendor_key(db, tenant.id)
+    body = public_url_filters(tenant.mcp_url_filters, vendor_configured=bool(vendor_key))
+    return McpUrlFilterSettingsResponse(**body)
+
+
+@router.put("/mcp/url-filters", response_model=McpUrlFilterSettingsResponse)
+async def update_mcp_url_filters(
+    payload: McpUrlFilterSettingsUpdate,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpUrlFilterSettingsResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    current = merge_url_filters(tenant.mcp_url_filters)
+    updates = payload.model_dump(exclude_unset=True)
+    vendor_api_key = updates.pop("vendor_api_key", None)
+    current.update({key: value for key, value in updates.items() if key in current})
+    tenant.mcp_url_filters = current
+    if vendor_api_key is not None:
+        await set_tenant_secret(db, tenant.id, MCP_URL_FILTER_VENDOR_KEY, vendor_api_key or None)
+    await db.commit()
+    vendor_key = await _url_filter_vendor_key(db, tenant.id)
+    body = public_url_filters(tenant.mcp_url_filters, vendor_configured=bool(vendor_key))
+    return McpUrlFilterSettingsResponse(**body)
+
+
+@router.post("/mcp/url-filters/probe", response_model=McpUrlFilterProbeResponse)
+async def probe_mcp_url_filter(
+    payload: McpUrlFilterProbeRequest,
+    current_user: Annotated[User, Depends(_require_mcp)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> McpUrlFilterProbeResponse:
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    result = probe_url(payload.url, tenant.mcp_url_filters or {})
+    return McpUrlFilterProbeResponse(**result)
+
+
 @router.post("/mcp/dynamic-tools/preview", response_model=DynamicToolPreviewResponse)
 async def preview_dynamic_tools(
     payload: DynamicToolPreviewRequest,
@@ -1456,6 +1556,15 @@ async def invoke_mcp_server_tool(
     tenant = tenant_result.scalar_one()
     if not tool_is_visible(server, payload.tool_name, auto_hide_destructive=bool(tenant.mcp_auto_hide_destructive)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tool is hidden by risk policy")
+    vendor_key = await _url_filter_vendor_key(db, tenant.id)
+    allowed, reason = await evaluate_tool_access(
+        payload.tool_name,
+        payload.arguments,
+        tenant.mcp_url_filters or {},
+        vendor_api_key=vendor_key,
+    )
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=reason or "URL blocked by policy")
     token = await resolve_effective_mcp_access_token(db, server, user_id=current_user.id)
     result = await invoke_mcp_tool(server, payload.tool_name, payload.arguments, access_token=token)
     apply_tool_invoke(server, result)
@@ -1475,21 +1584,27 @@ async def invoke_mcp_server_tool(
     )
 
 
-async def _validate_routing_target_model(db: AsyncSession, tenant_id: uuid.UUID, target_model: str) -> None:
-    if target_model.lower() == "default":
-        return
+async def _validate_routing_target_model(db: AsyncSession, tenant_id: uuid.UUID, target_model: str) -> str:
+    requested_models = [model.strip() for model in target_model.split(",")]
+    if not requested_models or any(not model for model in requested_models):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Target model must match an active registered LLM provider",
+        )
     providers = await db.execute(
         select(LLMProvider.name).where(
             LLMProvider.tenant_id == tenant_id,
             LLMProvider.is_active.is_(True),
         )
     )
-    names = {name.lower() for (name,) in providers.all()}
-    if target_model.lower() not in names:
+    provider_names = {name.lower(): name for (name,) in providers.all()}
+    canonical_models = [provider_names.get(model.lower()) for model in requested_models]
+    if any(model is None for model in canonical_models):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Target model must match an active registered LLM provider",
         )
+    return ", ".join(model for model in canonical_models if model is not None)
 
 
 @router.get("/audit/logs", response_model=list[AuditLogResponse])
@@ -1551,6 +1666,16 @@ async def list_audit_logs(
             ) from exc
     result = await db.execute(query)
     logs = result.scalars().all()
+    log_ids = [log.id for log in logs]
+    body_ids: set[uuid.UUID] = set()
+    if log_ids:
+        body_result = await db.execute(
+            select(AuditLogBody.audit_log_id).where(
+                AuditLogBody.tenant_id == current_user.tenant_id,
+                AuditLogBody.audit_log_id.in_(log_ids),
+            )
+        )
+        body_ids = set(body_result.scalars().all())
     items = [
         AuditLogResponse(
             id=str(log.id),
@@ -1561,10 +1686,68 @@ async def list_audit_logs(
             status=log.status,
             risk=log.risk,
             details=log.details,
+            has_request_log=log.id in body_ids,
         )
         for log in logs
     ]
     return items
+
+
+@router.get("/audit/logs/{audit_id}/body", response_model=AuditLogBodyResponse)
+async def get_audit_log_body(
+    audit_id: str,
+    current_user: Annotated[User, Depends(_require_audit)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AuditLogBodyResponse:
+    try:
+        audit_uuid = uuid.UUID(audit_id.strip())
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="audit_id must be a valid UUID",
+        ) from exc
+    body = await get_request_log_body(db, current_user.tenant_id, audit_uuid)
+    if body is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request log body not found")
+    return AuditLogBodyResponse(
+        audit_log_id=str(body.audit_log_id),
+        request_payload=body.request_payload,
+        response_payload=body.response_payload,
+        guardrail_events=body.guardrail_events,
+        tool_events=body.tool_events,
+        created_at=body.created_at.strftime("%Y-%m-%d %H:%M:%S") if body.created_at else None,
+    )
+
+
+@router.get("/audit/request-log-settings", response_model=RequestLogSettingsResponse)
+async def read_request_log_settings(
+    current_user: Annotated[User, Depends(_require_audit)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> RequestLogSettingsResponse:
+    payload = await get_request_log_settings(db, current_user.tenant_id)
+    return RequestLogSettingsResponse(**payload)
+
+
+@router.put("/audit/request-log-settings", response_model=RequestLogSettingsResponse)
+async def update_request_log_settings(
+    body: RequestLogSettingsUpdateRequest,
+    current_user: Annotated[User, Depends(_require_audit)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> RequestLogSettingsResponse:
+    payload = await update_request_log_retention(db, current_user.tenant_id, body.retention_days)
+    await db.commit()
+    return RequestLogSettingsResponse(**payload)
+
+
+@router.post("/audit/purge-request-logs", response_model=RequestLogPurgeResponse)
+async def purge_request_logs(
+    current_user: Annotated[User, Depends(_require_audit)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> RequestLogPurgeResponse:
+    purged = await purge_expired_request_logs(db, current_user.tenant_id)
+    await db.commit()
+    stored = await get_request_log_settings(db, current_user.tenant_id)
+    return RequestLogPurgeResponse(purged=purged, stored_entries=stored["stored_entries"])
 
 
 async def _provider_response(db: AsyncSession, tenant_id: uuid.UUID, provider: LLMProvider) -> RoutingModelResponse:
@@ -1788,11 +1971,32 @@ async def delete_llm_provider(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     provider = await _get_provider_or_404(db, current_user.tenant_id, provider_id)
-    provider.is_active = False
+    provider_name = (provider.name or "").strip().lower()
+
+    await set_provider_secret(db, current_user.tenant_id, provider, None)
+
+    groups = await db.execute(
+        select(RoutingGroup).where(RoutingGroup.tenant_id == current_user.tenant_id)
+    )
+    for group in groups.scalars().all():
+        members = list(group.members or [])
+        filtered = [
+            member
+            for member in members
+            if not (
+                isinstance(member, dict)
+                and str(member.get("model") or member.get("name") or "").strip().lower() == provider_name
+            )
+        ]
+        if len(filtered) != len(members):
+            group.members = filtered
+
+    await db.delete(provider)
     await db.commit()
 
 
 ALLOWED_RULE_STATUSES = {"active", "draft", "disabled"}
+ALLOWED_RESPONSE_FORMATS = {"openai", "anthropic", "vertex", "auto"}
 
 
 def _rule_response(rule: RoutingRule) -> RoutingRuleResponse:
@@ -1803,7 +2007,18 @@ def _rule_response(rule: RoutingRule) -> RoutingRuleResponse:
         condition=rule.condition,
         target_model=rule.target_model,
         status=rule.status,
+        response_format=rule.response_format,
     )
+
+
+async def _bundle_names_for_keys(db: AsyncSession, tenant_id: uuid.UUID, keys: list[ClientApiKey]) -> dict[str, str]:
+    bundle_ids = [k.bundle_id for k in keys if k.bundle_id]
+    if not bundle_ids:
+        return {}
+    result = await db.execute(
+        select(PolicyBundle).where(PolicyBundle.id.in_(bundle_ids), PolicyBundle.tenant_id == tenant_id)
+    )
+    return {str(b.id): b.name for b in result.scalars().all()}
 
 
 async def _get_rule_or_404(db: AsyncSession, tenant_id: uuid.UUID, rule_id: str) -> RoutingRule:
@@ -1853,7 +2068,14 @@ async def create_routing_rule(
             detail=f"status must be one of: {', '.join(sorted(ALLOWED_RULE_STATUSES))}",
         )
 
-    await _validate_routing_target_model(db, current_user.tenant_id, target_model)
+    response_format = payload.response_format.strip().lower()
+    if response_format not in ALLOWED_RESPONSE_FORMATS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"response_format must be one of: {', '.join(sorted(ALLOWED_RESPONSE_FORMATS))}",
+        )
+
+    target_model = await _validate_routing_target_model(db, current_user.tenant_id, target_model)
 
     rule = RoutingRule(
         tenant_id=current_user.tenant_id,
@@ -1862,6 +2084,7 @@ async def create_routing_rule(
         condition=condition,
         target_model=target_model,
         status=status_value,
+        response_format=response_format,
     )
     db.add(rule)
     await db.commit()
@@ -1894,8 +2117,7 @@ async def update_routing_rule(
         target_model = payload.target_model.strip()
         if not target_model:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target model is required")
-        await _validate_routing_target_model(db, current_user.tenant_id, target_model)
-        rule.target_model = target_model
+        rule.target_model = await _validate_routing_target_model(db, current_user.tenant_id, target_model)
 
     if payload.priority is not None:
         rule.priority = payload.priority
@@ -1908,6 +2130,15 @@ async def update_routing_rule(
                 detail=f"status must be one of: {', '.join(sorted(ALLOWED_RULE_STATUSES))}",
             )
         rule.status = status_value
+
+    if payload.response_format is not None:
+        response_format = payload.response_format.strip().lower()
+        if response_format not in ALLOWED_RESPONSE_FORMATS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"response_format must be one of: {', '.join(sorted(ALLOWED_RESPONSE_FORMATS))}",
+            )
+        rule.response_format = response_format
 
     await db.commit()
     await db.refresh(rule)
@@ -1923,6 +2154,80 @@ async def delete_routing_rule(
     rule = await _get_rule_or_404(db, current_user.tenant_id, rule_id)
     await db.delete(rule)
     await db.commit()
+
+
+# ── BL-088: per-rule client API key assignment ──────────────────────────────
+
+
+@router.get("/llm/routing-rules/{rule_id}/client-keys", response_model=list[ClientApiKeyResponse])
+async def list_routing_rule_client_keys(
+    rule_id: str,
+    current_user: Annotated[User, Depends(_require_llm_access)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[ClientApiKeyResponse]:
+    rule = await _get_rule_or_404(db, current_user.tenant_id, rule_id)
+    result = await db.execute(
+        select(ClientApiKey)
+        .join(RoutingRuleClientKey, RoutingRuleClientKey.client_api_key_id == ClientApiKey.id)
+        .where(RoutingRuleClientKey.routing_rule_id == rule.id, ClientApiKey.tenant_id == current_user.tenant_id)
+    )
+    keys = result.scalars().all()
+    bundle_names = await _bundle_names_for_keys(db, current_user.tenant_id, keys)
+    return [
+        ClientApiKeyResponse(**client_key_response(k, bundle_name=bundle_names.get(str(k.bundle_id)) if k.bundle_id else None))
+        for k in keys
+    ]
+
+
+@router.post(
+    "/llm/routing-rules/{rule_id}/client-keys/{key_id}",
+    response_model=list[ClientApiKeyResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def assign_routing_rule_client_key(
+    rule_id: str,
+    key_id: str,
+    current_user: Annotated[User, Depends(_require_llm_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[ClientApiKeyResponse]:
+    rule = await _get_rule_or_404(db, current_user.tenant_id, rule_id)
+    key = await get_client_api_key(db, current_user.tenant_id, key_id)
+
+    existing = await db.execute(
+        select(RoutingRuleClientKey).where(
+            RoutingRuleClientKey.routing_rule_id == rule.id,
+            RoutingRuleClientKey.client_api_key_id == key.id,
+        )
+    )
+    if existing.scalar_one_or_none() is None:
+        db.add(RoutingRuleClientKey(routing_rule_id=rule.id, client_api_key_id=key.id))
+        await db.commit()
+
+    return await list_routing_rule_client_keys(rule_id, current_user, db)
+
+
+@router.delete(
+    "/llm/routing-rules/{rule_id}/client-keys/{key_id}",
+    response_model=list[ClientApiKeyResponse],
+)
+async def unassign_routing_rule_client_key(
+    rule_id: str,
+    key_id: str,
+    current_user: Annotated[User, Depends(_require_llm_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[ClientApiKeyResponse]:
+    rule = await _get_rule_or_404(db, current_user.tenant_id, rule_id)
+    key = await get_client_api_key(db, current_user.tenant_id, key_id)
+
+    await db.execute(
+        delete(RoutingRuleClientKey).where(
+            RoutingRuleClientKey.routing_rule_id == rule.id,
+            RoutingRuleClientKey.client_api_key_id == key.id,
+        )
+    )
+    await db.commit()
+
+    return await list_routing_rule_client_keys(rule_id, current_user, db)
 
 
 @router.get("/gateway/status", response_model=GatewayStatusResponse)

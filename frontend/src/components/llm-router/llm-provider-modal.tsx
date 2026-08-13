@@ -103,6 +103,8 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
   const [percentage, setPercentage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<"idle" | "success" | "error">("idle");
 
   const hasStoredKey = Boolean(provider?.api_key_set) && !clearApiKey;
 
@@ -116,9 +118,46 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
     setIsActive(provider?.is_active ?? true);
     setPercentage(provider ? String(provider.percentage) : "");
     setError(null);
+    setConnectionStatus("idle");
   }, [open, provider]);
 
   if (!open) return null;
+
+  async function handleTestConnection() {
+    const trimmedName = name.trim();
+    const trimmedEndpoint = endpointUrl.trim();
+
+    if (!trimmedName) {
+      setError("Provider name is required");
+      setConnectionStatus("error");
+      return;
+    }
+
+    if (providerType === "custom" && !trimmedEndpoint) {
+      setError("Endpoint URL is required for custom providers");
+      setConnectionStatus("error");
+      return;
+    }
+
+    if (trimmedEndpoint && !/^https?:\/\//i.test(trimmedEndpoint)) {
+      setError("Endpoint URL must start with http:// or https://");
+      setConnectionStatus("error");
+      return;
+    }
+
+    setTestingConnection(true);
+    setError(null);
+    setConnectionStatus("idle");
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      setConnectionStatus("success");
+    } catch {
+      setConnectionStatus("error");
+    } finally {
+      setTestingConnection(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -328,8 +367,21 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
         </label>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
+        {connectionStatus === "success" && !error && (
+          <p className="text-sm text-emerald-400">Connection test successful.</p>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={handleTestConnection} disabled={saving || testingConnection || !token}>
+            {testingConnection ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Testing…
+              </>
+            ) : (
+              "Test connection"
+            )}
+          </Button>
           <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>

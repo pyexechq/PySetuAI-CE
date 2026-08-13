@@ -112,9 +112,12 @@ async def handle_tools_call(
     access_token_for=None,
     *,
     auto_hide_destructive: bool = False,
+    url_filter_policy: dict[str, Any] | None = None,
+    vendor_api_key: str | None = None,
 ) -> dict[str, Any]:
     from app.services.mcp_client_service import invoke_mcp_tool
     from app.services.mcp_tool_risk_service import tool_is_visible
+    from app.services.mcp_url_filter_service import evaluate_tool_access
 
     request_id = payload.get("id")
     params = payload.get("params") if isinstance(payload.get("params"), dict) else {}
@@ -128,6 +131,14 @@ async def handle_tools_call(
     server, original = target
     if not tool_is_visible(server, original, auto_hide_destructive=auto_hide_destructive):
         return jsonrpc_error(request_id, -32001, f"Tool is hidden by risk policy: {original}")
+    allowed, reason = await evaluate_tool_access(
+        original,
+        arguments,
+        url_filter_policy or {},
+        vendor_api_key=vendor_api_key,
+    )
+    if not allowed:
+        return jsonrpc_error(request_id, -32002, reason or "URL blocked by policy")
     token = await access_token_for(server) if access_token_for else None
     result = await invoke_mcp_tool(server, original, arguments, access_token=token)
     if not result.ok:
@@ -149,6 +160,8 @@ async def dispatch_mcp_request(
     access_token_for=None,
     *,
     auto_hide_destructive: bool = False,
+    url_filter_policy: dict[str, Any] | None = None,
+    vendor_api_key: str | None = None,
 ) -> dict[str, Any]:
     method = str(payload.get("method") or "")
     if method == "tools/call":
@@ -157,5 +170,7 @@ async def dispatch_mcp_request(
             servers,
             access_token_for=access_token_for,
             auto_hide_destructive=auto_hide_destructive,
+            url_filter_policy=url_filter_policy,
+            vendor_api_key=vendor_api_key,
         )
     return handle_jsonrpc(payload, servers, auto_hide_destructive=auto_hide_destructive)

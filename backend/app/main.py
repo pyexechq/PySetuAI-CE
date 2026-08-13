@@ -14,6 +14,7 @@ from app.api.v1.gateway import openai_router as gateway_openai_router
 from app.api.v1.governance import router as governance_router
 from app.api.v1.integrations import router as integrations_router
 from app.api.v1.notifications import router as notifications_router
+from app.api.v1.mcp_security import router as mcp_security_router
 from app.api.v1.observability import router as observability_router
 from app.api.v1.oidc import router as oidc_router
 from app.api.v1.platform import router as platform_router
@@ -24,6 +25,7 @@ from app.api.v1.router import router as auth_router
 from app.api.v1.routing_groups import router as routing_groups_router
 from app.api.v1.security import router as security_router
 from app.api.v1.settings import router as settings_router
+from app.api.v1.telemetry import router as telemetry_router
 from app.api.v1.uag import router as uag_router
 from app.api.v1.users import router as users_router
 from app.config import settings
@@ -34,6 +36,7 @@ from app.db.seed import seed_demo_data, seed_platform_admin
 from app.db.seed_governance import seed_access_data, seed_governance_data, seed_uag_data
 from app.services.vault_service import assert_production_security, load_jwt_secret_from_vault
 from app.services.health_service import build_dependency_status
+from app.services.http_client_pool import close_http_client
 
 
 @asynccontextmanager
@@ -53,6 +56,7 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             print(f"Seed skipped (database may be unavailable): {exc}")
     yield
+    await close_http_client()
 
 
 app = FastAPI(
@@ -78,6 +82,7 @@ app.include_router(audit_router, prefix=settings.api_prefix)
 app.include_router(access_router, prefix=settings.api_prefix)
 app.include_router(observability_router, prefix=settings.api_prefix)
 app.include_router(settings_router, prefix=settings.api_prefix)
+app.include_router(telemetry_router, prefix=settings.api_prefix)
 app.include_router(integrations_router, prefix=settings.api_prefix)
 app.include_router(oidc_router, prefix=settings.api_prefix)
 app.include_router(uag_router, prefix=settings.api_prefix)
@@ -88,6 +93,7 @@ app.include_router(qa_router, prefix=settings.api_prefix)
 app.include_router(security_router, prefix=settings.api_prefix)
 app.include_router(data_protection_router, prefix=settings.api_prefix)
 app.include_router(notifications_router, prefix=settings.api_prefix)
+app.include_router(mcp_security_router, prefix=settings.api_prefix)
 app.include_router(routing_groups_router, prefix=settings.api_prefix)
 app.include_router(prompt_templates_router, prefix=settings.api_prefix)
 app.include_router(custom_intents_router, prefix=settings.api_prefix)

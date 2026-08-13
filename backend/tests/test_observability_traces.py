@@ -2,7 +2,7 @@
 
 import uuid
 
-from app.api.v1.observability import extract_trace_id
+from app.core.trace_id import extract_trace_id
 
 
 def test_extract_trace_id_from_prefixed_details() -> None:

@@ -7,6 +7,7 @@ import { MetricInsightModal } from "@/components/dashboard/metric-insight-modal"
 import { TrafficChart } from "@/components/dashboard/traffic-chart";
 import { LlmUsageChart } from "@/components/dashboard/llm-usage-chart";
 import { TokenSavingCard } from "@/components/dashboard/token-saving-card";
+import { CostAnalyticsCard } from "@/components/dashboard/cost-analytics-card";
 import { McpActivityTable } from "@/components/dashboard/mcp-activity-table";
 import { TopPoliciesTable } from "@/components/dashboard/top-policies-table";
 import { TopAgentsTable } from "@/components/dashboard/top-agents-table";
@@ -137,6 +138,8 @@ export function DashboardContent() {
         </div>
 
         <LlmUsageChart data={data.llm_usage} summary={data.llm_usage_summary} />
+
+        <CostAnalyticsCard />
 
         <TokenSavingCard data={data.token_saving} />
 

@@ -9,7 +9,7 @@
 | KI-005 | JWT secret uses dev default | High | Security | Mitigated — prod guard + rotation guide (S6-06); set secret before deploy |
 | KI-006 | RBAC enforced client-side only | Medium | Auth | Mitigated — backend RBAC module, API permission checks, sidebar nav filtering, Settings user management UI |
 | KI-007 | Recharts Pie label TypeScript warnings possible | Low | Dashboard | Monitoring |
-| KI-009 | Port 8000 may be occupied by another local service | Low | DevOps | Open — use `--port 8001` or stop conflicting process |
+| KI-009 | Port 8001 may be shadowed by a stale local uvicorn (IPv4) while Docker holds IPv6 — causes 404 on new endpoints via `127.0.0.1` | Low | DevOps | Resolved Aug 13 — kill stale `uvicorn app.main:app --port 8001` process, then `docker restart pysetuai-backend-1` |
 
 ## Resolution Plan
 

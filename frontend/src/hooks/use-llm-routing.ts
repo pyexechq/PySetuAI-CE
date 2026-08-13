@@ -55,6 +55,7 @@ export function useLlmRouting() {
             condition: r.condition,
             targetModel: r.target_model,
             status: r.status as RoutingRule["status"],
+            responseFormat: r.response_format ?? "auto",
           })
         )
       ),

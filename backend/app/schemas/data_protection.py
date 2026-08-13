@@ -1,4 +1,16 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class DlpScanRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=32000)
+
+
+class DlpScanResponse(BaseModel):
+    classifications: list[str]
+    has_pii: bool
+    region: str
+    match_count: int
+    redacted_content: str | None
 
 
 class DataClassificationItem(BaseModel):

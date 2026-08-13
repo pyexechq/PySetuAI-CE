@@ -1,7 +1,7 @@
 # Phase 9 & 10 Sprint Outline — MCP Platform & Security Parity
 
-**Sprints:** 12–14+ (planned)  
-**Status:** **In progress** (Sprint 12)
+**Sprints:** 12–14+ (closed Aug 13, 2026)  
+**Status:** **Complete** (M10 and M11; BL-079 optional)
 
 > Full backlog: [backlog.md](./backlog.md) BL-065–BL-082  
 > Matrix: [gateway-parity-roadmap.md](./gateway-parity-roadmap.md)
@@ -20,20 +20,20 @@
 | S12-04 | Tool risk taxonomy + auto-hide | BL-068 | Done |
 | S12-05 | Agent auto-detection + toggles | BL-069 | Done |
 | S12-06 | Self-service MCP portal (end-user) | BL-070 | Done |
-| S12-07 | Web search MCP + URL filter integrations | BL-071 | |
+| S12-07 | Web search MCP + URL filter integrations | BL-071 | Done |
 
 ### Sprint 13 — Observability depth
 
 | ID | Task | Backlog |
 |----|------|---------|
-| S13-01 | Per-user/team/model cost analytics UI | BL-072 |
-| S13-02 | Full request/response log retention | BL-073 |
-| S13-03 | OTel trace replay UI | BL-074 |
-| S13-04 | Telemetry facade `/telemetry/*` | BL-076 |
-| S13-05 | Complete alert webhook wiring (latency, outage) | BL-075 |
-| S13-06 | Monitoring live ops panel (requests, tokens, p50, blocks) | BL-076 |
+| S13-01 | Per-user/team/model cost analytics UI | BL-072 | Done |
+| S13-02 | Full request/response log retention | BL-073 | Done |
+| S13-03 | OTel trace replay UI | BL-074 | Done |
+| S13-04 | Telemetry facade `/telemetry/*` | BL-076 | Done |
+| S13-05 | Complete alert webhook wiring (latency, outage) | BL-075 | Done |
+| S13-06 | Monitoring live ops panel (requests, tokens, p50, blocks) | BL-076 | Done |
 
-**M10 exit:** MCP catalog install works; cost by user; trace replay; alerts on block.
+**M10 exit:** MCP catalog install works; cost by user; trace replay; alerts on block. — **Complete (Aug 13)**
 
 ---
 
@@ -41,14 +41,14 @@
 
 | ID | Task | Backlog |
 |----|------|---------|
-| S14-01 | Red team testing suite + export | BL-080 |
-| S14-02 | PHI / PCI / financial classifiers | BL-082 |
-| S14-03 | Claude.ai compliance API sync | BL-081 |
-| S14-04 | Regional routing GA (US/India, Bedrock, Vertex) | BL-077 |
-| S14-05 | Gateway SLA operator dashboard | BL-078 |
+| S14-01 | Red team testing suite + export | BL-080 — Done Aug 13 |
+| S14-02 | PHI / PCI / financial classifiers | BL-082 — Done Aug 13 |
+| S14-03 | Claude.ai compliance API sync adapter | BL-081 — Done Aug 13 |
+| S14-04 | Regional routing GA (US/EU/India, Bedrock, Vertex) | BL-077 — Done Aug 13 |
+| S14-05 | Gateway SLA operator dashboard | BL-078 — Done Aug 13 |
 | S15+ | Endpoint agent (TLS + DLP desktop) — optional | BL-079 |
 
-**M11 exit:** CISO security bundle parity (except optional endpoint agent).
+**M11 exit:** CISO security bundle parity — complete Aug 13, except optional endpoint agent.
 
 ---
 
