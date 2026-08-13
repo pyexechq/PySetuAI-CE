@@ -40,3 +40,19 @@ def default_last_n_days(n: int = 7) -> tuple[datetime, datetime]:
     end = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
     start = end - timedelta(days=n)
     return start, end
+
+
+def resolve_range(
+    from_date: str | None,
+    to_date: str | None,
+    *,
+    default_days: int = 7,
+) -> tuple[datetime, datetime]:
+    start, end = parse_date_range(from_date, to_date)
+    if start is None and end is None:
+        return default_last_n_days(default_days)
+    if start is None:
+        start = end - timedelta(days=default_days)
+    if end is None:
+        end = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    return start, end

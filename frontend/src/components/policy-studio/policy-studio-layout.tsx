@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronRight, ChevronDown, FileText, Folder, GitBranch, List, Plus, Trash2, Workflow, X, Sparkles, ShieldCheck } from "lucide-react";
+import { ChevronRight, ChevronDown, FileText, Folder, GitBranch, List, Plus, Trash2, Workflow, Sparkles, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { PolicyRule, PolicyTreeNode } from "@/lib/types/domain";
@@ -19,6 +19,7 @@ import {
 } from "@/lib/policy-graph-map";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/dialog";
 import { PolicyTesterModal } from "./policy-tester-modal";
 import { insertPolicyNode, PolicyCreateModal } from "@/components/policy-studio/policy-create-modal";
 import { PolicyFlowCanvas } from "@/components/policy-studio/policy-flow-canvas";
@@ -87,25 +88,15 @@ function PolicyRuleEditorModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">{mode === "create" ? "Add Rule" : "Edit Rule"}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {mode === "create"
-                ? "Define a condition, action, and severity for this policy."
-                : "Modify condition, action, and severity for this policy rule."}
-            </p>
-          </div>
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
+    <AppModal
+      title={mode === "create" ? "Add Rule" : "Edit Rule"}
+      description={
+        mode === "create"
+          ? "Define a condition, action, and severity for this policy."
+          : "Modify condition, action, and severity for this policy rule."
+      }
+      onClose={onClose}
+    >
         <div className="space-y-4">
           <div className="space-y-2">
             <label className={labelClass} htmlFor="rule-name">
@@ -219,8 +210,7 @@ function PolicyRuleEditorModal({
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+    </AppModal>
   );
 }
 

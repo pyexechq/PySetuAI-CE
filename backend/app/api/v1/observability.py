@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Annotated
 import uuid
 
@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.date_range import default_last_n_days, parse_date_range
+from app.core.date_range import resolve_range
 from app.core.rbac import USE_STUDIO, VIEW_AUDIT_LOGS, require_any_permission
 from app.db.session import get_db
 from app.models.governance import AuditLog, LLMProvider
@@ -19,17 +19,6 @@ router = APIRouter()
 _require_observability = require_any_permission(USE_STUDIO, VIEW_AUDIT_LOGS)
 
 
-def _resolve_range(from_date: str | None, to_date: str | None) -> tuple[datetime, datetime]:
-    range_start, range_end = parse_date_range(from_date, to_date)
-    if range_start is None and range_end is None:
-        return default_last_n_days(7)
-    if range_start is None:
-        range_start = range_end - timedelta(days=7)
-    if range_end is None:
-        range_end = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-    return range_start, range_end
-
-
 @router.get("/observability/overview", response_model=ObservabilityOverviewResponse)
 async def observability_overview(
     current_user: Annotated[User, Depends(_require_observability)],
@@ -38,7 +27,7 @@ async def observability_overview(
     to_date: str | None = Query(None),
 ) -> ObservabilityOverviewResponse:
     tenant_id = current_user.tenant_id
-    range_start, range_end = _resolve_range(from_date, to_date)
+    range_start, range_end = resolve_range(from_date, to_date)
 
     base = AuditLog.tenant_id == tenant_id
     range_filter = (AuditLog.timestamp >= range_start, AuditLog.timestamp < range_end)
@@ -129,7 +118,7 @@ async def observability_traces(
     to_date: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
 ) -> list[TraceSummaryResponse]:
-    range_start, range_end = _resolve_range(from_date, to_date)
+    range_start, range_end = resolve_range(from_date, to_date)
     result = await db.execute(
         select(AuditLog)
         .where(

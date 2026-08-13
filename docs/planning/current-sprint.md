@@ -1,7 +1,7 @@
-# Current Sprint — Sprint 15/16 (Phase 11)
+# Current Sprint — Sprint 17 (Phase 12)
 
-**Updated:** Aug 13, 2026  
-**Active focus:** M12 HelixGuard Parity complete (BL-083–BL-091). Optional remaining: BL-079 endpoint agent; ops BL-038 / BL-039 / BL-044.
+**Updated:** Aug 14, 2026  
+**Active focus:** Sprint 17 quality primitives implemented (BL-092–BL-097). Rebuild frontend/backend to pick up Dialog + error UI. Optional leftover: BL-079 endpoint agent; ops BL-038 / BL-039 / BL-044.
 
 > Phase 8 complete: [phase-8-sprint.md](./phase-8-sprint.md)  
 > Phase 9–10 plan: [phase-9-10-sprint.md](./phase-9-10-sprint.md)
@@ -68,3 +68,15 @@
 
 - ~~**BL-083**: REST-to-MCP auto-proxy wizard~~ (Done)
 - ~~**BL-084–BL-091**: LLM Router and MCP UX enhancements~~ (Done)
+
+## Sprint 17 — Quality & shared primitives (implemented Aug 14)
+
+Plan: [quality-audit-sprint.md](./quality-audit-sprint.md)
+
+- ~~**S17-01 (BL-093)**: Ship assign-client-key modal on routing-rule key APIs~~ (Done)
+- ~~**S17-02 (BL-092)**: `components/ui/dialog.tsx` + replace seven `ModalShell` copies~~ (Done)
+- ~~**S17-03 (BL-094)**: `resolve_range()` in `app.core.date_range`~~ (Done)
+- ~~**S17-04 (BL-095)**: App Router `error.tsx` + `global-error.tsx`~~ (Done)
+- ~~**S17-05 (BL-096)**: Loading / error / empty on Audit Explorer, Compliance, Governance Graph, Monitoring~~ (Done)
+- ~~**S17-06 (BL-097)**: `LoginRequest` min_length on password and tenant_slug~~ (Done)
+- ~~**S17-07 (BL-092)**: Remaining overlays (login, prompts, policy studio, intents, platform invite)~~ (Done)

@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ApiError, api, type ApiReportQuery, type ApiReportQueryTemplate } from "@/lib/api";
 import type { ReportCatalogEntry } from "@/lib/types/domain";
@@ -27,37 +28,6 @@ interface ReportManagementModalsProps {
   onSaved: () => void;
 }
 
-function ModalShell({
-  title,
-  description,
-  onClose,
-  children,
-}: {
-  title: string;
-  description?: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-          </div>
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 const inputClass =
   "flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none disabled:opacity-50";
@@ -459,7 +429,7 @@ export function ReportManagementModals({
 
   if (mode === "create") {
     return (
-      <ModalShell title="Build New Report" description="Define data source, filters, and optional schedule." onClose={onClose}>
+      <AppModal size="xl" title="Build New Report" description="Define data source, filters, and optional schedule." onClose={onClose}>
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
@@ -526,13 +496,13 @@ export function ReportManagementModals({
             </Button>
           </div>
         </div>
-      </ModalShell>
+      </AppModal>
     );
   }
 
   if (mode === "query" && report) {
     return (
-      <ModalShell title="Edit Report Query" description={report.name} onClose={onClose}>
+      <AppModal size="xl" title="Edit Report Query" description={report.name} onClose={onClose}>
         <QueryBuilder
           source={query.source}
           filters={query.filters}
@@ -568,13 +538,13 @@ export function ReportManagementModals({
             Save Query
           </Button>
         </div>
-      </ModalShell>
+      </AppModal>
     );
   }
 
   if (mode === "schedule" && report) {
     return (
-      <ModalShell title="Schedule Report" description={report.name} onClose={onClose}>
+      <AppModal size="xl" title="Schedule Report" description={report.name} onClose={onClose}>
         <div className="space-y-4">
           <label className="flex items-center gap-2 text-sm font-medium">
             <input
@@ -664,7 +634,7 @@ export function ReportManagementModals({
             </Button>
           </div>
         </div>
-      </ModalShell>
+      </AppModal>
     );
   }
 

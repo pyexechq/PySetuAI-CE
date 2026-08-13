@@ -9,6 +9,7 @@ import {
   useDeleteCustomIntent,
 } from "@/hooks/use-custom-intents";
 import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CustomIntent } from "@/lib/types/domain";
@@ -358,16 +359,14 @@ export function CustomIntentsPanel() {
 
       {/* Create Folder Modal */}
       {isFolderModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-md border-border/60 bg-card shadow-lg">
-            <CardHeader>
-              <CardTitle>Create Intent Folder</CardTitle>
-              <CardDescription>
-                Organize custom intent classifiers into a folder to bundle them together for API Keys.
-              </CardDescription>
-            </CardHeader>
+        <AppModal
+          title="Create Intent Folder"
+          description="Organize custom intent classifiers into a folder to bundle them together for API Keys."
+          onClose={() => setIsFolderModalOpen(false)}
+          size="sm"
+        >
             <form onSubmit={handleCreateFolder}>
-              <CardContent className="space-y-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Folder Name</label>
                   <input
@@ -379,8 +378,8 @@ export function CustomIntentsPanel() {
                     placeholder="e.g. Prompt Injections & Jailbreaks"
                   />
                 </div>
-              </CardContent>
-              <div className="flex items-center justify-end gap-3 p-6 pt-0">
+              </div>
+              <div className="mt-6 flex items-center justify-end gap-3">
                 <Button type="button" variant="outline" onClick={() => setIsFolderModalOpen(false)}>
                   Cancel
                 </Button>
@@ -389,20 +388,17 @@ export function CustomIntentsPanel() {
                 </Button>
               </div>
             </form>
-          </Card>
-        </div>
+        </AppModal>
       )}
 
       {/* Create / Edit Intent Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-lg border-border/60 bg-card shadow-lg">
-            <CardHeader>
-              <CardTitle>{editingIntent ? "Edit Classifier" : "Create Custom Intent Classifier"}</CardTitle>
-              <CardDescription>
-                Configure classifier keywords and enforcement action.
-              </CardDescription>
-            </CardHeader>
+        <AppModal
+          title={editingIntent ? "Edit Classifier" : "Create Custom Intent Classifier"}
+          description="Configure classifier keywords and enforcement action."
+          onClose={() => setIsModalOpen(false)}
+        >
+          <Card className="border-0 bg-transparent shadow-none">
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4 max-h-[70vh] overflow-y-auto">
                 {folders.length > 0 && (
@@ -525,7 +521,7 @@ export function CustomIntentsPanel() {
               </div>
             </form>
           </Card>
-        </div>
+        </AppModal>
       )}
 
       {/* Tester Modal */}

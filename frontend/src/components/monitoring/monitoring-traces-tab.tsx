@@ -56,11 +56,19 @@ function SpanRow({ span, totalMs }: { span: ApiTraceSpan; totalMs: number }) {
 }
 
 export function MonitoringTracesTab() {
-  const { traces, isLoading } = useObservability();
+  const { traces, isLoading, isError } = useObservability();
   const [expandedTrace, setExpandedTrace] = useState<string | null>(null);
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading traces…</p>;
+  }
+
+  if (isError) {
+    return (
+      <p className="rounded-lg border border-border/60 bg-muted/10 px-6 py-8 text-center text-sm text-muted-foreground">
+        Could not load traces for this period.
+      </p>
+    );
   }
 
   return (

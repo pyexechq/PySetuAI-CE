@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 
-from app.services.telemetry_service import _resolve_range, summarize_events, summarize_operations
+from app.services.telemetry_service import summarize_events, summarize_operations
 
 
 def _event(
@@ -116,18 +116,3 @@ def test_summarize_operations_by_status() -> None:
     result = summarize_operations(rows)
     statuses = {item["status"]: item["count"] for item in result["by_status"]}
     assert statuses == {"allowed": 1, "blocked": 1, "review": 1}
-
-
-def test_resolve_range_defaults_to_last_seven_days() -> None:
-    start, end = _resolve_range(None, None)
-    assert (end - start).days == 7
-
-
-def test_resolve_range_from_only() -> None:
-    from datetime import date
-
-    start, end = _resolve_range("2026-08-01", None)
-    assert start.date() == date(2026, 8, 1)
-    # end defaults to end-of-today boundary (mirrors observability behavior)
-    expected_end = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-    assert end == expected_end

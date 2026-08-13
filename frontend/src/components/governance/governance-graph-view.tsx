@@ -128,9 +128,9 @@ export function GovernanceGraphView() {
   const nodeFromUrl = searchParams.get("node");
   const policyFromUrl = searchParams.get("policy");
   const token = useAuthStore((s) => s.token);
-  const { data: mcpServersData } = useMcpServers();
+  const { data: mcpServersData, isLoading: mcpLoading } = useMcpServers();
   const mcpServers = mcpServersData ?? EMPTY_MCP_SERVERS;
-  const { models } = useLlmRouting();
+  const { models, isLoading: routingLoading } = useLlmRouting();
   const [manualNodeId, setManualNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [selectedBindingId, setSelectedBindingId] = useState<string>("__jwt_default__");
@@ -138,11 +138,13 @@ export function GovernanceGraphView() {
   const activeNodeId = selectedNodeId ?? nodeFromUrl;
   const { data: linkedPolicies = [] } = usePolicyGraphLinks(activeNodeId ?? undefined);
 
-  const { data: ingressBindings = [] } = useQuery({
+  const { data: ingressBindings = [], isLoading: bindingsLoading } = useQuery({
     queryKey: ["ingress-bindings", token],
     queryFn: () => api.getIngressBindings(token!),
     enabled: !!token,
   });
+
+  const graphLoading = Boolean(token) && (mcpLoading || routingLoading || bindingsLoading);
 
   const selectedBinding =
     ingressBindings.find((b) => b.id === selectedBindingId) ?? ingressBindings[0] ?? null;
@@ -256,6 +258,11 @@ export function GovernanceGraphView() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="h-[520px] w-full pysetu-flow">
+            {graphLoading ? (
+              <div className="flex h-full items-center justify-center bg-muted/10">
+                <p className="text-sm text-muted-foreground">Loading governance graph…</p>
+              </div>
+            ) : (
             <ReactFlow
               nodes={nodes}
               edges={edges}
@@ -279,6 +286,7 @@ export function GovernanceGraphView() {
               <Background gap={16} size={1} color="#e2e8f0" />
               <Controls showInteractive={false} />
             </ReactFlow>
+            )}
           </div>
         </CardContent>
       </Card>

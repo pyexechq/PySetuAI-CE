@@ -1,6 +1,6 @@
 # Gateway & Platform Parity Roadmap
 
-**Last updated:** Aug 13, 2026  
+**Last updated:** Aug 14, 2026  
 **Purpose:** Close the gap vs. full-stack AI gateway platforms (OpenRouter Enterprise, Lakera, Prompt Security, QuirlAI-class products) while keeping PySetu’s MCP governance and air-gap differentiators.
 
 **Related:** [product-roadmap.md](./product-roadmap.md) · [backlog.md](./backlog.md) · [phase-7-sprint.md](./phase-7-sprint.md)
@@ -209,6 +209,7 @@ flowchart LR
 | M10 | MCP Platform & Observability | Sprint 13 | BL-065–BL-076 |
 | M11 | Enterprise Security Parity | Sprint 14+ | BL-077–BL-082, BL-079 optional |
 | **M12** | **HelixGuard Parity — LLM Router & MCP UX** | **Sprint 15–16** | **BL-083–BL-091** | **Complete — BL-083–BL-091 delivered; BL-079 remains optional** |
+| M13 | Quality & shared primitives (not feature parity) | Sprint 17 | BL-092–BL-097 | Complete Aug 14 — [quality-audit-sprint.md](./quality-audit-sprint.md) |
 
 ---
 

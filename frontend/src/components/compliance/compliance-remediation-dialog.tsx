@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AppModal } from "@/components/ui/dialog";
 import type { ApiComplianceRemediationResponse } from "@/lib/api";
 
 interface ComplianceRemediationDialogProps {
@@ -24,22 +25,11 @@ export function ComplianceRemediationDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">
-              {plan?.mode === "ai" ? "AI remediation plan" : "Manual remediation steps"}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{controlTitle ?? plan?.framework_name}</p>
-          </div>
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+    <AppModal
+      title={plan?.mode === "ai" ? "AI remediation plan" : "Manual remediation steps"}
+      description={controlTitle ?? plan?.framework_name}
+      onClose={onClose}
+    >
 
         {loading && (
           <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
@@ -72,7 +62,6 @@ export function ComplianceRemediationDialog({
             )}
           </div>
         )}
-      </div>
-    </div>
+    </AppModal>
   );
 }

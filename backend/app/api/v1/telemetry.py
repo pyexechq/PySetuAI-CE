@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.date_range import resolve_range
 from app.core.rbac import USE_STUDIO, VIEW_AUDIT_LOGS, require_any_permission
 from app.db.session import get_db
 from app.models.governance import AuditLog
@@ -23,7 +24,6 @@ from app.schemas.security import SecurityOverviewResponse
 from app.schemas.sla import GatewaySlaResponse
 from app.schemas.telemetry import TelemetryOperationsResponse, TelemetrySummaryResponse
 from app.services.telemetry_service import (
-    _resolve_range,
     build_telemetry_operations,
     build_telemetry_security,
     build_telemetry_summary,
@@ -100,7 +100,7 @@ async def telemetry_traces(
     to_date: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
 ) -> list[TraceSummaryResponse]:
-    range_start, range_end = _resolve_range(from_date, to_date)
+    range_start, range_end = resolve_range(from_date, to_date)
     result = await db.execute(
         select(AuditLog)
         .where(

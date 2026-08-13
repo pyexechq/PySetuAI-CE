@@ -7,13 +7,13 @@ The pure ``summarize_*`` helpers are unit-testable without a database; the
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.date_range import default_last_n_days, parse_date_range
+from app.core.date_range import resolve_range
 from app.models.governance import AuditLog, LLMProvider
 from app.services.compounding_cost_service import DEFAULT_COST_PER_1K, _model_rate, _usd
 from app.services.security_analytics_service import build_security_overview
@@ -22,17 +22,6 @@ from app.services.security_analytics_service import build_security_overview
 # ---------------------------------------------------------------------------
 # Pure aggregation helpers (unit-testable)
 # ---------------------------------------------------------------------------
-
-def _resolve_range(from_date: str | None, to_date: str | None) -> tuple[datetime, datetime]:
-    range_start, range_end = parse_date_range(from_date, to_date)
-    if range_start is None and range_end is None:
-        return default_last_n_days(7)
-    if range_start is None:
-        range_start = range_end - timedelta(days=7)
-    if range_end is None:
-        range_end = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-    return range_start, range_end
-
 
 def summarize_events(
     rows: list[tuple[str, str, str, datetime, dict | None]],
@@ -186,7 +175,7 @@ async def build_telemetry_summary(
     from_date: str | None = None,
     to_date: str | None = None,
 ) -> dict[str, Any]:
-    range_start, range_end = _resolve_range(from_date, to_date)
+    range_start, range_end = resolve_range(from_date, to_date)
     period_days = max((range_end - range_start).days, 1)
     base = AuditLog.tenant_id == tenant_id
     range_filter = (AuditLog.timestamp >= range_start, AuditLog.timestamp < range_end)
@@ -220,7 +209,7 @@ async def build_telemetry_operations(
     from_date: str | None = None,
     to_date: str | None = None,
 ) -> dict[str, Any]:
-    range_start, range_end = _resolve_range(from_date, to_date)
+    range_start, range_end = resolve_range(from_date, to_date)
     base = AuditLog.tenant_id == tenant_id
     range_filter = (AuditLog.timestamp >= range_start, AuditLog.timestamp < range_end)
 

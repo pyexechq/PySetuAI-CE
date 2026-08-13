@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/dialog";
 import { useAddPromptVersion } from "@/hooks/use-prompt-templates";
 import type { PromptTemplate } from "@/lib/types/domain";
 
@@ -30,18 +31,8 @@ export function PromptVersionModal({ template, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="w-full max-w-2xl overflow-hidden rounded-lg border border-border/60 bg-card shadow-lg animate-in fade-in zoom-in-95">
-        <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
-          <h2 className="text-lg font-semibold">
-            Add Version — {template.name}
-          </h2>
-          <button onClick={onClose} className="rounded p-1 hover:bg-muted">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6">
+    <AppModal title={`Add Version — ${template.name}`} onClose={onClose} size="xl">
+        <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -75,7 +66,6 @@ export function PromptVersionModal({ template, onClose }: Props) {
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </AppModal>
   );
 }

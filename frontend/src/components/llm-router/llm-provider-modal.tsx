@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/dialog";
 import { ApiError, api, type ApiLlmProviderCreateRequest, type ApiLlmProviderUpdateRequest, type ApiRoutingModel } from "@/lib/api";
 
 const inputClass =
@@ -52,37 +53,6 @@ function apiKeyHint(providerType: string): string {
   }
 }
 
-function ModalShell({
-  title,
-  description,
-  onClose,
-  children,
-}: {
-  title: string;
-  description?: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-          </div>
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 interface LlmProviderModalProps {
   open: boolean;
@@ -240,7 +210,7 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
   }
 
   return (
-    <ModalShell
+    <AppModal size="md"
       title={isEdit ? "Edit LLM Provider" : "Register LLM Provider"}
       description={isEdit ? provider.model : "Add a model to the tenant routing registry"}
       onClose={onClose}
@@ -445,6 +415,6 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
           </Button>
         </div>
       </form>
-    </ModalShell>
+    </AppModal>
   );
 }

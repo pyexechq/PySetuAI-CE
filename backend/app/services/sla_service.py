@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from math import ceil
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.date_range import default_last_n_days, parse_date_range
+from app.core.date_range import resolve_range
 from app.models.governance import AuditLog, LLMProvider
 from app.services.http_client_pool import pool_stats
 
@@ -57,17 +57,6 @@ def summarize_sla(
     }
 
 
-def _resolve_range(from_date: str | None, to_date: str | None) -> tuple[datetime, datetime]:
-    start, end = parse_date_range(from_date, to_date)
-    if start is None and end is None:
-        return default_last_n_days(7)
-    if start is None:
-        start = end - timedelta(days=7)
-    if end is None:
-        end = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-    return start, end
-
-
 async def build_gateway_sla(
     db: AsyncSession,
     tenant_id: uuid.UUID,
@@ -75,7 +64,7 @@ async def build_gateway_sla(
     from_date: str | None = None,
     to_date: str | None = None,
 ) -> dict[str, Any]:
-    start, end = _resolve_range(from_date, to_date)
+    start, end = resolve_range(from_date, to_date)
     result = await db.execute(
         select(AuditLog.status, AuditLog.usage_metadata)
         .where(AuditLog.tenant_id == tenant_id, AuditLog.timestamp >= start, AuditLog.timestamp < end)

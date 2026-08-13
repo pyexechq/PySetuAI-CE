@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/dialog";
 import {
   RoutingConditionHelpButton,
   type RoutingConditionHelpExample,
@@ -27,37 +28,6 @@ const RESPONSE_FORMAT_OPTIONS: { value: string; label: string; desc: string }[] 
   { value: "auto",      label: "Universal (Auto-Negotiated)",      desc: "Gateway detects and normalizes to the client's expected format" },
 ];
 
-function ModalShell({
-  title,
-  description,
-  onClose,
-  children,
-}: {
-  title: string;
-  description?: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-          </div>
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 interface RoutingRuleModalProps {
   open: boolean;
@@ -160,7 +130,7 @@ export function RoutingRuleModal({
   const selectedFormat = RESPONSE_FORMAT_OPTIONS.find((o) => o.value === responseFormat);
 
   return (
-    <ModalShell
+    <AppModal size="md"
       title={isEdit ? "Edit Routing Rule" : "Add Routing Rule"}
       description="Lower priority numbers run first. Use active status to enforce in the router."
       onClose={onClose}
@@ -313,6 +283,6 @@ export function RoutingRuleModal({
           </Button>
         </div>
       </form>
-    </ModalShell>
+    </AppModal>
   );
 }

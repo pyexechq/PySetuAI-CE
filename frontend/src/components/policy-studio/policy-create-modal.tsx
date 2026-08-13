@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/dialog";
 import { ApiError, api } from "@/lib/api";
 import type { PolicyTreeNode } from "@/lib/mock-data";
 
@@ -19,37 +20,6 @@ const inputClass =
   "flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none disabled:opacity-50";
 const labelClass = "text-sm font-medium";
 
-function ModalShell({
-  title,
-  description,
-  onClose,
-  children,
-}: {
-  title: string;
-  description?: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-          </div>
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 function collectFolderOptions(nodes: PolicyTreeNode[], depth = 0): { id: string; label: string }[] {
   const options: { id: string; label: string }[] = [];
@@ -158,7 +128,7 @@ export function PolicyCreateModal({
   }
 
   return (
-    <ModalShell
+    <AppModal size="md"
       title="Create Policy"
       description="Add a new policy or folder to the policy tree."
       onClose={onClose}
@@ -250,6 +220,6 @@ export function PolicyCreateModal({
           </Button>
         </div>
       </div>
-    </ModalShell>
+    </AppModal>
   );
 }

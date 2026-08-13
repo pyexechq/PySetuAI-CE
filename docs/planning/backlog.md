@@ -148,6 +148,19 @@
 | BL-090 | Trust score fleet donut chart (Low/Medium/High distribution across all MCP servers) | MCP Governance | 13 | ✅ **Delivered** — Trust distribution donut in MCP Overview tab |
 | BL-085 | Tool-level RBAC explicit deny lists (per RBAC group: allowed servers + denied individual tools) | MCP Governance | 13 | ✅ **Delivered** — `McpToolDenyListCard` in Access & RBAC tab; persists to localStorage; backend API in Sprint 15 |
 
+## Phase 12 — Quality & shared primitives (Sprint 17)
+
+> Verified plan: [quality-audit-sprint.md](./quality-audit-sprint.md)
+
+| ID | Item | Module | Phase | Notes |
+|----|------|--------|-------|-------|
+| BL-092 | Radix Dialog + replace duplicated `ModalShell` | Frontend | 12 | Done Aug 14 |
+| BL-093 | Assign API key modal uses rule-binding APIs | LLM Router | 12 | Done Aug 14 — BL-088 follow-up |
+| BL-094 | Shared `resolve_range()` in `app.core.date_range` | Backend | 12 | Done Aug 14 |
+| BL-095 | App Router error UI | Frontend | 12 | Done Aug 14 |
+| BL-096 | Loading / error / empty on four core views | Frontend | 12 | Done Aug 14 |
+| BL-097 | LoginRequest min_length (password, tenant_slug) | Backend | 12 | Done Aug 14 |
+
 ## Delivered (reference)
 
 | ID | Item | Sprint / Notes |

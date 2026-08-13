@@ -7,6 +7,17 @@
 - Anomaly detection for MCP tool usage patterns
 - Federated learning for threat intelligence (privacy-preserving)
 
+## Engineering quality (deferred from Aug 14 audit)
+
+Full triage: [quality-audit-sprint.md](./quality-audit-sprint.md). Sprint 17 covers Dialog, date-range, error UI, and four view states only.
+
+- Nested `api.prompts.list()` client rewrite (keep mixed `api.*` + `*API` until a dedicated API-client sprint)
+- Shared FormField / FormSelect library
+- Base Recharts wrapper
+- Tenant display timezone (store remains UTC)
+- Semantic CSS tokens for compliance score colors
+- Compliance signal query batching / regional-adapter base class (premature)
+
 ## Platform
 
 - Multi-region deployment with data residency controls

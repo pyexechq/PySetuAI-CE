@@ -41,7 +41,7 @@ function CircularProgress({ score, size = 80 }: { score: number; size?: number }
 }
 
 export function ComplianceCenterView() {
-  const { data: frameworksData = [], isLoading, refetch, isFetching } = useComplianceFrameworks();
+  const { data: frameworksData = [], isLoading, isError, refetch, isFetching } = useComplianceFrameworks();
   const [frameworkOverrides, setFrameworkOverrides] = useState<Record<string, Framework>>({});
 
   const frameworks = useMemo(() => {
@@ -55,6 +55,19 @@ export function ComplianceCenterView() {
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading compliance posture…</p>;
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-lg border border-border/60 bg-muted/10 px-6 py-12 text-center">
+        <p className="text-sm text-muted-foreground">
+          Could not load compliance frameworks. Refresh the page or try again later.
+        </p>
+        <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+          Retry
+        </Button>
+      </div>
+    );
   }
 
   return (

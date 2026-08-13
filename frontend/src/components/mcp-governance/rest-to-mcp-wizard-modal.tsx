@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -234,8 +235,10 @@ export function RestToMcpWizardModal({ open, token, categorySuggestions, onClose
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={handleClose}>
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <Dialog open onOpenChange={(next) => { if (!next) handleClose(); }}>
+      <DialogContent size="xl" hideClose className="max-h-[92vh] overflow-y-auto rounded-2xl p-0">
+        <DialogTitle className="sr-only">REST to MCP Auto-Proxy Wizard</DialogTitle>
+        <div className="w-full">
         {/* Header */}
         <div className="sticky top-0 z-10 border-b border-border/60 bg-card/95 backdrop-blur px-6 py-4">
           <div className="flex items-center justify-between mb-4">
@@ -485,6 +488,7 @@ export function RestToMcpWizardModal({ open, token, categorySuggestions, onClose
           )}
         </div>
       </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

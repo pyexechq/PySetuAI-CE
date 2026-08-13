@@ -33,11 +33,19 @@ const EMPTY_OVERVIEW = {
 };
 
 export function MonitoringOverviewTab() {
-  const { overview: overviewData, isLoading } = useObservability();
+  const { overview: overviewData, isLoading, isError } = useObservability();
   const overview = overviewData ?? EMPTY_OVERVIEW;
 
   if (isLoading && !overviewData) {
     return <p className="text-sm text-muted-foreground">Loading overview…</p>;
+  }
+
+  if (isError && !overviewData) {
+    return (
+      <p className="rounded-lg border border-border/60 bg-muted/10 px-6 py-8 text-center text-sm text-muted-foreground">
+        Could not load monitoring overview.
+      </p>
+    );
   }
 
   return (

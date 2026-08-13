@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Play, Loader2, Sparkles, ShieldAlert, Scissors, Eye, X } from "lucide-react";
+import { Loader2, Sparkles, ShieldAlert, Scissors, Eye } from "lucide-react";
 import { useTestCustomIntent } from "@/hooks/use-custom-intents";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AppModal } from "@/components/ui/dialog";
 
 interface CustomIntentTesterModalProps {
   onClose: () => void;
@@ -41,26 +41,12 @@ export function CustomIntentTesterModal({ onClose }: CustomIntentTesterModalProp
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <Card className="w-full max-w-lg border-border/60 bg-card shadow-lg relative">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-4 top-4"
-          onClick={onClose}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Play className="h-4 w-4 text-primary" />
-            Intent Classifier Tester
-          </CardTitle>
-          <CardDescription>
-            Test prompt content against active classifiers to verify policy outcomes.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <AppModal
+      title="Intent Classifier Tester"
+      description="Test prompt content against active classifiers to verify policy outcomes."
+      onClose={onClose}
+    >
+        <div className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Test Prompt Input</label>
             <textarea
@@ -119,8 +105,7 @@ export function CustomIntentTesterModal({ onClose }: CustomIntentTesterModalProp
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+    </AppModal>
   );
 }

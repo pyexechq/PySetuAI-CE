@@ -8,8 +8,8 @@ class TokenResponse(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
-    tenant_slug: str = "acme"
+    password: str = Field(min_length=1)
+    tenant_slug: str = Field(default="acme", min_length=1)
 
 
 class UserResponse(BaseModel):

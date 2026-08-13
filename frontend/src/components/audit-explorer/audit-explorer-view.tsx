@@ -47,7 +47,7 @@ export function AuditExplorerView() {
   const from = useDateRangeStore((s) => s.from);
   const to = useDateRangeStore((s) => s.to);
   const auditIdParam = searchParams.get("audit_id")?.trim() || undefined;
-  const { data: logs = [], recentIds, isFetching, dataUpdatedAt } = useAuditLogs(
+  const { data: logs = [], recentIds, isFetching, isLoading, isError, dataUpdatedAt } = useAuditLogs(
     search,
     statusFilter,
     live,
@@ -143,6 +143,23 @@ export function AuditExplorerView() {
           </div>
         </CardHeader>
         <CardContent className="p-5 pt-0">
+          {isError ? (
+            <div className="flex h-[280px] items-center justify-center rounded-md border border-border/60 bg-muted/10 px-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Could not load audit logs. Check your connection and try again.
+              </p>
+            </div>
+          ) : isLoading && logs.length === 0 ? (
+            <div className="flex h-[280px] items-center justify-center rounded-md border border-border/60 bg-muted/20">
+              <p className="text-sm text-muted-foreground">Loading audit logs…</p>
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="flex h-[280px] items-center justify-center rounded-md border border-border/60 bg-muted/10 px-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                No audit events in this range. Adjust filters or wait for gateway traffic.
+              </p>
+            </div>
+          ) : (
           <AuditLogGrid
             rows={logs}
             recentIds={recentIds}
@@ -150,6 +167,7 @@ export function AuditExplorerView() {
             onGridReady={setGridApi}
             onRowSelect={setSelectedLog}
           />
+          )}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
             <span>
               AG Grid: sort, filter, and paginate columns · {formatDateRangeLabel(from, to)}

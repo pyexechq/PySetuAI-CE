@@ -147,6 +147,17 @@ _Delivered M12 scope:_
 - [x] Trust score fleet donut (BL-090)
 - [x] Model performance tab in LLM Router (BL-091)
 
+## Phase 12 — Quality, a11y, and shared primitives (complete — Sprint 17)
+
+_See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14; inflated LOC claims discarded)._
+
+- [x] Shared Radix Dialog; remove duplicated `ModalShell` (BL-092)
+- [x] Finish API-key ↔ rule assign/unassign in the assign-key modal (BL-093 / BL-088 follow-up)
+- [x] Single `resolve_range()` in `app.core.date_range` (BL-094)
+- [x] App Router `error.tsx` / `global-error.tsx` (BL-095)
+- [x] Loading / error / empty states on Audit Explorer, Compliance, Governance Graph, Monitoring (BL-096)
+- [x] Login schema min_length on password and tenant slug (BL-097)
+
 ## Milestones
 
 | Milestone | Target | Status |
@@ -163,3 +174,4 @@ _Delivered M12 scope:_
 | M10: MCP Platform & Observability | Sprint 13 | ✅ Complete Aug 13 — BL-065–BL-076 |
 | M11: Enterprise Security Parity | Sprint 14+ | ✅ Complete Aug 13 — BL-077–BL-082 (BL-079 optional) |
 | M12: HelixGuard Parity — LLM Router & MCP UX | Sprint 15–16 | ✅ Complete — BL-083–BL-091 delivered; BL-079 remains optional (Aug 13, 2026) |
+| M13: Quality & shared UI primitives | Sprint 17 | ✅ Complete Aug 14 — BL-092–BL-097 ([quality-audit-sprint.md](./quality-audit-sprint.md)) |

@@ -1,5 +1,6 @@
-import { X, ShieldCheck, FileText, Database, Lock, Server } from "lucide-react";
+import { ShieldCheck, FileText, Database, Lock, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
@@ -75,25 +76,13 @@ export function ComplianceTemplateModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-border/60 bg-muted/30 px-6 py-4">
-          <div>
-            <h2 className="text-xl font-semibold">Compliance Templates</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Kickstart your AI security with industry-standard compliance bundles.
-            </p>
-          </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+    <AppModal
+      title="Compliance Templates"
+      description="Kickstart your AI security with industry-standard compliance bundles."
+      onClose={onClose}
+      size="2xl"
+    >
+        <div className="grid gap-4 sm:grid-cols-2">
             {TEMPLATES.map((template) => (
               <div
                 key={template.id}
@@ -116,8 +105,6 @@ export function ComplianceTemplateModal({
               </div>
             ))}
           </div>
-        </div>
-      </div>
-    </div>
+    </AppModal>
   );
 }
