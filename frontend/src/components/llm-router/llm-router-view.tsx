@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -233,12 +234,17 @@ function buildPerfData(models: { model: string; latency: number; requests: numbe
   });
 }
 
-function buildCostData() {
-  return Array.from({ length: 30 }, (_, i) => ({
-    day: `Aug ${i + 1}`,
-    spend: Math.floor(80 + Math.random() * 120),
-    budget: 200,
-  }));
+function formatUsd(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatRatePair(input = 0, output = 0): string {
+  return `${formatUsd(input)} / ${formatUsd(output)}`;
 }
 
 // ─── main view ────────────────────────────────────────────────────────────────
@@ -324,9 +330,24 @@ export function LlmRouterView() {
   }, [selectedRule, fetchAssignedKeys]);
 
   const perfData = useMemo(() => buildPerfData(activeModels), [activeModels]);
-  const costData = useMemo(() => buildCostData(), []);
-  const totalSpend = costData.reduce((s, d) => s + d.spend, 0);
-  const savedEstimate = Math.floor(totalSpend * 0.22);
+  const { data: costAnalytics } = useQuery({
+    queryKey: ["cost-analytics", token],
+    queryFn: () => api.getCostAnalytics(token!, 30),
+    enabled: Boolean(token),
+  });
+  const costTrend = costAnalytics?.daily_trend ?? [];
+  const totalSpend = costAnalytics?.summary.total_cost_usd ?? 0;
+  const savedEstimate = useMemo(() => {
+    const rows = costAnalytics?.by_model ?? [];
+    if (!rows.length || !activeModels.length) return 0;
+    const maxOut = Math.max(...activeModels.map((m) => m.costPer1mOutput ?? 0), 0);
+    const maxIn = Math.max(...activeModels.map((m) => m.costPer1mInput ?? 0), 0);
+    if (!maxIn && !maxOut) return 0;
+    const atMax = rows.reduce((sum, row) => {
+      return sum + ((row.prompt_tokens / 1_000_000) * maxIn + (row.completion_tokens / 1_000_000) * maxOut);
+    }, 0);
+    return Math.max(0, atMax - totalSpend);
+  }, [activeModels, costAnalytics, totalSpend]);
 
   // ── handlers (unchanged) ──────────────────────────────────────────────────
 
@@ -339,6 +360,8 @@ export function LlmRouterView() {
       percentage: model.percentage, latency: model.latency,
       success_rate: model.successRate, is_active: model.isActive !== false,
       api_key_set: model.apiKeySet, api_key_masked: model.apiKeyMasked,
+      cost_per_1m_input: model.costPer1mInput ?? 0,
+      cost_per_1m_output: model.costPer1mOutput ?? 0,
     });
     setModalOpen(true);
   }
@@ -700,6 +723,7 @@ export function LlmRouterView() {
                     <th className="pb-3 text-left text-xs font-medium text-muted-foreground">Type</th>
                     <th className="pb-3 text-right text-xs font-medium text-muted-foreground">Requests</th>
                     <th className="pb-3 text-right text-xs font-medium text-muted-foreground">Share</th>
+                    <th className="pb-3 text-right text-xs font-medium text-muted-foreground">Est. Cost (1M In/Out)</th>
                     <th className="pb-3 text-right text-xs font-medium text-muted-foreground">Latency</th>
                     <th className="pb-3 text-right text-xs font-medium text-muted-foreground">Success</th>
                     {canEdit && <th className="pb-3 text-right text-xs font-medium text-muted-foreground">Actions</th>}
@@ -727,6 +751,9 @@ export function LlmRouterView() {
                         </td>
                         <td className="py-3 text-right tabular-nums">{formatNumber(row.requests)}</td>
                         <td className="py-3 text-right tabular-nums">{row.percentage}%</td>
+                        <td className="py-3 text-right tabular-nums text-xs">
+                          {formatRatePair(row.costPer1mInput, row.costPer1mOutput)}
+                        </td>
                         <td className="py-3 text-right tabular-nums">{row.latency}ms</td>
                         <td className="py-3 text-right text-emerald-400 tabular-nums">{row.successRate}%</td>
                         {canEdit && (
@@ -965,74 +992,122 @@ export function LlmRouterView() {
       {/* ── COST ─────────────────────────────────────────────────────────────── */}
       {activeTab === "cost" && (
         <div className="space-y-5">
-          {/* Summary cards */}
           <div className="grid gap-4 sm:grid-cols-3">
             <Card className="border-border/60 bg-card/50">
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">Total Spend (30d)</p>
+                  <p className="text-xs text-muted-foreground">Total spend (30d)</p>
                 </div>
-                <p className="text-3xl font-bold">${totalSpend.toLocaleString()}</p>
+                <p className="text-3xl font-bold">{formatUsd(totalSpend)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  From registry 1M in/out rates × gateway tokens
+                </p>
               </CardContent>
             </Card>
             <Card className="border-border/60 bg-card/50">
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-2">
                   <Zap className="h-4 w-4 text-emerald-400" />
-                  <p className="text-xs text-muted-foreground">Estimated Savings</p>
+                  <p className="text-xs text-muted-foreground">Est. savings vs highest rate</p>
                 </div>
-                <p className="text-3xl font-bold text-emerald-400">${savedEstimate.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-emerald-400">{formatUsd(savedEstimate)}</p>
               </CardContent>
             </Card>
             <Card className="border-border/60 bg-card/50">
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-2">
-                  <p className="text-xs text-muted-foreground">Budget Utilisation</p>
+                  <p className="text-xs text-muted-foreground">Tokens (30d)</p>
                 </div>
-                <p className="text-3xl font-bold">{Math.round((totalSpend / (costData.length * 200)) * 100)}%</p>
-                <div className="mt-2 w-full bg-muted rounded-full h-1.5">
-                  <div
-                    className="h-1.5 rounded-full bg-primary transition-all"
-                    style={{ width: `${Math.min(100, Math.round((totalSpend / (costData.length * 200)) * 100))}%` }}
-                  />
-                </div>
+                <p className="text-3xl font-bold">
+                  {formatNumber(costAnalytics?.summary.total_tokens ?? 0)}
+                </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Spend vs budget area chart */}
           <Card className="border-border/60 bg-card/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Cumulative Spend vs Budget (30 days)</CardTitle>
+              <CardTitle className="text-sm">Spend by model</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Cost = (input tokens × in rate + output tokens × out rate) / 1M
+              </p>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={costData} margin={{ top: 4, right: 8, bottom: 4, left: -24 }}>
-                  <XAxis
-                    dataKey="day"
-                    tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
-                    axisLine={false} tickLine={false}
-                    interval={4}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                    axisLine={false} tickLine={false}
-                    tickFormatter={(v) => `$${v}`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                    }}
-                    formatter={(v, name) => [`$${v}`, name === "budget" ? "Daily Budget" : "Daily Spend"]}
-                  />
-                  <Area type="monotone" dataKey="budget" stroke="#6366f133" fill="#6366f10a" strokeDasharray="4 3" strokeWidth={1.5} dot={false} />
-                  <Area type="monotone" dataKey="spend" stroke="#6366f1" fill="#6366f118" strokeWidth={2} dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {(costAnalytics?.by_model.length ?? 0) === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  No attributed LLM traffic yet. Set Est. Cost on models in the registry, then send gateway traffic.
+                </p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/60 text-xs text-muted-foreground">
+                      <th className="pb-2 text-left font-medium">Model</th>
+                      <th className="pb-2 text-right font-medium">1M In/Out</th>
+                      <th className="pb-2 text-right font-medium">Input tokens</th>
+                      <th className="pb-2 text-right font-medium">Output tokens</th>
+                      <th className="pb-2 text-right font-medium">Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {costAnalytics!.by_model.map((row) => {
+                      const registry = activeModels.find(
+                        (m) => m.model.toLowerCase() === row.label.toLowerCase()
+                      );
+                      return (
+                        <tr key={row.key}>
+                          <td className="py-2 font-medium">{row.label}</td>
+                          <td className="py-2 text-right tabular-nums text-xs">
+                            {formatRatePair(registry?.costPer1mInput, registry?.costPer1mOutput)}
+                          </td>
+                          <td className="py-2 text-right tabular-nums">{formatNumber(row.prompt_tokens)}</td>
+                          <td className="py-2 text-right tabular-nums">{formatNumber(row.completion_tokens)}</td>
+                          <td className="py-2 text-right tabular-nums">{formatUsd(row.cost_usd)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/60 bg-card/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Daily spend (30 days)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {costTrend.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">No daily spend yet.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart data={costTrend} margin={{ top: 4, right: 8, bottom: 4, left: -24 }}>
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={4}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v) => `$${v}`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                      }}
+                      formatter={(v) => [formatUsd(Number(v)), "Spend"]}
+                    />
+                    <Area type="monotone" dataKey="cost_usd" stroke="#6366f1" fill="#6366f118" strokeWidth={2} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -9,8 +9,49 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.governance import AuditLog
+from app.models.governance import AuditLog, LLMProvider
 from app.services.compounding_cost_service import DEFAULT_COST_PER_1K, _model_rate, _usd
+
+
+def usd_from_1m_rates(prompt_tokens: int, completion_tokens: int, input_1m: float, output_1m: float) -> float:
+    prompt = max(0, int(prompt_tokens or 0))
+    completion = max(0, int(completion_tokens or 0))
+    return round((prompt / 1_000_000) * float(input_1m or 0) + (completion / 1_000_000) * float(output_1m or 0), 6)
+
+
+def _normalize_model_key(name: str) -> str:
+    return (name or "").strip().lower().replace(" ", "-")
+
+
+def lookup_model_rate(
+    model: str,
+    rates: dict[str, tuple[float, float]] | None,
+    *,
+    cost_per_1k: float,
+) -> tuple[float, float] | None:
+    if not rates:
+        return None
+    key = _normalize_model_key(model)
+    if key in rates:
+        return rates[key]
+    for stored, pair in rates.items():
+        if stored in key or key in stored:
+            return pair
+    return None
+
+
+def _row_cost(meta: dict[str, Any], *, cost_per_1k: float, rates: dict[str, tuple[float, float]] | None) -> float:
+    model = str(meta.get("model") or "unknown")
+    prompt = int(meta.get("prompt_tokens") or 0)
+    completion = int(meta.get("completion_tokens") or 0)
+    tokens = int(meta.get("total_tokens") or 0)
+    pair = lookup_model_rate(model, rates, cost_per_1k=cost_per_1k)
+    if pair is not None and (pair[0] or pair[1]):
+        if prompt or completion:
+            return usd_from_1m_rates(prompt, completion, pair[0], pair[1])
+        blended = (pair[0] + pair[1]) / 2
+        return usd_from_1m_rates(tokens, 0, blended, 0)
+    return _usd(tokens, _model_rate(model, cost_per_1k))
 
 
 def _empty_bucket(key: str, label: str) -> dict[str, Any]:
@@ -25,12 +66,17 @@ def _empty_bucket(key: str, label: str) -> dict[str, Any]:
     }
 
 
-def _accumulate(bucket: dict[str, Any], meta: dict[str, Any], *, cost_per_1k: float) -> None:
+def _accumulate(
+    bucket: dict[str, Any],
+    meta: dict[str, Any],
+    *,
+    cost_per_1k: float,
+    rates: dict[str, tuple[float, float]] | None = None,
+) -> None:
     tokens = int(meta.get("total_tokens") or 0)
     prompt = int(meta.get("prompt_tokens") or 0)
     completion = int(meta.get("completion_tokens") or 0)
-    model = str(meta.get("model") or "unknown")
-    cost = _usd(tokens, _model_rate(model, cost_per_1k))
+    cost = _row_cost(meta, cost_per_1k=cost_per_1k, rates=rates)
     bucket["requests"] += 1
     bucket["prompt_tokens"] += prompt
     bucket["completion_tokens"] += completion
@@ -64,6 +110,7 @@ def summarize_usage_rows(
     *,
     cost_per_1k: float = DEFAULT_COST_PER_1K,
     period_days: int = 30,
+    model_rates: dict[str, tuple[float, float]] | None = None,
 ) -> dict[str, Any]:
     by_model: dict[str, dict[str, Any]] = {}
     by_user: dict[str, dict[str, Any]] = {}
@@ -81,21 +128,21 @@ def summarize_usage_rows(
         model = str(meta_raw.get("model") or "unknown")
         if model not in by_model:
             by_model[model] = _empty_bucket(model, model)
-        _accumulate(by_model[model], meta_raw, cost_per_1k=cost_per_1k)
+        _accumulate(by_model[model], meta_raw, cost_per_1k=cost_per_1k, rates=model_rates)
 
         user_key, user_label = _user_label(meta_raw, actor or "")
         if user_key not in by_user:
             by_user[user_key] = _empty_bucket(user_key, user_label)
-        _accumulate(by_user[user_key], meta_raw, cost_per_1k=cost_per_1k)
+        _accumulate(by_user[user_key], meta_raw, cost_per_1k=cost_per_1k, rates=model_rates)
 
         team_key, team_label = _team_label(meta_raw)
         if team_key not in by_team:
             by_team[team_key] = _empty_bucket(team_key, team_label)
-        _accumulate(by_team[team_key], meta_raw, cost_per_1k=cost_per_1k)
+        _accumulate(by_team[team_key], meta_raw, cost_per_1k=cost_per_1k, rates=model_rates)
 
         tokens = int(meta_raw.get("total_tokens") or 0)
         total_tokens += tokens
-        total_cost += _usd(tokens, _model_rate(model, cost_per_1k))
+        total_cost += _row_cost(meta_raw, cost_per_1k=cost_per_1k, rates=model_rates)
 
         if timestamp is not None:
             day = timestamp.astimezone(UTC).date().isoformat()
@@ -103,7 +150,10 @@ def summarize_usage_rows(
                 daily[day] = {"date": day, "requests": 0, "total_tokens": 0, "cost_usd": 0.0}
             daily[day]["requests"] += 1
             daily[day]["total_tokens"] += tokens
-            daily[day]["cost_usd"] = round(daily[day]["cost_usd"] + _usd(tokens, _model_rate(model, cost_per_1k)), 4)
+            daily[day]["cost_usd"] = round(
+                daily[day]["cost_usd"] + _row_cost(meta_raw, cost_per_1k=cost_per_1k, rates=model_rates),
+                4,
+            )
 
     def _sorted_buckets(buckets: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
         return sorted(buckets.values(), key=lambda item: item["cost_usd"], reverse=True)
@@ -145,7 +195,19 @@ async def build_cost_analytics(
         )
     )
     rows = [(row[0], row[1], row[2]) for row in result.all()]
-    return summarize_usage_rows(rows, cost_per_1k=cost_per_1k, period_days=period_days)
+    providers = await db.execute(select(LLMProvider).where(LLMProvider.tenant_id == tenant_id))
+    model_rates: dict[str, tuple[float, float]] = {}
+    for provider in providers.scalars().all():
+        model_rates[_normalize_model_key(provider.name)] = (
+            float(provider.cost_per_1m_input or 0),
+            float(provider.cost_per_1m_output or 0),
+        )
+    return summarize_usage_rows(
+        rows,
+        cost_per_1k=cost_per_1k,
+        period_days=period_days,
+        model_rates=model_rates,
+    )
 
 
 def llm_usage_items_from_models(by_model: list[dict[str, Any]], total_tokens: int) -> list[dict[str, Any]]:

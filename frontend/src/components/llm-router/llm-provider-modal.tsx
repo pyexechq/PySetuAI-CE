@@ -101,6 +101,8 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
   const [clearApiKey, setClearApiKey] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [percentage, setPercentage] = useState("");
+  const [costIn, setCostIn] = useState("");
+  const [costOut, setCostOut] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
@@ -117,6 +119,8 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
     setClearApiKey(false);
     setIsActive(provider?.is_active ?? true);
     setPercentage(provider ? String(provider.percentage) : "");
+    setCostIn(provider?.cost_per_1m_input != null ? String(provider.cost_per_1m_input) : "");
+    setCostOut(provider?.cost_per_1m_output != null ? String(provider.cost_per_1m_output) : "");
     setError(null);
     setConnectionStatus("idle");
   }, [open, provider]);
@@ -202,6 +206,8 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
         if (percentage.trim()) {
           body.percentage = Number(percentage);
         }
+        if (costIn.trim()) body.cost_per_1m_input = Number(costIn);
+        if (costOut.trim()) body.cost_per_1m_output = Number(costOut);
         if (clearApiKey) {
           body.api_key = "";
         } else if (trimmedKey) {
@@ -220,6 +226,8 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
         if (trimmedKey) {
           body.api_key = trimmedKey;
         }
+        if (costIn.trim()) body.cost_per_1m_input = Number(costIn);
+        if (costOut.trim()) body.cost_per_1m_output = Number(costOut);
         await api.createLlmProvider(token, body);
       }
       onSaved();
@@ -355,6 +363,44 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
             />
           </div>
         )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className={labelClass} htmlFor="provider-cost-in">
+              Est. cost / 1M input
+            </label>
+            <input
+              id="provider-cost-in"
+              className={inputClass}
+              type="number"
+              min={0}
+              step={0.01}
+              value={costIn}
+              onChange={(e) => setCostIn(e.target.value)}
+              placeholder="2.50"
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className={labelClass} htmlFor="provider-cost-out">
+              Est. cost / 1M output
+            </label>
+            <input
+              id="provider-cost-out"
+              className={inputClass}
+              type="number"
+              min={0}
+              step={0.01}
+              value={costOut}
+              onChange={(e) => setCostOut(e.target.value)}
+              placeholder="10.00"
+              disabled={saving}
+            />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          USD per million tokens. Used by the Cost tab and dashboard analytics.
+        </p>
 
         <label className="flex items-center gap-2 text-sm">
           <input

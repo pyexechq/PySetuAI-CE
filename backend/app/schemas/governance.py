@@ -520,6 +520,8 @@ class RoutingModelResponse(BaseModel):
     is_active: bool = True
     api_key_set: bool = False
     api_key_masked: str | None = None
+    cost_per_1m_input: float = 0.0
+    cost_per_1m_output: float = 0.0
 
 
 class ProviderShareItem(BaseModel):
@@ -559,6 +561,8 @@ class LLMProviderCreateRequest(BaseModel):
     endpoint_url: str | None = None
     is_active: bool = True
     api_key: str | None = None
+    cost_per_1m_input: float | None = Field(default=None, ge=0)
+    cost_per_1m_output: float | None = Field(default=None, ge=0)
 
 
 class LLMProviderUpdateRequest(BaseModel):
@@ -568,6 +572,8 @@ class LLMProviderUpdateRequest(BaseModel):
     is_active: bool | None = None
     percentage: float | None = None
     api_key: str | None = None
+    cost_per_1m_input: float | None = Field(default=None, ge=0)
+    cost_per_1m_output: float | None = Field(default=None, ge=0)
 
 
 class RoutingRuleResponse(BaseModel):

@@ -28,6 +28,8 @@ function mapProvider(m: Awaited<ReturnType<typeof api.getLlmProviders>>[0]): Rou
     isActive: m.is_active,
     apiKeySet: m.api_key_set,
     apiKeyMasked: m.api_key_masked,
+    costPer1mInput: m.cost_per_1m_input ?? 0,
+    costPer1mOutput: m.cost_per_1m_output ?? 0,
     color: modelColors[m.model] ?? "#6366f1",
   };
 }

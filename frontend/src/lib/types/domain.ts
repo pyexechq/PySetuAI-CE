@@ -64,6 +64,8 @@ export interface RoutingModel {
   isActive?: boolean;
   apiKeySet?: boolean;
   apiKeyMasked?: string | null;
+  costPer1mInput?: number;
+  costPer1mOutput?: number;
   color: string;
 }
 

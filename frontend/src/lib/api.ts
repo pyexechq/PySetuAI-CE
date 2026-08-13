@@ -2252,6 +2252,8 @@ export interface ApiRoutingModel {
   is_active: boolean;
   api_key_set?: boolean;
   api_key_masked?: string | null;
+  cost_per_1m_input?: number;
+  cost_per_1m_output?: number;
 }
 
 export interface ApiLlmProviderCreateRequest {
@@ -2260,6 +2262,8 @@ export interface ApiLlmProviderCreateRequest {
   endpoint_url?: string;
   is_active?: boolean;
   api_key?: string;
+  cost_per_1m_input?: number;
+  cost_per_1m_output?: number;
 }
 
 export interface ApiLlmProviderUpdateRequest {
@@ -2269,6 +2273,8 @@ export interface ApiLlmProviderUpdateRequest {
   is_active?: boolean;
   percentage?: number;
   api_key?: string;
+  cost_per_1m_input?: number;
+  cost_per_1m_output?: number;
 }
 
 export interface ApiRoutingRule {

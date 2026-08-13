@@ -183,6 +183,8 @@ class LLMProvider(Base):
     avg_latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     success_rate: Mapped[float] = mapped_column(Float, default=0.0)
     api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cost_per_1m_input: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    cost_per_1m_output: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

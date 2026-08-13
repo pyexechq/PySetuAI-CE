@@ -43,3 +43,14 @@ def test_summarize_usage_rows_daily_trend() -> None:
     result = summarize_usage_rows(rows, period_days=30)
     assert len(result["daily_trend"]) == 1
     assert result["daily_trend"][0]["total_tokens"] == 80
+
+
+def test_summarize_usage_rows_uses_registry_1m_rates() -> None:
+    rows = [(_meta(prompt=1_000_000, completion=500_000, total=1_500_000), datetime.now(UTC), "admin@acme.com")]
+    result = summarize_usage_rows(
+        rows,
+        period_days=7,
+        model_rates={"gpt-4o": (2.50, 10.00)},
+    )
+    assert result["summary"]["total_cost_usd"] == 7.5
+    assert result["by_model"][0]["cost_usd"] == 7.5

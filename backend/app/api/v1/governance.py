@@ -1764,6 +1764,8 @@ async def _provider_response(db: AsyncSession, tenant_id: uuid.UUID, provider: L
         is_active=provider.is_active,
         api_key_set=api_key_set,
         api_key_masked=api_key_masked,
+        cost_per_1m_input=float(provider.cost_per_1m_input or 0),
+        cost_per_1m_output=float(provider.cost_per_1m_output or 0),
     )
 
 
@@ -1901,6 +1903,8 @@ async def create_llm_provider(
         provider_type=provider_type,
         endpoint_url=_validate_provider_endpoint(provider_type, payload.endpoint_url),
         is_active=payload.is_active,
+        cost_per_1m_input=float(payload.cost_per_1m_input or 0),
+        cost_per_1m_output=float(payload.cost_per_1m_output or 0),
     )
     db.add(provider)
     await _apply_provider_api_key(db, current_user.tenant_id, provider_type, provider, payload.api_key)
@@ -1956,6 +1960,11 @@ async def update_llm_provider(
         if payload.percentage < 0 or payload.percentage > 100:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="percentage must be 0–100")
         provider.percentage = payload.percentage
+
+    if payload.cost_per_1m_input is not None:
+        provider.cost_per_1m_input = float(payload.cost_per_1m_input)
+    if payload.cost_per_1m_output is not None:
+        provider.cost_per_1m_output = float(payload.cost_per_1m_output)
 
     await _apply_provider_api_key(db, current_user.tenant_id, provider.provider_type, provider, payload.api_key)
 
