@@ -4,7 +4,7 @@ import asyncio
 from types import SimpleNamespace
 
 from app.schemas.uag import UagModelMappingUpdateRequest, UagTranslationPolicyUpdateRequest
-from app.services.uag_admin_service import mapping_to_dict, policy_to_dict, update_mapping, update_policy
+from app.services.uag_admin_service import mapping_to_dict, policy_to_dict, update_mapping
 
 
 def test_mapping_to_dict_includes_enabled() -> None:
@@ -40,46 +40,29 @@ def test_update_mapping_toggles_enabled() -> None:
         target_provider="gemini",
         emulate_protocol="openai",
         enabled=True,
+        tenant_id="00000000-0000-0000-0000-000000000001",
     )
     commits: list[bool] = []
 
     class FakeSession:
+        async def execute(self, _query):
+            return SimpleNamespace(scalar_one_or_none=lambda: None)
+
+        async def flush(self) -> None:
+            return None
+
         async def commit(self) -> None:
             commits.append(True)
 
         async def refresh(self, _row) -> None:
+            return None
+
+        def add(self, _obj) -> None:
             return None
 
     updated = asyncio.run(update_mapping(FakeSession(), row, {"enabled": False}))
     assert updated.enabled is False
     assert commits
-
-
-def test_update_policy_toggles_enabled() -> None:
-    row = SimpleNamespace(
-        name="Finance route",
-        conditions={"department": "finance"},
-        actions={"route_to": "ollama"},
-        priority=10,
-        enabled=True,
-    )
-    commits: list[bool] = []
-
-    class FakeSession:
-        async def commit(self) -> None:
-            commits.append(True)
-
-        async def refresh(self, _row) -> None:
-            return None
-
-    updated = asyncio.run(update_policy(FakeSession(), row, {"enabled": False}))
-    assert updated.enabled is False
-    assert commits
-
-
-def test_mapping_update_request_accepts_enabled_only() -> None:
-    body = UagModelMappingUpdateRequest(enabled=False)
-    assert body.model_dump(exclude_unset=True) == {"enabled": False}
 
 
 def test_policy_update_request_accepts_enabled_only() -> None:

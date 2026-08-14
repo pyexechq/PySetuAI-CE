@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RoutingModel } from "@/lib/mock-data";
 import type { McpServer } from "@/lib/types/domain";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ReactFlow,
   Background,
@@ -19,14 +19,22 @@ import { governanceNodes, governanceEdges } from "@/lib/governance-topology";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GovernanceNode, type GovernanceNodeData } from "@/components/governance/governance-node";
+import { QuickLinkPills, SectionTabBar } from "@/components/shared/section-chrome";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 import { useMcpServers } from "@/hooks/use-mcp-servers";
 import { useLlmRouting } from "@/hooks/use-llm-routing";
-import { ArrowRight, Workflow } from "lucide-react";
+import { ArrowRight, GitBranch, Route, Server, Shield, Workflow } from "lucide-react";
 import { usePolicyGraphLinks } from "@/hooks/use-policy-graph-links";
 import { policyStudioUrl } from "@/lib/policy-graph-map";
 import { Button } from "@/components/ui/button";
+
+const QUICK_LINKS = [
+  { href: "/policy-studio", label: "Policy Studio", icon: Workflow },
+  { href: "/ai-gateway", label: "AI Gateway", icon: Shield },
+  { href: "/llm-router", label: "LLM Router", icon: Route },
+  { href: "/mcp-governance", label: "MCP Governance", icon: Server },
+] as const;
 
 const EMPTY_NODE_IDS: string[] = [];
 const EMPTY_MCP_SERVERS: McpServer[] = [];
@@ -35,6 +43,8 @@ const nodeTypes = { governance: GovernanceNode };
 const modelColors = ["#3b82f6", "#8b5cf6", "#f97316", "#22c55e", "#6366f1"];
 const edgeStyle = { stroke: "#94a3b8", strokeWidth: 2 };
 const modelEdgeStyle = { stroke: "#6366f1", strokeWidth: 2, strokeDasharray: "6 4" };
+
+type SideTab = "inspect" | "flows";
 
 function buildFlowGraph(
   mcpStatus: string | undefined,
@@ -124,6 +134,7 @@ function nodeLabel(id: string, nodes: Node<GovernanceNodeData>[]) {
 }
 
 export function GovernanceGraphView() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const nodeFromUrl = searchParams.get("node");
   const policyFromUrl = searchParams.get("policy");
@@ -134,6 +145,7 @@ export function GovernanceGraphView() {
   const [manualNodeId, setManualNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [selectedBindingId, setSelectedBindingId] = useState<string>("__jwt_default__");
+  const [sideTab, setSideTab] = useState<SideTab>("inspect");
   const selectedNodeId = manualNodeId ?? nodeFromUrl;
   const activeNodeId = selectedNodeId ?? nodeFromUrl;
   const { data: linkedPolicies = [] } = usePolicyGraphLinks(activeNodeId ?? undefined);
@@ -154,6 +166,7 @@ export function GovernanceGraphView() {
       setSelectedBindingId(ingressBindings[0].id);
     }
   }, [ingressBindings, selectedBindingId]);
+
   const bundleHighlightIds = selectedBinding?.graph_node_ids ?? EMPTY_NODE_IDS;
 
   const bindingPolicies =
@@ -187,6 +200,18 @@ export function GovernanceGraphView() {
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
   const selectedEdge = edges.find((e) => e.id === selectedEdgeId) ?? null;
+  const hasSelection = Boolean(selectedNode || selectedEdge);
+
+  const allCorrelations = useMemo(
+    () =>
+      governanceEdges.map((e) => ({
+        from: governanceNodes.find((n) => n.id === e.from)?.label ?? e.from,
+        to: governanceNodes.find((n) => n.id === e.to)?.label ?? e.to,
+        label: e.label,
+        detail: e.correlation,
+      })),
+    []
+  );
 
   const correlations = useMemo(() => {
     if (selectedEdge) {
@@ -199,12 +224,7 @@ export function GovernanceGraphView() {
         },
       ];
     }
-    if (!selectedNode) return governanceEdges.map((e) => ({
-      from: governanceNodes.find((n) => n.id === e.from)?.label ?? e.from,
-      to: governanceNodes.find((n) => n.id === e.to)?.label ?? e.to,
-      label: e.label,
-      detail: e.correlation,
-    }));
+    if (!selectedNode) return allCorrelations;
 
     return edges
       .filter((e) => e.source === selectedNode.id || e.target === selectedNode.id)
@@ -214,178 +234,271 @@ export function GovernanceGraphView() {
         label: String(e.label ?? "connects"),
         detail: (e.data as { correlation?: string })?.correlation ?? "",
       }));
-  }, [selectedNode, selectedEdge, edges, nodes]);
+  }, [selectedNode, selectedEdge, edges, nodes, allCorrelations]);
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     setManualNodeId(node.id);
     setSelectedEdgeId(null);
-  }, []);
+    setSideTab("inspect");
+    router.replace(`/governance-graph?node=${encodeURIComponent(node.id)}`, { scroll: false });
+  }, [router]);
 
   const onEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
     setSelectedEdgeId(edge.id);
     setManualNodeId(null);
+    setSideTab("inspect");
   }, []);
 
-  return (
-    <div className="grid gap-4 lg:grid-cols-4">
-      <Card className="lg:col-span-3 border-border/60 bg-card/50 overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <CardTitle>Governance Topology</CardTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            {ingressBindings.length > 0 && (
-              <select
-                value={selectedBinding?.id ?? ""}
-                onChange={(e) => setSelectedBindingId(e.target.value)}
-                className="h-8 max-w-[220px] rounded-md border border-input bg-background px-2 text-xs"
-                aria-label="Ingress binding"
-              >
-                {ingressBindings.map((binding) => (
-                  <option key={binding.id} value={binding.id}>
-                    {binding.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            <Badge variant="outline">{nodes.length} nodes</Badge>
-            <Badge variant="secondary">{edges.length} connections</Badge>
-            <Badge variant="outline" className="gap-1 font-normal">
-              <span className="inline-block h-0.5 w-4 bg-slate-400" /> Governance flow
-            </Badge>
-            <Badge variant="outline" className="gap-1 font-normal">
-              <span className="inline-block h-0.5 w-4 border-t-2 border-dashed border-indigo-400" /> Model route
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="h-[520px] w-full pysetu-flow">
-            {graphLoading ? (
-              <div className="flex h-full items-center justify-center bg-muted/10">
-                <p className="text-sm text-muted-foreground">Loading governance graph…</p>
-              </div>
-            ) : (
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodeClick={onNodeClick}
-              onEdgeClick={onEdgeClick}
-              onPaneClick={() => {
-                setManualNodeId(null);
-                setSelectedEdgeId(null);
-              }}
-              nodeTypes={nodeTypes}
-              nodesDraggable={false}
-              nodesConnectable={false}
-              elementsSelectable={false}
-              fitView
-              fitViewOptions={{ padding: 0.2 }}
-              minZoom={0.35}
-              maxZoom={1.5}
-              defaultEdgeOptions={{ type: "smoothstep", style: edgeStyle }}
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background gap={16} size={1} color="#e2e8f0" />
-              <Controls showInteractive={false} />
-            </ReactFlow>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+  const clearSelection = useCallback(() => {
+    setManualNodeId(null);
+    setSelectedEdgeId(null);
+    router.replace("/governance-graph", { scroll: false });
+  }, [router]);
 
-      <Card className="border-border/60 bg-card/50">
-        <CardHeader>
-          <CardTitle className="text-sm">
-            {selectedEdge ? "Connection" : selectedNode ? "Node Details" : "Correlations"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {selectedNode && (
-            <>
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 rounded-full" style={{ backgroundColor: selectedNode.data.color }} />
-                <span className="font-medium">{selectedNode.data.label}</span>
+  return (
+    <div className="space-y-6">
+      <QuickLinkPills links={QUICK_LINKS} />
+
+      <div className="grid gap-4 xl:grid-cols-12">
+        <Card className="overflow-hidden border-border/60 bg-card/50 xl:col-span-9">
+          <CardHeader className="space-y-3 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <GitBranch className="h-4 w-4 text-primary" />
+                Governance topology
+              </CardTitle>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>{nodes.length} nodes</span>
+                <span>·</span>
+                <span>{edges.length} connections</span>
               </div>
-              <Badge variant="outline" className="capitalize">{selectedNode.data.nodeType}</Badge>
-              {selectedNode.data.status && (
-                <p className="text-sm text-muted-foreground">
-                  Status: <span className="capitalize text-foreground">{selectedNode.data.status}</span>
-                </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {ingressBindings.length > 0 && (
+                <select
+                  value={selectedBinding?.id ?? ""}
+                  onChange={(e) => setSelectedBindingId(e.target.value)}
+                  className="h-8 max-w-[240px] rounded-md border border-input bg-background px-2 text-xs"
+                  aria-label="Ingress binding"
+                >
+                  {ingressBindings.map((binding) => (
+                    <option key={binding.id} value={binding.id}>
+                      {binding.name}
+                    </option>
+                  ))}
+                </select>
               )}
-              {["policy", "dlp", "mcp", "gateway"].includes(selectedNode.id) &&
-                (bindingPolicies.length > 0 ? bindingPolicies : linkedPolicies).length > 0 && (
-                <div className="space-y-2 border-t border-border pt-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {selectedBinding ? `Policies — ${selectedBinding.bundle_name ?? selectedBinding.name}` : "Linked policies"}
-                  </p>
-                  {(bindingPolicies.length > 0 ? bindingPolicies : linkedPolicies).map((link) => (
-                    <div
-                      key={link.policy_id}
-                      className={`rounded-md border p-2 text-xs ${
-                        policyFromUrl === link.policy_id ? "border-primary bg-primary/5" : "border-border/60"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium">{link.policy_name}</span>
-                        {"policy_status" in link && link.policy_status && (
-                          <Badge variant="outline" className="text-[10px] capitalize">
-                            {link.policy_status}
-                          </Badge>
-                        )}
+              <Badge variant="outline" className="gap-1.5 font-normal">
+                <span className="inline-block h-0.5 w-3 bg-slate-400" />
+                Governance
+              </Badge>
+              <Badge variant="outline" className="gap-1.5 font-normal">
+                <span className="inline-block h-0.5 w-3 border-t-2 border-dashed border-indigo-400" />
+                Model route
+              </Badge>
+              {hasSelection && (
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearSelection}>
+                  Clear selection
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="h-[min(68vh,640px)] w-full pysetu-flow">
+              {graphLoading ? (
+                <div className="flex h-full items-center justify-center bg-muted/10">
+                  <p className="text-sm text-muted-foreground">Loading governance graph…</p>
+                </div>
+              ) : (
+                <ReactFlow
+                  nodes={nodes}
+                  edges={edges}
+                  onNodeClick={onNodeClick}
+                  onEdgeClick={onEdgeClick}
+                  onPaneClick={clearSelection}
+                  nodeTypes={nodeTypes}
+                  nodesDraggable={false}
+                  nodesConnectable={false}
+                  elementsSelectable={false}
+                  fitView
+                  fitViewOptions={{ padding: 0.18 }}
+                  minZoom={0.35}
+                  maxZoom={1.5}
+                  defaultEdgeOptions={{ type: "smoothstep", style: edgeStyle }}
+                  proOptions={{ hideAttribution: true }}
+                >
+                  <Background gap={16} size={1} color="#e2e8f0" />
+                  <Controls showInteractive={false} />
+                </ReactFlow>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60 bg-card/50 xl:col-span-3">
+          <CardHeader className="space-y-3 pb-2">
+            <CardTitle className="text-sm">
+              {selectedEdge ? "Connection" : selectedNode ? selectedNode.data.label : "Graph explorer"}
+            </CardTitle>
+            <SectionTabBar
+              tabs={[
+                { id: "inspect", label: "Inspect" },
+                { id: "flows", label: "All flows" },
+              ]}
+              active={sideTab}
+              onChange={setSideTab}
+            />
+          </CardHeader>
+          <CardContent className="max-h-[min(68vh,640px)] space-y-3 overflow-y-auto">
+            {sideTab === "inspect" && (
+              <>
+                {!hasSelection && (
+                  <div className="space-y-3 rounded-md border border-border/60 bg-muted/10 p-3 text-xs text-muted-foreground">
+                    <p>Click a node or connection on the graph to inspect policies, ingress bindings, and related flows.</p>
+                    {selectedBinding && (
+                      <div className="space-y-1 border-t border-border/60 pt-2 text-foreground">
+                        <p>
+                          Binding: <span className="font-medium">{selectedBinding.name}</span>
+                        </p>
+                        <p>
+                          Bundle: <span className="font-medium">{selectedBinding.bundle_name ?? "—"}</span>
+                        </p>
+                        <p>{selectedBinding.policies.length} policies · {selectedBinding.graph_node_ids.length} stages</p>
                       </div>
-                      <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
-                        <Link href={policyStudioUrl(link.policy_id)}>
-                          <Workflow className="mr-1 inline h-3 w-3" />
-                          Open in Policy Studio
+                    )}
+                    {mcpServers.length > 0 && (
+                      <p className="border-t border-border/60 pt-2">
+                        MCP aggregate: <span className="capitalize text-foreground">{mcpAggregate}</span> across{" "}
+                        {mcpServers.length} servers —{" "}
+                        <Link href="/mcp-governance" className="text-primary hover:underline">
+                          manage servers
+                        </Link>
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {selectedNode && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 rounded-full" style={{ backgroundColor: selectedNode.data.color }} />
+                      <span className="font-medium">{selectedNode.data.label}</span>
+                    </div>
+                    <Badge variant="outline" className="capitalize">
+                      {selectedNode.data.nodeType}
+                    </Badge>
+                    {selectedNode.data.status && (
+                      <p className="text-sm text-muted-foreground">
+                        Status: <span className="capitalize text-foreground">{selectedNode.data.status}</span>
+                      </p>
+                    )}
+                    {["policy", "dlp", "mcp", "gateway"].includes(selectedNode.id) &&
+                      (bindingPolicies.length > 0 ? bindingPolicies : linkedPolicies).length > 0 && (
+                        <div className="space-y-2 border-t border-border pt-3">
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            {selectedBinding
+                              ? `Policies — ${selectedBinding.bundle_name ?? selectedBinding.name}`
+                              : "Linked policies"}
+                          </p>
+                          {(bindingPolicies.length > 0 ? bindingPolicies : linkedPolicies).map((link) => (
+                            <div
+                              key={link.policy_id}
+                              className={`rounded-md border p-2 text-xs ${
+                                policyFromUrl === link.policy_id ? "border-primary bg-primary/5" : "border-border/60"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-medium">{link.policy_name}</span>
+                                {"policy_status" in link && link.policy_status && (
+                                  <Badge variant="outline" className="text-[10px] capitalize">
+                                    {link.policy_status}
+                                  </Badge>
+                                )}
+                              </div>
+                              <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
+                                <Link href={policyStudioUrl(link.policy_id)}>
+                                  <Workflow className="mr-1 inline h-3 w-3" />
+                                  Policy Studio
+                                </Link>
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    {selectedNode.id === "gateway" && selectedBinding && (
+                      <div className="space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
+                        <p>
+                          Ingress: <span className="text-foreground">{selectedBinding.name}</span>
+                        </p>
+                        <p>
+                          Bundle: <span className="text-foreground">{selectedBinding.bundle_name ?? "—"}</span>
+                        </p>
+                      </div>
+                    )}
+                    {selectedNode.id === "gateway" && gatewayStatus && (
+                      <div className="space-y-1 border-t border-border pt-3 text-sm">
+                        <p>Requests today: {gatewayStatus.requests_today.toLocaleString()}</p>
+                        <p>Blocked today: {gatewayStatus.blocked_today.toLocaleString()}</p>
+                      </div>
+                    )}
+                    {selectedNode.id === "mcp" && (
+                      <Button variant="outline" size="sm" className="w-full gap-1.5" asChild>
+                        <Link href="/mcp-governance">
+                          <Server className="h-3.5 w-3.5" />
+                          Open MCP Governance
                         </Link>
                       </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {selectedNode.id === "gateway" && selectedBinding && (
-                <div className="space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
-                  <p>
-                    Ingress: <span className="text-foreground">{selectedBinding.name}</span>
-                  </p>
-                  <p>
-                    Bundle: <span className="text-foreground">{selectedBinding.bundle_name ?? "—"}</span>
-                  </p>
-                  <p>{selectedBinding.policies.length} policies across {selectedBinding.graph_node_ids.length} graph stages</p>
-                </div>
-              )}
-              {selectedNode.id === "gateway" && gatewayStatus && (
-                <div className="space-y-1 border-t border-border pt-3 text-sm">
-                  <p>Requests today: {gatewayStatus.requests_today.toLocaleString()}</p>
-                  <p>Blocked today: {gatewayStatus.blocked_today.toLocaleString()}</p>
-                  <p>Upstream: {gatewayStatus.proxy_mode ?? "mock"}</p>
-                </div>
-              )}
-            </>
-          )}
+                    )}
+                  </>
+                )}
 
-          <div className="space-y-2 border-t border-border pt-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {selectedNode || selectedEdge ? "Related flows" : "All governance flows"}
-            </p>
-            {correlations.map((c) => (
-              <div key={`${c.from}-${c.to}-${c.label}`} className="rounded-md border border-border/60 bg-muted/10 p-2 text-xs">
-                <div className="flex items-center gap-1 font-medium">
-                  <span>{c.from}</span>
-                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                  <span>{c.to}</span>
-                  <Badge variant="outline" className="ml-auto text-[10px]">{c.label}</Badge>
-                </div>
-                <p className="mt-1 text-muted-foreground">{c.detail}</p>
+                {hasSelection && correlations.length > 0 && (
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Related flows</p>
+                    {correlations.map((c) => (
+                      <CorrelationRow key={`${c.from}-${c.to}-${c.label}`} {...c} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {sideTab === "flows" && (
+              <div className="space-y-2">
+                {allCorrelations.map((c) => (
+                  <CorrelationRow key={`${c.from}-${c.to}-${c.label}`} {...c} />
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
 
-          {!selectedNode && !selectedEdge && (
-            <p className="text-xs text-muted-foreground">
-              Solid lines = governance request path. Dashed purple lines = LLM model routing. Click a node or line for details.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+function CorrelationRow({
+  from,
+  to,
+  label,
+  detail,
+}: {
+  from: string;
+  to: string;
+  label: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-md border border-border/60 bg-muted/10 p-2 text-xs">
+      <div className="flex items-center gap-1 font-medium">
+        <span>{from}</span>
+        <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+        <span>{to}</span>
+        <Badge variant="outline" className="ml-auto shrink-0 text-[10px]">
+          {label}
+        </Badge>
+      </div>
+      <p className="mt-1 text-muted-foreground">{detail}</p>
     </div>
   );
 }

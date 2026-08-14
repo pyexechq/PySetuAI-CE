@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
-
-from app.services.dynamic_tool_service import catalog_from_servers
+from typing import Any, Awaitable, Callable
 
 MCP_PROTOCOL_VERSION = "2024-11-05"
 MULTIPLEX_SERVER_NAME = "pysetu-mcp-multiplex"
@@ -106,6 +104,10 @@ def multiplex_public_path() -> str:
     return "/v1/mcp"
 
 
+BeforeInvokeHook = Callable[[Any, str, dict[str, Any]], Awaitable[tuple[bool, str]]]
+AfterInvokeHook = Callable[[Any, str, str], Awaitable[tuple[bool, str, str]]]
+
+
 async def handle_tools_call(
     payload: dict[str, Any],
     servers: list[Any],
@@ -114,6 +116,8 @@ async def handle_tools_call(
     auto_hide_destructive: bool = False,
     url_filter_policy: dict[str, Any] | None = None,
     vendor_api_key: str | None = None,
+    before_invoke: BeforeInvokeHook | None = None,
+    after_invoke: AfterInvokeHook | None = None,
 ) -> dict[str, Any]:
     from app.services.mcp_client_service import invoke_mcp_tool
     from app.services.mcp_tool_risk_service import tool_is_visible
@@ -131,6 +135,10 @@ async def handle_tools_call(
     server, original = target
     if not tool_is_visible(server, original, auto_hide_destructive=auto_hide_destructive):
         return jsonrpc_error(request_id, -32001, f"Tool is hidden by risk policy: {original}")
+    if before_invoke is not None:
+        allowed, reason = await before_invoke(server, original, arguments)
+        if not allowed:
+            return jsonrpc_error(request_id, -32003, reason or "Tool invocation blocked by policy")
     allowed, reason = await evaluate_tool_access(
         original,
         arguments,
@@ -143,12 +151,17 @@ async def handle_tools_call(
     result = await invoke_mcp_tool(server, original, arguments, access_token=token)
     if not result.ok:
         return jsonrpc_error(request_id, -32000, result.message)
+    result_text = str(result.result)
+    if after_invoke is not None:
+        egress_ok, egress_reason, result_text = await after_invoke(server, original, result_text)
+        if not egress_ok:
+            return jsonrpc_error(request_id, -32004, egress_reason or "Tool response blocked by policy")
     return jsonrpc_result(
         request_id,
         {
-            "content": [{"type": "text", "text": str(result.result)}],
+            "content": [{"type": "text", "text": result_text}],
             "isError": False,
-            "structuredContent": result.result,
+            "structuredContent": result.result if result_text == str(result.result) else result_text,
             "_pysetu": {"server": getattr(server, "name", ""), "tool": original, "latency_ms": result.latency_ms},
         },
     )
@@ -162,6 +175,9 @@ async def dispatch_mcp_request(
     auto_hide_destructive: bool = False,
     url_filter_policy: dict[str, Any] | None = None,
     vendor_api_key: str | None = None,
+    before_invoke: BeforeInvokeHook | None = None,
+    after_invoke: AfterInvokeHook | None = None,
+    catalog_filter: Callable[[list[dict[str, Any]]], list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     method = str(payload.get("method") or "")
     if method == "tools/call":
@@ -172,5 +188,11 @@ async def dispatch_mcp_request(
             auto_hide_destructive=auto_hide_destructive,
             url_filter_policy=url_filter_policy,
             vendor_api_key=vendor_api_key,
+            before_invoke=before_invoke,
+            after_invoke=after_invoke,
         )
+    if method == "tools/list" and catalog_filter is not None:
+        request_id = payload.get("id")
+        catalog = build_multiplex_catalog(servers, auto_hide_destructive=auto_hide_destructive)
+        return jsonrpc_result(request_id, {"tools": catalog_filter(catalog)})
     return handle_jsonrpc(payload, servers, auto_hide_destructive=auto_hide_destructive)

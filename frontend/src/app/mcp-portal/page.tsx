@@ -1,13 +1,5 @@
-import { AppShell } from "@/components/layout/app-shell";
-import { McpPortalView } from "@/components/mcp-portal/mcp-portal-view";
+import { redirect } from "next/navigation";
 
 export default function McpPortalPage() {
-  return (
-    <AppShell
-      title="MCP Portal"
-      description="Browse integrations and connect your personal MCP credentials"
-    >
-      <McpPortalView />
-    </AppShell>
-  );
+  redirect("/mcp-governance?tab=portal");
 }

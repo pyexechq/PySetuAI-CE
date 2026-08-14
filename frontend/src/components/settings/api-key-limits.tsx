@@ -8,8 +8,10 @@ interface ApiKeyLimitsProps {
     ai_token_limit_tpm: number | null;
     ai_token_limit_tph: number | null;
     ai_token_limit_tpd: number | null;
+    token_saving_enabled?: boolean | null;
+    token_saving_mode?: string | null;
   };
-  onChange: (field: string, value: number | null) => void;
+  onChange: (field: string, value: number | null | boolean | string | null) => void;
   disabled?: boolean;
 }
 
@@ -88,6 +90,43 @@ export function ApiKeyLimitsForm({ limits, onChange, disabled }: ApiKeyLimitsPro
             />
           </div>
         </div>
+      </div>
+
+      <div className="space-y-2 rounded-md border border-border/60 bg-muted/10 p-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Token Saving</p>
+        <p className="text-xs text-muted-foreground">
+          Ingress compression for this API key. Converts JSON to TOON and strips markdown from user messages.
+        </p>
+        <select
+          value={
+            limits.token_saving_enabled === null || limits.token_saving_enabled === undefined
+              ? ""
+              : limits.token_saving_enabled
+                ? limits.token_saving_mode || "both"
+                : "off"
+          }
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === "") {
+              onChange("token_saving_enabled", null);
+              onChange("token_saving_mode", null);
+            } else if (value === "off") {
+              onChange("token_saving_enabled", false);
+              onChange("token_saving_mode", null);
+            } else {
+              onChange("token_saving_enabled", true);
+              onChange("token_saving_mode", value);
+            }
+          }}
+          disabled={disabled}
+          className="flex h-8 w-full max-w-md rounded-md border border-input bg-background px-2 text-xs"
+        >
+          <option value="">Inherit tenant default</option>
+          <option value="off">Disabled for this key</option>
+          <option value="both">Enabled — JSON→TOON + strip markdown</option>
+          <option value="json_to_toon">Enabled — JSON→TOON only</option>
+          <option value="strip_markdown">Enabled — strip markdown only</option>
+        </select>
       </div>
     </div>
   );

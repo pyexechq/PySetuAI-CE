@@ -1,4 +1,14 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class McpScopeEntry(BaseModel):
+    server_id: str
+    tool_names: list[str] = Field(default_factory=list)
+
+
+class McpScopeConfig(BaseModel):
+    mode: str = "all"
+    entries: list[McpScopeEntry] = Field(default_factory=list)
 
 
 class PolicyBundleResponse(BaseModel):
@@ -10,6 +20,7 @@ class PolicyBundleResponse(BaseModel):
     policy_ids: list[str]
     custom_intent_ids: list[str] = []
     policy_names: list[str] = []
+    mcp_scope: McpScopeConfig | None = None
     created_at: str
 
 
@@ -20,6 +31,7 @@ class PolicyBundleCreateRequest(BaseModel):
     is_default: bool = False
     policy_ids: list[str] = []
     custom_intent_ids: list[str] = []
+    mcp_scope: McpScopeConfig | None = None
 
 
 class PolicyBundleUpdateRequest(BaseModel):
@@ -29,6 +41,7 @@ class PolicyBundleUpdateRequest(BaseModel):
     is_default: bool | None = None
     policy_ids: list[str] | None = None
     custom_intent_ids: list[str] | None = None
+    mcp_scope: McpScopeConfig | None = None
 
 
 class ClientApiKeyResponse(BaseModel):
@@ -46,6 +59,8 @@ class ClientApiKeyResponse(BaseModel):
     ai_token_limit_tpm: int | None = None
     ai_token_limit_tph: int | None = None
     ai_token_limit_tpd: int | None = None
+    token_saving_enabled: bool | None = None
+    token_saving_mode: str | None = None
     is_active: bool
     last_used_at: str | None = None
     created_at: str | None = None
@@ -62,6 +77,8 @@ class ClientApiKeyCreateRequest(BaseModel):
     ai_token_limit_tpm: int | None = None
     ai_token_limit_tph: int | None = None
     ai_token_limit_tpd: int | None = None
+    token_saving_enabled: bool | None = None
+    token_saving_mode: str | None = None
 
 
 class ClientApiKeyCreateResponse(ClientApiKeyResponse):
@@ -79,4 +96,6 @@ class ClientApiKeyUpdateRequest(BaseModel):
     ai_token_limit_tpm: int | None = None
     ai_token_limit_tph: int | None = None
     ai_token_limit_tpd: int | None = None
+    token_saving_enabled: bool | None = None
+    token_saving_mode: str | None = None
     is_active: bool | None = None

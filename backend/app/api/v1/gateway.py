@@ -299,8 +299,20 @@ async def _handle_mcp_multiplex(
     ctx: GatewayContext,
     db: AsyncSession,
 ):
+    import json
+
+    from app.services.gateway_service import _load_bundle
+    from app.services.mcp_access_service import (
+        check_tool_access,
+        filter_multiplex_catalog,
+        filter_servers_for_bundle,
+        resolve_actor_role,
+    )
+    from app.services.mcp_audit_service import build_compliance_metadata, log_mcp_tool_invoke
     from app.services.mcp_client_service import McpToolInvokeResult, apply_tool_invoke
-    from app.services.mcp_multiplex_service import dispatch_mcp_request
+    from app.services.mcp_multiplex_service import dispatch_mcp_request, parse_qualified_name, server_slug
+    from app.services.mcp_security_service import list_deny_rules
+    from app.services.policy_engine import inspect_for_gateway
 
     try:
         payload = await request.json()
@@ -308,6 +320,16 @@ async def _handle_mcp_multiplex(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON-RPC body") from exc
     if not isinstance(payload, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="JSON-RPC payload must be an object")
+
+    bundle = await _load_bundle(db, ctx.policy_bundle_id)
+    if bundle is None and ctx.policy_bundle_id is None:
+        from app.services.policy_bundle_service import get_tenant_default_bundle
+
+        bundle = await get_tenant_default_bundle(db, ctx.tenant_id)
+
+    deny_rows = await list_deny_rules(db, ctx.tenant_id)
+    deny_rules = [rule for rule, _ in deny_rows]
+    actor_role = resolve_actor_role(ctx)
 
     servers_result = await db.execute(select(MCPServer).where(MCPServer.tenant_id == ctx.tenant_id))
     all_servers = list(servers_result.scalars().all())
@@ -321,29 +343,137 @@ async def _handle_mcp_multiplex(
     agent = detect_agent(request.headers.get("user-agent"), None)
     toggles = toggles_from_tenant(tenant.mcp_agent_toggles if tenant else None)
     servers = filter_servers_for_agent(all_servers, agent, toggles)
+    servers = filter_servers_for_bundle(servers, bundle)
 
     async def access_token_for(server):
         user_id = ctx.user.id if ctx.user else None
         return await resolve_effective_mcp_access_token(db, server, user_id=user_id)
 
+    def catalog_filter(catalog: list[dict]) -> list[dict]:
+        return filter_multiplex_catalog(
+            catalog,
+            servers,
+            bundle,
+            deny_rules,
+            actor_role,
+            slug_for_server=server_slug,
+            parse_qualified_name=parse_qualified_name,
+        )
+
+    async def before_invoke(server, tool_name: str, arguments: dict) -> tuple[bool, str]:
+        allowed, reason = check_tool_access(bundle, deny_rules, actor_role, server, tool_name)
+        if not allowed:
+            await log_mcp_tool_invoke(
+                db,
+                ctx,
+                server_name=getattr(server, "name", ""),
+                server_id=server.id,
+                tool_name=tool_name,
+                status="blocked",
+                risk="high",
+                details=reason,
+                compliance_metadata=build_compliance_metadata(
+                    ctx,
+                    server_id=server.id,
+                    tool_name=tool_name,
+                    deny_reason=reason,
+                ),
+            )
+            return False, reason
+        inspect_content = json.dumps({"tool": tool_name, "arguments": arguments}, default=str)
+        ingress = await inspect_for_gateway(db, ctx.tenant_id, bundle, inspect_content)
+        if not ingress.allowed:
+            detail = "; ".join(v.detail for v in ingress.violations) or "Policy violation on tool arguments"
+            await log_mcp_tool_invoke(
+                db,
+                ctx,
+                server_name=getattr(server, "name", ""),
+                server_id=server.id,
+                tool_name=tool_name,
+                status="blocked",
+                risk=ingress.risk,
+                details=detail,
+                compliance_metadata=build_compliance_metadata(
+                    ctx,
+                    server_id=server.id,
+                    tool_name=tool_name,
+                    deny_reason=detail,
+                    inspect_actions=[ingress.action or "block"],
+                ),
+            )
+            return False, detail
+        return True, ""
+
+    async def after_invoke(server, tool_name: str, result_text: str) -> tuple[bool, str, str]:
+        egress = await inspect_for_gateway(db, ctx.tenant_id, bundle, result_text)
+        if not egress.allowed:
+            detail = "; ".join(v.detail for v in egress.violations) or "Policy violation on tool response"
+            await log_mcp_tool_invoke(
+                db,
+                ctx,
+                server_name=getattr(server, "name", ""),
+                server_id=server.id,
+                tool_name=tool_name,
+                status="blocked",
+                risk=egress.risk,
+                details=f"egress: {detail}",
+                compliance_metadata=build_compliance_metadata(
+                    ctx,
+                    server_id=server.id,
+                    tool_name=tool_name,
+                    deny_reason=detail,
+                    inspect_actions=[egress.action or "block"],
+                ),
+            )
+            return False, detail, result_text
+        if egress.redacted_content:
+            return True, "", egress.redacted_content
+        return True, "", result_text
+
     vendor_key = await get_tenant_secret(db, ctx.tenant_id, MCP_URL_FILTER_VENDOR_KEY)
     response = await dispatch_mcp_request(
-        payload, servers, access_token_for=access_token_for, auto_hide_destructive=auto_hide,
+        payload,
+        servers,
+        access_token_for=access_token_for,
+        auto_hide_destructive=auto_hide,
         url_filter_policy=tenant.mcp_url_filters if tenant else None,
         vendor_api_key=vendor_key,
+        before_invoke=before_invoke,
+        after_invoke=after_invoke,
+        catalog_filter=catalog_filter,
     )
 
-    if str(payload.get("method") or "") == "tools/call" and "result" in response:
-        meta = (response.get("result") or {}).get("_pysetu") or {}
-        server_name = meta.get("server")
-        for server in servers:
-            if server.name == server_name:
-                apply_tool_invoke(
-                    server,
-                    McpToolInvokeResult(ok=True, message="multiplex", latency_ms=int(meta.get("latency_ms") or 0)),
+    method = str(payload.get("method") or "")
+    if method == "tools/call":
+        if "error" in response:
+            await db.commit()
+        elif "result" in response:
+            meta = (response.get("result") or {}).get("_pysetu") or {}
+            server_name = meta.get("server")
+            tool_name = meta.get("tool")
+            latency_ms = int(meta.get("latency_ms") or 0)
+            matched = None
+            for server in servers:
+                if server.name == server_name:
+                    matched = server
+                    apply_tool_invoke(
+                        server,
+                        McpToolInvokeResult(ok=True, message="multiplex", latency_ms=latency_ms),
+                    )
+                    break
+            if matched and tool_name:
+                await log_mcp_tool_invoke(
+                    db,
+                    ctx,
+                    server_name=matched.name,
+                    server_id=matched.id,
+                    tool_name=str(tool_name),
+                    status="allowed",
+                    risk="low",
+                    details="multiplex tools/call",
+                    latency_ms=latency_ms,
                 )
-                break
-        await db.commit()
+            await db.commit()
     return JSONResponse(response)
 
 

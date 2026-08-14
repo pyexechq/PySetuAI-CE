@@ -4,33 +4,54 @@ import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
+  Activity,
   CalendarClock,
   Download,
   ExternalLink,
+  FileCheck,
   FileText,
   Pencil,
   Play,
   Plus,
   Radar,
   ShieldAlert,
-  TrendingDown,
-  TrendingUp,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MetricCard } from "@/components/dashboard/metric-card";
 import { ReportManagementModals } from "@/components/reports/report-management-modals";
 import { CompoundingCostCard } from "@/components/reports/compounding-cost-card";
+import { QuickLinkPills, SectionHeading, SectionTabBar } from "@/components/shared/section-chrome";
 import { useReports } from "@/hooks/use-reports";
 import type { ReportCatalogEntry } from "@/lib/types/domain";
 import { api, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
+
+const QUICK_LINKS = [
+  { href: "/monitoring", label: "Monitoring", icon: Radar },
+  { href: "/monitoring?tab=security", label: "Security", icon: ShieldAlert },
+  { href: "/compliance", label: "Compliance", icon: FileCheck },
+] as const;
 
 const statusVariant = {
   ready: "success" as const,
   scheduled: "warning" as const,
   generating: "secondary" as const,
 };
+
+type DetailTab = "catalog" | "summary" | "scheduler";
+
+function parseKpiChange(change: string): number {
+  const n = parseFloat(change.replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function kpiIcon(label: string) {
+  if (label.toLowerCase().includes("block") || label.toLowerCase().includes("risk")) return ShieldAlert;
+  if (label.toLowerCase().includes("allowed")) return FileCheck;
+  return Activity;
+}
 
 function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
@@ -44,12 +65,7 @@ function downloadBlob(filename: string, blob: Blob) {
 function downloadCsv(filename: string, rows: string[][]) {
   const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(filename, blob);
 }
 
 export function ReportsView() {
@@ -58,10 +74,22 @@ export function ReportsView() {
   const canEdit = user?.role === "tenant_admin" || user?.role === "security_admin";
   const { summary, catalog, templates, invalidateCatalog } = useReports();
 
+  const [detailTab, setDetailTab] = useState<DetailTab>("catalog");
   const [downloading, setDownloading] = useState<string | null>(null);
   const [schedulerMessage, setSchedulerMessage] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<"create" | "query" | "schedule" | null>(null);
   const [activeReport, setActiveReport] = useState<ReportCatalogEntry | null>(null);
+
+  const tabs: { id: DetailTab; label: string }[] = canEdit
+    ? [
+        { id: "catalog", label: "Report catalog" },
+        { id: "summary", label: "Period summary" },
+        { id: "scheduler", label: "Scheduler" },
+      ]
+    : [
+        { id: "catalog", label: "Report catalog" },
+        { id: "summary", label: "Period summary" },
+      ];
 
   const schedulerStatus = useQuery({
     queryKey: ["report-scheduler-status", token],
@@ -76,7 +104,7 @@ export function ReportsView() {
       setSchedulerMessage(
         result.enqueued > 0
           ? `Queued ${result.enqueued} scheduled report(s). Check Mailhog for delivery.`
-          : "No reports are due right now. Enable a schedule with a past next-run time to test."
+          : "No reports are due right now."
       );
       void schedulerStatus.refetch();
       invalidateCatalog();
@@ -118,261 +146,247 @@ export function ReportsView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <QuickLinkPills links={QUICK_LINKS} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm text-muted-foreground">Executive reporting period</p>
-          <p className="text-xl font-semibold">{summary.period}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reporting period</p>
+          <p className="text-lg font-semibold">{summary.period}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="success">Compliance {summary.compliance_score}%</Badge>
           {canEdit && (
             <Button size="sm" className="gap-1.5" onClick={() => openModal("create")}>
               <Plus className="h-4 w-4" />
-              New Report
+              New report
             </Button>
           )}
         </div>
       </div>
 
-      <Card className="border-border/60 bg-card/50">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Radar className="h-4 w-4" />
-            Live analytics
-          </CardTitle>
-          <CardDescription>
-            Interactive charts and remediation workflows live elsewhere. Reports here are exports and schedules — run
-            or download to capture a point-in-time snapshot.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/monitoring">Monitoring overview</Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/monitoring?tab=security">Security analytics</Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/compliance">Compliance Center</Link>
-          </Button>
-        </CardContent>
-      </Card>
-
-      {canEdit && (
-        <Card className="border-border/60 bg-card/50">
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarClock className="h-4 w-4" />
-              Report Scheduler
-            </CardTitle>
-            <Button
-              size="sm"
-              className="gap-1.5"
-              disabled={!token || runDueReports.isPending}
-              onClick={() => {
-                setSchedulerMessage(null);
-                runDueReports.mutate();
-              }}
-            >
-              <Play className="h-3.5 w-3.5" />
-              Run due reports
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {schedulerStatus.isLoading && (
-              <p className="text-muted-foreground">Loading scheduler status…</p>
-            )}
-            {schedulerStatus.isError && (
-              <p className="text-red-400">
-                {schedulerStatus.error instanceof ApiError
-                  ? schedulerStatus.error.message
-                  : "Could not load scheduler status"}
-              </p>
-            )}
-            {schedulerStatus.data && (
-              <div className="flex flex-wrap gap-x-6 gap-y-1 text-muted-foreground">
-                <span>
-                  Due now:{" "}
-                  <span className="font-medium text-foreground">{schedulerStatus.data.due_reports}</span>
-                </span>
-                <span>
-                  Email:{" "}
-                  <span className="font-medium text-foreground">
-                    {schedulerStatus.data.smtp_enabled ? schedulerStatus.data.smtp_host : "disabled"}
-                  </span>
-                </span>
-                {schedulerStatus.data.mailhog_ui && (
-                  <a
-                    href={schedulerStatus.data.mailhog_ui}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-primary hover:underline"
-                  >
-                    Open Mailhog
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
-              </div>
-            )}
-            {schedulerMessage && <p className="text-xs text-muted-foreground">{schedulerMessage}</p>}
-            <p className="text-xs text-muted-foreground">
-              Celery beat checks every minute. Use this button for a manual run (requires POST + admin login — not a browser GET).
-            </p>
-          </CardContent>
-        </Card>
+      {summary.kpis.length > 0 && (
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {summary.kpis.slice(0, 4).map((kpi) => {
+            const Icon = kpiIcon(kpi.label);
+            const invertTrend =
+              kpi.label.toLowerCase().includes("block") || kpi.label.toLowerCase().includes("risk");
+            return (
+              <MetricCard
+                key={kpi.label}
+                variant="hero"
+                title={kpi.label}
+                value={kpi.value}
+                change={parseKpiChange(kpi.change)}
+                periodLabel="vs prior period"
+                invertTrend={invertTrend}
+                icon={Icon}
+                iconColor={invertTrend ? "text-red-400" : "text-emerald-400"}
+                format="raw"
+              />
+            );
+          })}
+        </section>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {summary.kpis.map((kpi) => (
-          <Card key={kpi.label} className="border-border/60 bg-card/50">
-            <CardContent className="p-5">
-              <p className="text-sm text-muted-foreground">{kpi.label}</p>
-              <p className="mt-1 text-2xl font-bold">{kpi.value}</p>
-              <div className="mt-2 flex items-center gap-1 text-xs">
-                {kpi.trend === "up" ? (
-                  <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
-                ) : kpi.trend === "down" ? (
-                  <TrendingDown className="h-3.5 w-3.5 text-emerald-400" />
-                ) : null}
-                <span className="text-muted-foreground">{kpi.change}</span>
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <SectionHeading title="Reports & exports" />
+          <SectionTabBar tabs={tabs} active={detailTab} onChange={setDetailTab} />
+        </div>
+
+        {detailTab === "catalog" && (
+          <Card className="border-border/60 bg-card/50">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="h-4 w-4" />
+                  Report catalog
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Run or download point-in-time exports. Live analytics stay in Monitoring and Compliance.
+                </CardDescription>
               </div>
+              <Badge variant="outline">{catalog.length} reports</Badge>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted-foreground">
+                      <th className="pb-3 pr-4 font-medium">Report</th>
+                      <th className="pb-3 pr-4 font-medium">Category</th>
+                      <th className="pb-3 pr-4 font-medium">Frequency</th>
+                      <th className="pb-3 pr-4 font-medium">Last run</th>
+                      <th className="pb-3 pr-4 font-medium">Status</th>
+                      <th className="pb-3 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {catalog.map((report) => (
+                      <tr key={report.id} className="border-b border-border/50 last:border-0">
+                        <td className="py-3 pr-4">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{report.name}</p>
+                            {report.is_builtin && (
+                              <Badge variant="outline" className="text-[10px]">
+                                Built-in
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{report.description}</p>
+                        </td>
+                        <td className="py-3 pr-4">{report.category}</td>
+                        <td className="py-3 pr-4">{report.frequency}</td>
+                        <td className="py-3 pr-4 font-mono text-xs">{report.last_generated}</td>
+                        <td className="py-3 pr-4">
+                          <Badge variant={statusVariant[report.status]}>{report.status}</Badge>
+                        </td>
+                        <td className="py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5"
+                              disabled={downloading === report.id}
+                              onClick={() => handleDownload(report)}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              {report.format}
+                            </Button>
+                            {canEdit && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5"
+                                  onClick={() => openModal("query", report)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  Query
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5"
+                                  onClick={() => openModal("schedule", report)}
+                                >
+                                  <CalendarClock className="h-3.5 w-3.5" />
+                                  Schedule
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {!canEdit && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Tenant Admin or Security Admin role required to create, schedule, or edit report queries.
+                </p>
+              )}
             </CardContent>
           </Card>
-        ))}
-      </div>
+        )}
 
-      <CompoundingCostCard data={summary.cost_optimization} />
-
-      {summary.top_risks.length > 0 && (
-        <Card className="border-border/60 bg-card/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ShieldAlert className="h-4 w-4" />
-              Executive risk highlights
-            </CardTitle>
-            <CardDescription>
-              Summary for this reporting period — detailed trends are in Monitoring.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {summary.top_risks.map((risk, i) => (
-              <div key={risk} className="flex items-start gap-3 rounded-md border border-border/60 p-3 text-sm">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-xs font-bold text-red-400">
-                  {i + 1}
-                </span>
-                <span>{risk}</span>
-              </div>
-            ))}
-            <p className="text-xs text-muted-foreground">
-              Frameworks: {summary.frameworks_compliant}/{summary.frameworks_total} compliant ·{" "}
-              <Link href="/compliance" className="text-primary hover:underline">
-                Open Compliance Center
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card className="border-border/60 bg-card/50">
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Report Catalog
-          </CardTitle>
-          <Badge variant="outline">{catalog.length} reports</Badge>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-muted-foreground">
-                  <th className="pb-3 pr-4 font-medium">Report</th>
-                  <th className="pb-3 pr-4 font-medium">Category</th>
-                  <th className="pb-3 pr-4 font-medium">Frequency</th>
-                  <th className="pb-3 pr-4 font-medium">Last Generated</th>
-                  <th className="pb-3 pr-4 font-medium">Status</th>
-                  <th className="pb-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {catalog.map((report) => (
-                  <tr key={report.id} className="border-b border-border/50 last:border-0">
-                    <td className="py-3 pr-4">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{report.name}</p>
-                        {report.is_builtin && (
-                          <Badge variant="outline" className="text-[10px]">
-                            Built-in
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">{report.description}</p>
-                      {report.query && (
-                        <p className="mt-1 font-mono text-[10px] text-muted-foreground/80">
-                          {report.query.source} · limit {report.query.limit}
-                        </p>
-                      )}
-                      {report.schedule?.enabled && report.schedule.recipients && report.schedule.recipients.length > 0 && (
-                        <p className="mt-1 text-[10px] text-muted-foreground">
-                          Delivers to: {report.schedule.recipients.join(", ")}
-                        </p>
-                      )}
-                    </td>
-                    <td className="py-3 pr-4">{report.category}</td>
-                    <td className="py-3 pr-4">{report.frequency}</td>
-                    <td className="py-3 pr-4 font-mono text-xs">{report.last_generated}</td>
-                    <td className="py-3 pr-4">
-                      <Badge variant={statusVariant[report.status]}>{report.status}</Badge>
-                    </td>
-                    <td className="py-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5"
-                          disabled={downloading === report.id}
-                          onClick={() => handleDownload(report)}
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                          {report.format}
-                        </Button>
-                        {canEdit && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1.5"
-                              onClick={() => openModal("query", report)}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                              Query
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1.5"
-                              onClick={() => openModal("schedule", report)}
-                            >
-                              <CalendarClock className="h-3.5 w-3.5" />
-                              Schedule
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {detailTab === "summary" && (
+          <div className="space-y-4">
+            <CompoundingCostCard data={summary.cost_optimization} />
+            {summary.top_risks.length > 0 && (
+              <Card className="border-border/60 bg-card/50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <ShieldAlert className="h-4 w-4" />
+                    Risk highlights
+                  </CardTitle>
+                  <CardDescription>Summary for {summary.period}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {summary.top_risks.map((risk, i) => (
+                    <div key={risk} className="flex items-start gap-3 rounded-md border border-border/60 p-3 text-sm">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-xs font-bold text-red-400">
+                        {i + 1}
+                      </span>
+                      <span>{risk}</span>
+                    </div>
+                  ))}
+                  <p className="pt-1 text-xs text-muted-foreground">
+                    Frameworks: {summary.frameworks_compliant}/{summary.frameworks_total} compliant ·{" "}
+                    <Link href="/compliance" className="text-primary hover:underline">
+                      Compliance Center
+                    </Link>
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
-          {!canEdit && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Tenant Admin or Security Admin role required to create, schedule, or edit report queries.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        )}
+
+        {detailTab === "scheduler" && canEdit && (
+          <Card className="border-border/60 bg-card/50">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CalendarClock className="h-4 w-4" />
+                  Report scheduler
+                </CardTitle>
+                <CardDescription className="mt-1">Celery beat checks every minute for due deliveries.</CardDescription>
+              </div>
+              <Button
+                size="sm"
+                className="gap-1.5"
+                disabled={!token || runDueReports.isPending}
+                onClick={() => {
+                  setSchedulerMessage(null);
+                  runDueReports.mutate();
+                }}
+              >
+                <Play className="h-3.5 w-3.5" />
+                Run due reports
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {schedulerStatus.isLoading && <p className="text-muted-foreground">Loading scheduler status…</p>}
+              {schedulerStatus.isError && (
+                <p className="text-red-400">
+                  {schedulerStatus.error instanceof ApiError
+                    ? schedulerStatus.error.message
+                    : "Could not load scheduler status"}
+                </p>
+              )}
+              {schedulerStatus.data && (
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-muted-foreground">
+                  <span>
+                    Due now:{" "}
+                    <span className="font-medium text-foreground">{schedulerStatus.data.due_reports}</span>
+                  </span>
+                  <span>
+                    Email:{" "}
+                    <span className="font-medium text-foreground">
+                      {schedulerStatus.data.smtp_enabled ? schedulerStatus.data.smtp_host : "disabled"}
+                    </span>
+                  </span>
+                  {schedulerStatus.data.mailhog_ui && (
+                    <a
+                      href={schedulerStatus.data.mailhog_ui}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      Open Mailhog
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              )}
+              {schedulerMessage && <p className="text-xs text-muted-foreground">{schedulerMessage}</p>}
+            </CardContent>
+          </Card>
+        )}
+      </section>
 
       <ReportManagementModals
         key={`${modalMode ?? "closed"}-${activeReport?.id ?? "new"}`}

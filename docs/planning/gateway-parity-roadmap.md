@@ -60,7 +60,11 @@ Legend: **Have** · **Partial** (extend) · **Gap** (net-new)
 | Web search MCP + enterprise URL filtering | Have ✓ | Have | BL-071 |
 | **REST-to-MCP auto-proxy** (OpenAPI/Postman/GraphQL → MCP) | Have ✓ | Have | **BL-083** — UI wizard + backend spec-proxy |
 | **SSO context credential injection** (OIDC token → REST backend; LLM never sees key) | Partial | Have | **BL-084** |
-| **Tool-level RBAC explicit deny lists** (per group, per tool) | Partial | Have | **BL-085** |
+| **Tool-level RBAC explicit deny lists** (per group, per tool) | Partial | Have | **BL-085**, **BL-099** (gateway enforce) |
+| **Policy bundle ↔ MCP tool scope** (per workload allowlist) | Gap | Have | **BL-101**, **BL-103** |
+| **MCP invoke audit + DLP on live gateway path** | Partial | Have | **BL-098**, **BL-100** |
+| **Compliance metadata on audit** (purpose, lawful basis) | Gap | Have | **BL-104** |
+| **Framework rule packs** (GDPR/HIPAA/ISO/SOC2) | Gap | Have | **BL-106** |
 | **Trust score fleet donut chart** (Low/Medium/High distribution) | Have ✓ | Have | **BL-090** |
 | **MCP governance alert feed** (high-risk calls, access anomalies, blocks) | Have ✓ | Have | **BL-089** |
 
@@ -210,6 +214,21 @@ flowchart LR
 | M11 | Enterprise Security Parity | Sprint 14+ | BL-077–BL-082, BL-079 optional |
 | **M12** | **HelixGuard Parity — LLM Router & MCP UX** | **Sprint 15–16** | **BL-083–BL-091** | **Complete — BL-083–BL-091 delivered; BL-079 remains optional** |
 | M13 | Quality & shared primitives (not feature parity) | Sprint 17 | BL-092–BL-097 | Complete Aug 14 — [quality-audit-sprint.md](./quality-audit-sprint.md) |
+| **M14** | **MCP compliance pipeline** (Policy → Router → Audit) | **Sprint 18–20** | **BL-098–BL-108** | [mcp-policy-pipeline-design.md](./mcp-policy-pipeline-design.md) |
+
+---
+
+### Phase 13 — MCP compliance pipeline (Sprints 18–20)
+
+**Goal:** Merge bundle-based MCP scope with the compliance pipeline north star — gated, audited, inspectable MCP on the live gateway path.
+
+| Sprint | Focus | Items |
+|--------|-------|-------|
+| 18 | Layer 1 — enforcement | BL-098–BL-103 |
+| 19 | Layer 2 — compliance metadata + tool response redaction | BL-104, BL-105 |
+| 20+ | Layer 3 — framework packs, retention, WORM | BL-106–BL-108 |
+
+**Exit criteria (Layer 1):** Every `tools/call` audited; deny lists and bundle allowlists enforced; DLP on args/results; routing rules respect assigned API keys; DEF-001 / MCP-005 / MCP-009 closed.
 
 ---
 

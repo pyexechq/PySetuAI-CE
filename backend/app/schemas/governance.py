@@ -522,6 +522,7 @@ class RoutingModelResponse(BaseModel):
     api_key_masked: str | None = None
     cost_per_1m_input: float = 0.0
     cost_per_1m_output: float = 0.0
+    model_aliases: list[str] = Field(default_factory=list)
 
 
 class ProviderShareItem(BaseModel):
@@ -561,6 +562,7 @@ class LLMProviderCreateRequest(BaseModel):
     endpoint_url: str | None = None
     is_active: bool = True
     api_key: str | None = None
+    model_aliases: list[str] | None = None
     cost_per_1m_input: float | None = Field(default=None, ge=0)
     cost_per_1m_output: float | None = Field(default=None, ge=0)
 
@@ -572,6 +574,7 @@ class LLMProviderUpdateRequest(BaseModel):
     is_active: bool | None = None
     percentage: float | None = None
     api_key: str | None = None
+    model_aliases: list[str] | None = None
     cost_per_1m_input: float | None = Field(default=None, ge=0)
     cost_per_1m_output: float | None = Field(default=None, ge=0)
 
@@ -584,6 +587,7 @@ class RoutingRuleResponse(BaseModel):
     target_model: str
     status: str
     response_format: str
+    target_provider: str | None = None
 
 
 class RoutingRuleCreateRequest(BaseModel):
@@ -593,6 +597,7 @@ class RoutingRuleCreateRequest(BaseModel):
     target_model: str
     status: str = "draft"
     response_format: str = "auto"
+    target_provider: str | None = None
 
 
 class RoutingRuleUpdateRequest(BaseModel):
@@ -602,6 +607,7 @@ class RoutingRuleUpdateRequest(BaseModel):
     target_model: str | None = None
     status: str | None = None
     response_format: str | None = None
+    target_provider: str | None = None
 
 
 class GatewayStatusResponse(BaseModel):

@@ -1766,6 +1766,7 @@ async def _provider_response(db: AsyncSession, tenant_id: uuid.UUID, provider: L
         api_key_masked=api_key_masked,
         cost_per_1m_input=float(provider.cost_per_1m_input or 0),
         cost_per_1m_output=float(provider.cost_per_1m_output or 0),
+        model_aliases=[str(alias) for alias in (provider.model_aliases or [])],
     )
 
 
@@ -1905,6 +1906,7 @@ async def create_llm_provider(
         is_active=payload.is_active,
         cost_per_1m_input=float(payload.cost_per_1m_input or 0),
         cost_per_1m_output=float(payload.cost_per_1m_output or 0),
+        model_aliases=payload.model_aliases or [],
     )
     db.add(provider)
     await _apply_provider_api_key(db, current_user.tenant_id, provider_type, provider, payload.api_key)
@@ -1966,6 +1968,11 @@ async def update_llm_provider(
     if payload.cost_per_1m_output is not None:
         provider.cost_per_1m_output = float(payload.cost_per_1m_output)
 
+    if payload.model_aliases is not None:
+        from app.services.uag_migration_helpers import merge_aliases
+
+        provider.model_aliases = merge_aliases([], *payload.model_aliases)
+
     await _apply_provider_api_key(db, current_user.tenant_id, provider.provider_type, provider, payload.api_key)
 
     await db.commit()
@@ -2017,6 +2024,7 @@ def _rule_response(rule: RoutingRule) -> RoutingRuleResponse:
         target_model=rule.target_model,
         status=rule.status,
         response_format=rule.response_format,
+        target_provider=rule.target_provider,
     )
 
 
@@ -2085,6 +2093,7 @@ async def create_routing_rule(
         )
 
     target_model = await _validate_routing_target_model(db, current_user.tenant_id, target_model)
+    target_provider = payload.target_provider.strip().lower() if payload.target_provider else None
 
     rule = RoutingRule(
         tenant_id=current_user.tenant_id,
@@ -2094,6 +2103,7 @@ async def create_routing_rule(
         target_model=target_model,
         status=status_value,
         response_format=response_format,
+        target_provider=target_provider,
     )
     db.add(rule)
     await db.commit()
@@ -2148,6 +2158,9 @@ async def update_routing_rule(
                 detail=f"response_format must be one of: {', '.join(sorted(ALLOWED_RESPONSE_FORMATS))}",
             )
         rule.response_format = response_format
+
+    if payload.target_provider is not None:
+        rule.target_provider = payload.target_provider.strip().lower() or None
 
     await db.commit()
     await db.refresh(rule)

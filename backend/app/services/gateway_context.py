@@ -24,4 +24,6 @@ class GatewayContext:
     ai_token_limit_tpm: int | None = None
     ai_token_limit_tph: int | None = None
     ai_token_limit_tpd: int | None = None
+    token_saving_enabled: bool | None = None
+    token_saving_mode: str | None = None
     debug_mode: bool = False

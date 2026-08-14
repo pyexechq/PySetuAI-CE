@@ -23,3 +23,4 @@ def test_build_gateway_opa_input_includes_role_and_bundle() -> None:
     assert payload["resource"]["bundle"] == "Standard Support"
     assert payload["request"]["routed_model"] == "GPT-4o"
     assert payload["environment"]["region"] == "US"
+    assert payload["movement"]["to"] == "llm"

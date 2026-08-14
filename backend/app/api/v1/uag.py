@@ -18,30 +18,25 @@ from app.schemas.uag import (
     UagSimulateRequest,
     UagSimulateResponse,
     UagStatsResponse,
-    UagTranslationPolicyCreateRequest,
-    UagTranslationPolicyResponse,
-    UagTranslationPolicyUpdateRequest,
 )
 from app.modules.uag.service import simulate_translation
 from app.services.uag_admin_service import (
     build_stats,
     create_mapping,
-    create_policy,
     delete_mapping,
-    delete_policy,
     get_mapping,
-    get_policy,
     get_uag_settings,
     list_mappings,
-    list_policies,
     mapping_to_dict,
-    policy_to_dict,
     update_mapping,
-    update_policy,
     update_uag_settings,
 )
 
 router = APIRouter(prefix="/uag", tags=["Universal AI Gateway"])
+
+POLICY_RETIRED_DETAIL = (
+    "UAG translation policies are retired. Use LLM Router routing rules with target_provider instead."
+)
 
 _require_uag_admin = require_any_permission(MANAGE_LLM_PROVIDERS)
 _require_uag_simulate = require_roles("tenant_admin", "platform_admin", "developer")
@@ -109,50 +104,33 @@ async def remove_model_mapping(
     await delete_mapping(db, row)
 
 
-@router.get("/policies", response_model=list[UagTranslationPolicyResponse], dependencies=[Depends(require_compatibility_center)])
+@router.get("/policies", dependencies=[Depends(require_compatibility_center)])
 async def get_translation_policies(
     current_user: Annotated[User, Depends(_require_uag_admin)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[UagTranslationPolicyResponse]:
-    rows = await list_policies(db, current_user.tenant_id)
-    return [UagTranslationPolicyResponse(**policy_to_dict(row)) for row in rows]
+) -> None:
+    raise HTTPException(status_code=status.HTTP_410_GONE, detail=POLICY_RETIRED_DETAIL)
 
 
 @router.post(
     "/policies",
-    response_model=UagTranslationPolicyResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_compatibility_center)],
 )
 async def post_translation_policy(
-    body: UagTranslationPolicyCreateRequest,
     current_user: Annotated[User, Depends(_require_uag_admin)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> UagTranslationPolicyResponse:
-    row = await create_policy(db, current_user.tenant_id, body.model_dump())
-    return UagTranslationPolicyResponse(**policy_to_dict(row))
+) -> None:
+    raise HTTPException(status_code=status.HTTP_410_GONE, detail=POLICY_RETIRED_DETAIL)
 
 
 @router.put(
     "/policies/{policy_id}",
-    response_model=UagTranslationPolicyResponse,
     dependencies=[Depends(require_compatibility_center)],
 )
 async def put_translation_policy(
     policy_id: str,
-    body: UagTranslationPolicyUpdateRequest,
     current_user: Annotated[User, Depends(_require_uag_admin)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> UagTranslationPolicyResponse:
-    try:
-        policy_uuid = uuid.UUID(policy_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid policy id") from exc
-    row = await get_policy(db, current_user.tenant_id, policy_uuid)
-    if row is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Policy not found")
-    updated = await update_policy(db, row, body.model_dump(exclude_unset=True))
-    return UagTranslationPolicyResponse(**policy_to_dict(updated))
+) -> None:
+    raise HTTPException(status_code=status.HTTP_410_GONE, detail=POLICY_RETIRED_DETAIL)
 
 
 @router.delete(
@@ -163,16 +141,8 @@ async def put_translation_policy(
 async def remove_translation_policy(
     policy_id: str,
     current_user: Annotated[User, Depends(_require_uag_admin)],
-    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    try:
-        policy_uuid = uuid.UUID(policy_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid policy id") from exc
-    row = await get_policy(db, current_user.tenant_id, policy_uuid)
-    if row is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Policy not found")
-    await delete_policy(db, row)
+    raise HTTPException(status_code=status.HTTP_410_GONE, detail=POLICY_RETIRED_DETAIL)
 
 
 @router.get("/stats", response_model=UagStatsResponse, dependencies=[Depends(require_compatibility_center)])

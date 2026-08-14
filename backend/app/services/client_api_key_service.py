@@ -93,6 +93,17 @@ def normalize_api_key_client_protocol(value: str | None) -> str | None:
     return normalize_client_protocol(normalized)
 
 
+def normalize_token_saving_mode(value: str | None) -> str | None:
+    if value is None:
+        return None
+    mode = value.strip().lower()
+    if mode in {"", "inherit", "default"}:
+        return None
+    if mode not in ("json_to_toon", "strip_markdown", "both"):
+        return "both"
+    return mode
+
+
 def client_key_response(record: ClientApiKey, *, bundle_name: str | None = None) -> dict:
     return {
         "id": str(record.id),
@@ -109,6 +120,8 @@ def client_key_response(record: ClientApiKey, *, bundle_name: str | None = None)
         "ai_token_limit_tpm": record.ai_token_limit_tpm,
         "ai_token_limit_tph": record.ai_token_limit_tph,
         "ai_token_limit_tpd": record.ai_token_limit_tpd,
+        "token_saving_enabled": record.token_saving_enabled,
+        "token_saving_mode": record.token_saving_mode,
         "is_active": record.is_active,
         "last_used_at": record.last_used_at.isoformat() if record.last_used_at else None,
         "created_at": record.created_at.isoformat() if record.created_at else None,

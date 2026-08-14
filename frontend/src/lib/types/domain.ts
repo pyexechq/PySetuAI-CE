@@ -66,6 +66,7 @@ export interface RoutingModel {
   apiKeyMasked?: string | null;
   costPer1mInput?: number;
   costPer1mOutput?: number;
+  modelAliases?: string[];
   color: string;
 }
 
@@ -77,6 +78,7 @@ export interface RoutingRule {
   targetModel: string;
   status: "active" | "draft" | "disabled";
   responseFormat: "openai" | "anthropic" | "vertex" | "auto";
+  targetProvider?: string | null;
 }
 
 export interface McpServer {

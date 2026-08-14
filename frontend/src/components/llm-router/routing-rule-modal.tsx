@@ -52,7 +52,8 @@ export function RoutingRuleModal({
   const [condition, setCondition] = useState("");
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   const [status, setStatus] = useState("draft");
-  const [responseFormat, setResponseFormat] = useState("auto");  // BL-087
+  const [responseFormat, setResponseFormat] = useState("auto");
+  const [targetProvider, setTargetProvider] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -70,6 +71,7 @@ export function RoutingRuleModal({
     );
     setStatus(rule?.status ?? "draft");
     setResponseFormat(rule?.response_format ?? "auto");
+    setTargetProvider(rule?.target_provider ?? "");
     setError(null);
   }, [open, rule, availableModels]);
 
@@ -105,6 +107,7 @@ export function RoutingRuleModal({
           target_model: trimmedTargets.join(", "),
           status,
           response_format: responseFormat as ApiRoutingRuleUpdateRequest["response_format"],
+          target_provider: targetProvider.trim() || null,
         };
         await api.updateRoutingRule(token, rule.id, body);
       } else {
@@ -115,6 +118,7 @@ export function RoutingRuleModal({
           target_model: trimmedTargets.join(", "),
           status,
           response_format: responseFormat as ApiRoutingRuleCreateRequest["response_format"],
+          target_provider: targetProvider.trim() || null,
         };
         await api.createRoutingRule(token, body);
       }
@@ -233,6 +237,32 @@ export function RoutingRuleModal({
           )}
           <p className="text-xs text-muted-foreground">
             Must match an active provider registered in the LLM Router.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className={labelClass} htmlFor="rule-target-provider">
+            Target provider override (optional)
+          </label>
+          <select
+            id="rule-target-provider"
+            className={inputClass}
+            value={targetProvider}
+            onChange={(e) => setTargetProvider(e.target.value)}
+            disabled={saving}
+          >
+            <option value="">Inherit from model / registry</option>
+            <option value="openai">openai</option>
+            <option value="gemini">gemini</option>
+            <option value="claude">claude</option>
+            <option value="ollama">ollama</option>
+            <option value="azure_openai">azure_openai</option>
+            <option value="vllm">vllm</option>
+            <option value="custom">custom</option>
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Forces upstream provider selection (replaces legacy translation policies). Use for air-gapped routing such as{" "}
+            <code className="text-[11px]">department == &quot;finance&quot;</code> → Ollama.
           </p>
         </div>
 

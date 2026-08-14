@@ -31,17 +31,23 @@ async def _resolve_provider_from_registry(
     tenant_id: uuid.UUID,
     requested_model: str,
 ) -> tuple[str, str] | None:
+    normalized = requested_model.strip().lower()
     result = await db.execute(
         select(LLMProvider).where(
             LLMProvider.tenant_id == tenant_id,
             LLMProvider.is_active.is_(True),
-            func.lower(LLMProvider.name) == requested_model.strip().lower(),
         )
     )
-    provider = result.scalar_one_or_none()
-    if provider is None:
-        return None
-    return provider.name, normalize_target_provider(provider.provider_type)
+    providers = result.scalars().all()
+    for provider in providers:
+        for alias in provider.model_aliases or []:
+            alias_norm = str(alias).strip().lower()
+            if alias_norm == normalized or alias_norm.replace(" ", "-") == normalized.replace(" ", "-"):
+                return provider.name, normalize_target_provider(provider.provider_type)
+        if provider.name.strip().lower() == normalized:
+            return provider.name, normalize_target_provider(provider.provider_type)
+
+    return None
 
 
 async def resolve_model_mapping(

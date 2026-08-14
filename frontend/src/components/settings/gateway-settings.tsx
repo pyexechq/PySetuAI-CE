@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Network, Save, Loader2, Globe, Zap } from "lucide-react";
+import { Network, Save, Loader2, Globe } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,6 @@ export function GatewaySettingsSection() {
   const [tph, setTph] = useState<string>("");
   const [tpd, setTpd] = useState<string>("");
   const [origins, setOrigins] = useState<string>("");
-  const [tokenSavingEnabled, setTokenSavingEnabled] = useState(false);
-  const [tokenSavingMode, setTokenSavingMode] = useState("both");
 
   useEffect(() => {
     if (data) {
@@ -40,8 +38,6 @@ export function GatewaySettingsSection() {
       setTph(data.ai_token_limit_tph ? String(data.ai_token_limit_tph) : "");
       setTpd(data.ai_token_limit_tpd ? String(data.ai_token_limit_tpd) : "");
       setOrigins(data.allowed_api_origins ? data.allowed_api_origins.join(", ") : "");
-      setTokenSavingEnabled(data.token_saving_enabled ?? false);
-      setTokenSavingMode(data.token_saving_mode ?? "both");
     }
   }, [data]);
 
@@ -55,8 +51,6 @@ export function GatewaySettingsSection() {
         ai_token_limit_tph: tph ? parseInt(tph, 10) : null,
         ai_token_limit_tpd: tpd ? parseInt(tpd, 10) : null,
         allowed_api_origins: origins.trim() ? origins.split(",").map(o => o.trim()).filter(Boolean) : null,
-        token_saving_enabled: tokenSavingEnabled,
-        token_saving_mode: tokenSavingMode,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gateway-settings"] });
@@ -83,7 +77,8 @@ export function GatewaySettingsSection() {
             Gateway AI Rate Limits
           </CardTitle>
           <CardDescription>
-            Configure global AI rate limits and budgets for your tenant. Leave blank for no limit.
+            Configure global AI rate limits and budgets for your tenant. Token saving is configured per client API key
+            in Access → Client API keys. Leave blank for no limit.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -207,54 +202,6 @@ export function GatewaySettingsSection() {
               Tenant Admin role required to edit gateway limits.
             </p>
           )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/60 bg-card/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
-            Token Saving
-          </CardTitle>
-          <CardDescription>
-            Opt-in ingress compression — converts JSON payloads to TOON and strips markdown from user messages.
-            Responses are never modified.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={tokenSavingEnabled}
-              onChange={(e) => setTokenSavingEnabled(e.target.checked)}
-              disabled={!canEdit}
-              className="rounded border-input"
-            />
-            Enable token saving on gateway ingress
-          </label>
-          <div className="space-y-2 max-w-md">
-            <label className="text-sm font-medium">Compression mode</label>
-            <select
-              value={tokenSavingMode}
-              onChange={(e) => setTokenSavingMode(e.target.value)}
-              disabled={!canEdit || !tokenSavingEnabled}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none disabled:opacity-50"
-            >
-              <option value="both">JSON→TOON + strip markdown</option>
-              <option value="json_to_toon">JSON→TOON only</option>
-              <option value="strip_markdown">Strip markdown only</option>
-            </select>
-          </div>
-          {canEdit ? (
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending}
-              className="gap-2"
-            >
-              {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save Token Saving
-            </Button>
-          ) : null}
         </CardContent>
       </Card>
       

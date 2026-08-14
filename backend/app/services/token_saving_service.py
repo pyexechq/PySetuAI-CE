@@ -186,10 +186,12 @@ def resolve_token_saving_config(
     tenant_enabled: bool,
     tenant_mode: str,
     request_metadata: dict | None,
+    key_enabled: bool | None = None,
+    key_mode: str | None = None,
 ) -> tuple[bool, str]:
-    """Resolve effective token-saving config from tenant defaults and per-request metadata."""
-    mode = tenant_mode or "both"
-    enabled = tenant_enabled
+    """Resolve token saving from per-key settings, tenant default, and request metadata."""
+    enabled = key_enabled if key_enabled is not None else tenant_enabled
+    mode = key_mode if key_mode is not None else (tenant_mode or "both")
 
     if request_metadata:
         if "token_saving" in request_metadata:

@@ -161,6 +161,36 @@
 | BL-096 | Loading / error / empty on four core views | Frontend | 12 | Done Aug 14 |
 | BL-097 | LoginRequest min_length (password, tenant_slug) | Backend | 12 | Done Aug 14 |
 
+## Phase 13 — MCP compliance pipeline (Sprint 18–20)
+
+> Design: [mcp-policy-pipeline-design.md](./mcp-policy-pipeline-design.md) · Plan: [mcp-policy-pipeline-plan.md](./mcp-policy-pipeline-plan.md)
+
+### Layer 1 — Enforcement (Sprint 18)
+
+| ID | Item | Module | Phase | Notes |
+|----|------|--------|-------|-------|
+| BL-098 | AuditLog on MCP `tools/call` (multiplex + chat) with `client_api_key_id` in metadata | MCP Gateway | 13 | Closes MCP-009 |
+| BL-099 | Enforce `mcp_tool_deny_rules` on gateway `tools/list` + `tools/call` | MCP Gateway | 13 | Closes BL-085 / MCP-005 |
+| BL-100 | `inspect_for_gateway` on MCP tool args + results (ingress/egress) | MCP Gateway | 13 | Same bundle path as chat |
+| BL-101 | Policy bundle `mcp_scope` allowlist + shared `mcp_access_service` filter | Policy / MCP | 13 | Empty scope = all tenant MCP |
+| BL-102 | Honor `routing_rule_client_keys` in `select_model` | LLM Router | 13 | BL-088 enforcement |
+| BL-103 | Bundle MCP scope UI (server + optional tool picker) | Policy Studio | 13 | New bundles: allowlist default |
+
+### Layer 2 — Compliance metadata (Sprint 19)
+
+| ID | Item | Module | Phase | Notes |
+|----|------|--------|-------|-------|
+| BL-104 | JWT `purpose` / `lawful_basis` claims → `compliance_metadata` on audit | Auth / Audit | 13 | Optional on client keys |
+| BL-105 | MCP tool response redaction (DLP on tool results) | MCP Gateway | 13 | Beyond chat egress |
+
+### Layer 3 — Framework packs (Sprint 20+)
+
+| ID | Item | Module | Phase | Notes |
+|----|------|--------|-------|-------|
+| BL-106 | Framework rule packs (GDPR/HIPAA/ISO/SOC2 config, not monolithic OPA) | Compliance | 13 | Spike then implement |
+| BL-107 | Retention policies per framework + erasure workflow hooks | Compliance / Audit | 13 | HIPAA 6y, GDPR erasure |
+| BL-108 | Optional immutable / WORM audit ledger export | Audit | 13 | Enterprise optional |
+
 ## Delivered (reference)
 
 | ID | Item | Sprint / Notes |
@@ -224,3 +254,17 @@
 | — | Universal AI Gateway v1 + Compatibility Center | Aug 2026 / M7 |
 | — | Monitoring hub + UI overlap consolidation | Aug 2026 |
 | — | Compliance remediation API + dedicated compliance fetch | Aug 2026 |
+
+## Phase 8 — GenAI DLP Gateway (in progress)
+
+> Roadmap: [genai-dlp-gateway-roadmap.md](./genai-dlp-gateway-roadmap.md)
+
+| ID | Item | Module | Phase | Status |
+|----|------|--------|-------|--------|
+| BL-098 | DLP sensitivity label mapping | Data Protection | 8.1 | Done |
+| BL-099 | OPA data-movement Rego rules | Gateway / OPA | 8.2 | Done |
+| BL-100 | RAG gateway API (stub → Pinecone) | RAG Gateway | 8.3 | Done |
+| BL-101 | Conditional RAG orchestrator | RAG Gateway | 8.4 | Done (v1) |
+| BL-102 | GenAI evidence bundle export UI | Compliance | 8.5 | Done |
+| BL-103 | IaC evidence (Checkov) | Compliance | 8.6 | Done (static scanner v1) |
+| BL-104 | Break-glass policy exemptions (time-bound, audited) | RAG Gateway / OPA | 8.7 | Done |

@@ -6,7 +6,7 @@ export default function MonitoringPage() {
   return (
     <AppShell
       title="Monitoring"
-      description="Gateway volume, AI security analytics, and distributed request traces"
+      description="Gateway health, security analytics, and traces"
     >
       <Suspense fallback={<p className="text-sm text-muted-foreground">Loading monitoring…</p>}>
         <MonitoringView />

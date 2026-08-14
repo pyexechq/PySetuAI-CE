@@ -1,5 +1,4 @@
 import {
-  ArrowRightLeft,
   Building2,
   KeyRound,
   Layers,
@@ -32,14 +31,14 @@ export const settingsNavItems: SettingsNavItem[] = [
     label: "Integrations",
     href: "/settings/integrations",
     icon: KeyRound,
-    description: "OpenAI, Gemini, Ollama, and alert webhooks",
+    description: "Vault secrets backend and alert webhooks",
   },
   {
     id: "ai-assist",
     label: "AI Assist",
     href: "/settings/ai-assist",
     icon: Sparkles,
-    description: "Platform-wide AI key for Policy Studio, Compliance, and insights",
+    description: "Platform AI Assist and tenant default LLM provider keys",
   },
   {
     id: "prompts",
@@ -47,13 +46,6 @@ export const settingsNavItems: SettingsNavItem[] = [
     href: "/settings/prompts",
     icon: Sparkles,
     description: "Managed system prompts and enforce modes",
-  },
-  {
-    id: "uag",
-    label: "Universal AI Gateway",
-    href: "/settings/uag",
-    icon: ArrowRightLeft,
-    description: "Provider mappings and translation policies",
   },
   {
     id: "gateway",

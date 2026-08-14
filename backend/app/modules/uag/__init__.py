@@ -1,7 +1,6 @@
 """Universal AI Gateway — protocol translation and provider compatibility."""
 
 from app.modules.uag.canonical import CanonicalPrompt, TranslationTrace
-from app.modules.uag.service import run_uag_post_upstream, run_uag_pre_governance, simulate_translation
 
 __all__ = [
     "CanonicalPrompt",
@@ -10,3 +9,11 @@ __all__ = [
     "run_uag_post_upstream",
     "simulate_translation",
 ]
+
+
+def __getattr__(name: str):
+    if name in {"run_uag_pre_governance", "run_uag_post_upstream", "simulate_translation"}:
+        from app.modules.uag import service
+
+        return getattr(service, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

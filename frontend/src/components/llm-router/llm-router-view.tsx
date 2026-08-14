@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar,
@@ -14,6 +15,7 @@ import { LlmProviderModal } from "@/components/llm-router/llm-provider-modal";
 import { RoutingRuleModal } from "@/components/llm-router/routing-rule-modal";
 import { RoutingGroupModal } from "@/components/llm-router/routing-group-modal";
 import { AssignClientKeyModal } from "@/components/llm-router/assign-client-key-modal";
+import { UagAdminPanel } from "@/components/compatibility-center/uag-admin-panel";
 import { useLlmRouting } from "@/hooks/use-llm-routing";
 import { api, ApiError, type ApiRoutingModel, type ApiRoutingRule, type ApiRoutingGroup, type ApiClientApiKey } from "@/lib/api";
 import { formatNumber, cn } from "@/lib/utils";
@@ -21,15 +23,23 @@ import { useAuthStore } from "@/stores/auth-store";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type Tab = "rules" | "models" | "groups" | "performance" | "cost";
+type Tab = "rules" | "models" | "groups" | "gateway" | "performance" | "cost";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "rules", label: "Routing Rules" },
   { id: "models", label: "Model Registry" },
   { id: "groups", label: "Routing Groups" },
+  { id: "gateway", label: "Gateway & Aliases" },
   { id: "performance", label: "Performance" },
   { id: "cost", label: "Cost" },
 ];
+
+const TAB_IDS = new Set<string>(TABS.map((tab) => tab.id));
+
+function parseTabParam(value: string | null): Tab | null {
+  if (!value || !TAB_IDS.has(value)) return null;
+  return value as Tab;
+}
 
 // ─── TabBar ───────────────────────────────────────────────────────────────────
 
@@ -252,10 +262,12 @@ function formatRatePair(input = 0, output = 0): string {
 export function LlmRouterView() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const canEdit = user?.role === "tenant_admin" || user?.role === "security_admin";
   const { models, rules, invalidateProviders, invalidateRules } = useLlmRouting();
 
-  const [activeTab, setActiveTab] = useState<Tab>("rules");
+  const [activeTab, setActiveTab] = useState<Tab>(() => parseTabParam(searchParams.get("tab")) ?? "rules");
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -280,6 +292,16 @@ export function LlmRouterView() {
   useEffect(() => {
     if (rules.length > 0 && !selectedRuleId) setSelectedRuleId(rules[0].id);
   }, [rules, selectedRuleId]);
+
+  useEffect(() => {
+    const tab = parseTabParam(searchParams.get("tab"));
+    if (tab) setActiveTab(tab);
+  }, [searchParams]);
+
+  function handleTabChange(tab: Tab) {
+    setActiveTab(tab);
+    router.replace(`/llm-router?tab=${tab}`, { scroll: false });
+  }
 
   const fetchGroups = useMemo(
     () => async () => {
@@ -362,6 +384,7 @@ export function LlmRouterView() {
       api_key_set: model.apiKeySet, api_key_masked: model.apiKeyMasked,
       cost_per_1m_input: model.costPer1mInput ?? 0,
       cost_per_1m_output: model.costPer1mOutput ?? 0,
+      model_aliases: model.modelAliases ?? [],
     });
     setModalOpen(true);
   }
@@ -456,7 +479,7 @@ export function LlmRouterView() {
 
       {actionError && <p className="mb-3 text-sm text-red-400">{actionError}</p>}
 
-      <TabBar active={activeTab} onChange={setActiveTab} />
+      <TabBar active={activeTab} onChange={handleTabChange} />
 
       {/* ── ROUTING RULES ────────────────────────────────────────────────────── */}
       {activeTab === "rules" && (
@@ -568,6 +591,12 @@ export function LlmRouterView() {
                   <span className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-2 py-1 text-xs font-mono text-primary">
                     {selectedRule.responseFormat ?? "auto"}
                   </span>
+                  {selectedRule.targetProvider && (
+                    <div className="mt-3 flex items-start justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground">Target provider override</span>
+                      <span className="font-mono text-xs text-foreground">{selectedRule.targetProvider}</span>
+                    </div>
+                  )}
                   <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                     The gateway automatically translates upstream execution into this specified schema for transparent client compatibility.
                   </p>
@@ -886,6 +915,8 @@ export function LlmRouterView() {
       )}
 
       {/* ── PERFORMANCE ──────────────────────────────────────────────────────── */}
+      {activeTab === "gateway" && <UagAdminPanel />}
+
       {activeTab === "performance" && (
         <div className="grid gap-5 lg:grid-cols-2">
           {/* Latency chart */}

@@ -2,12 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Activity, Radar, ShieldAlert } from "lucide-react";
+import { Activity, LayoutDashboard, Radar, Search, ShieldAlert } from "lucide-react";
 import { MonitoringOverviewTab } from "@/components/monitoring/monitoring-overview-tab";
 import { MonitoringSecurityTab } from "@/components/monitoring/monitoring-security-tab";
 import { MonitoringTracesTab } from "@/components/monitoring/monitoring-traces-tab";
-import { cn } from "@/lib/utils";
+import { QuickLinkPills, SectionTabBar } from "@/components/shared/section-chrome";
 import { useAuthStore, type UserRole } from "@/stores/auth-store";
+
+const QUICK_LINKS = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/audit-explorer", label: "Audit Explorer", icon: Search },
+] as const;
 
 const tabs = [
   { id: "overview", label: "Overview", icon: Activity },
@@ -54,33 +59,12 @@ export function MonitoringView() {
     router.replace(`/monitoring?tab=${next}`, { scroll: false });
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Monitoring</h1>
-        <p className="text-sm text-muted-foreground">
-          Unified gateway telemetry — operational health, AI security analytics, and request traces.
-        </p>
-      </div>
+  const sectionTabs = visibleTabs.map(({ id, label }) => ({ id, label }));
 
-      <div className="flex flex-wrap gap-2 border-b border-border/60 pb-2">
-        {visibleTabs.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => selectTab(id)}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              tab === id
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-            )}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </button>
-        ))}
-      </div>
+  return (
+    <div className="space-y-8">
+      <QuickLinkPills links={QUICK_LINKS} />
+      <SectionTabBar tabs={sectionTabs} active={tab} onChange={selectTab} />
 
       {tab === "overview" && <MonitoringOverviewTab />}
       {tab === "security" && <MonitoringSecurityTab />}

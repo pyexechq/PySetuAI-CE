@@ -32,7 +32,7 @@ export const FEATURE_NAV_LABELS: Record<keyof TenantFeatures, { label: string; d
   },
   compatibility_center: {
     label: "Compatibility Center",
-    description: "Universal AI Gateway mappings and translation policies.",
+    description: "Universal AI Gateway translation stats and compatibility insights.",
   },
   governance_sandbox: {
     label: "Governance Sandbox",

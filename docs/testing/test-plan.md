@@ -66,11 +66,12 @@ Validate all PySetu AI modules against documented requirements in `docs/architec
 | MCP-002 | Trust score display | Manual | P1 | **Pass** (UI field) |
 | MCP-003 | Risk score display | Manual | P1 | **Pass** (UI field) |
 | MCP-004 | Access controls on MCP admin | API | P0 | **Pass** (RBAC `manage_mcp`) |
-| MCP-005 | Tool permissions enforcement | Integration | P0 | **Fail** — **DEFECT** (no policy gate on invoke) |
+| MCP-005 | Tool permissions enforcement | Integration | P0 | **Partial** — gateway multiplex enforces bundle scope + deny lists (BL-099); Studio simulator still mock |
+| MCP-009 | Audit entry on tool invoke | Integration | P0 | **Partial** — multiplex `tools/call` writes AuditLog (BL-098); integration test pending |
 | MCP-006 | Health check (HTTP/SSE) | API | P1 | **Pass** (endpoint exists) |
 | MCP-007 | Tool discovery | API | P1 | **Pass** (endpoint exists) |
 | MCP-008 | Unauthorized MCP access denied | Integration | P0 | **Not tested** |
-| MCP-009 | Audit entry on tool invoke | Integration | P0 | **Fail** — **DEFECT** (no audit on invoke) |
+| MCP-009 | Audit entry on tool invoke | Integration | P0 | **Partial** — multiplex `tools/call` writes AuditLog (BL-098); integration test pending |
 | MCP-010 | stdio transport | Manual | P2 | **Skipped by design** |
 
 ### Audit Explorer

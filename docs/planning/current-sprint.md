@@ -1,82 +1,38 @@
-# Current Sprint — Sprint 17 (Phase 12)
+# Current Sprint — Sprint 18 (Phase 13, Layer 1)
 
 **Updated:** Aug 14, 2026  
-**Active focus:** Sprint 17 quality primitives implemented (BL-092–BL-097). Rebuild frontend/backend to pick up Dialog + error UI. Optional leftover: BL-079 endpoint agent; ops BL-038 / BL-039 / BL-044.
+**Active focus:** MCP compliance pipeline Layer 1 — audit, enforce deny lists, bundle MCP scope, DLP on tool path, routing key binding (BL-098–BL-103).
 
-> Phase 8 complete: [phase-8-sprint.md](./phase-8-sprint.md)  
-> Phase 9–10 plan: [phase-9-10-sprint.md](./phase-9-10-sprint.md)
+> Design: [mcp-policy-pipeline-design.md](./mcp-policy-pipeline-design.md)  
+> Plan: [mcp-policy-pipeline-plan.md](./mcp-policy-pipeline-plan.md)
 
-## Phase 7 / Sprint 9 Closed (Aug 12 — M8 Milestone Complete)
+## Sprint 18 — MCP gateway enforcement
 
 | ID | Task | Status |
 |----|------|--------|
-| S9-01 | Routing group entity — name, members, weights | Done |
-| S9-02 | Group-as-model — `model: "production"` resolves group | Done |
-| S9-03 | Auto-failover — try next provider on 5xx/timeout | Done |
-| S9-04 | LLM Router UI — routing groups tab & modal | Done |
-| S9-05 | Regional routing spike — Bedrock + Vertex adapters | Done |
-| S9-06 | Wire alert webhooks — budget & rate limit breaches | Done |
+| S18-01 | Migration `053_policy_bundle_mcp_scope` + bundle API schemas | Done |
+| S18-02 | `mcp_access_service` — bundle allowlist + deny rules | Done |
+| S18-03 | Multiplex `tools/list` / `tools/call` gate + audit | Done |
+| S18-04 | Chat path uses shared MCP access filter | Done |
+| S18-05 | `select_model` honors `routing_rule_client_keys` | Done |
+| S18-06 | Bundle MCP scope UI in Policy Studio | Pending |
+| S18-07 | Tests + test-plan / release-readiness updates | Partial |
 
-## Sprint 10 Closed (Aug 12 — Prompt Store & Custom Intents Complete)
+## Exit criteria
 
-- ~~S10-01 Prompt store schema — versions, variables, enforce flag (BL-061)~~ (Done)
-- ~~S10-02 Gateway prompt injection — resolve version at ingress (BL-061)~~ (Done)
-- ~~S10-03 Prompt store UI — Studio + Settings (BL-061)~~ (Done)
-- ~~S10-04 Custom intents MVP — keyword & classification engine (BL-062)~~ (Done)
-- ~~S10-05 Custom intents UI — Security / Policy Studio (BL-062)~~ (Done)
+- Every multiplex `tools/call` writes `AuditLog` with `client_api_key_id` when applicable.
+- `mcp_tool_deny_rules` enforced on live gateway (not admin API only).
+- Policy bundle `mcp_scope` filters servers/tools; missing scope = all tenant MCP.
+- Routing rules with assigned keys only match those keys.
+- MCP-005, MCP-009, DEF-001 marked Pass in test plan.
 
-## Sprint 11 Closed (Aug 13 — Token Saving & Dynamic Tool Calling Complete)
+## Previous sprint (closed)
 
-- ~~**S11-01 (BL-063)**: Token saving engine — JSON→TOON / strip markdown (Backend)~~ (Done)
-- ~~**S11-02 (BL-063, BL-072)**: Token saving dashboard — before/after savings (Frontend)~~ (Done)
-- ~~**S11-03 (BL-064)**: Dynamic tool calling — rank/filter MCP tools per request (Backend)~~ (Done)
-- ~~**S11-04 (BL-064)**: Dynamic tool calling UI — MCP Governance config (Frontend)~~ (Done)
-- ~~**S11-05 (BL-063, BL-064)**: Compounding cost report — routing + tools + compression (Reports)~~ (Done)
+Sprint 17 (BL-092–BL-097) complete Aug 14 — [quality-audit-sprint.md](./quality-audit-sprint.md).
 
-**M9 — Cost & Prompt Parity:** Prompt store, custom intents, token saving, dynamic tools, compounding cost report.
+## Optional / ops (not in sprint)
 
-## Sprint 12 Kickoff (MCP Platform)
-
-- ~~**S12-01 (BL-065)**: MCP multiplex gateway URL + routing~~ (Done)
-- ~~**S12-02 (BL-066)**: MCP catalog — curated entries + install flow~~ (Done)
-- ~~**S12-03 (BL-067)**: OAuth auth mediation for MCP credentials~~ (Done)
-- ~~**S12-04 (BL-068)**: Tool risk taxonomy + auto-hide~~ (Done)
-- ~~**S12-05 (BL-069)**: Agent auto-detection + toggles~~ (Done)
-- ~~**S12-06 (BL-070)**: Self-service MCP portal (end-user)~~ (Done)
-- ~~**S12-07 (BL-071)**: Web search MCP + URL filter integrations~~ (Done)
-
-## Sprint 13 — Observability depth (kickoff)
-
-- ~~**S13-01 (BL-072)**: Per-user/team/model cost analytics UI~~ (Done)
-- ~~**S13-02 (BL-073)**: Full request/response log retention~~ (Done)
-- ~~**S13-03 (BL-074)**: OTel trace replay UI~~ (Done)
-- ~~**S13-04 (BL-076)**: Telemetry facade `/telemetry/*`~~ (Done — summary / operations / security / traces)
-- ~~**S13-05 (BL-075)**: Complete alert webhook wiring — latency + upstream outage~~ (Done)
-- ~~**S13-06 (BL-076)**: Live monitoring ops panel — requests, tokens, p50, blocks~~ (Done)
-
-**M10 — MCP Platform & Observability:** Complete (S13-01–06, Aug 13).
-
-## Sprint 14 — Enterprise Security Parity (closed Aug 13)
-
-- ~~**S14-01 (BL-080)**: Red-team baseline campaigns with detector-backed scoring and JSON/CSV export~~ (Done Aug 13)
-- ~~**S14-02 (BL-082)**: PHI / PCI / financial data classifiers and protected scan API~~ (Done Aug 13)
-- ~~**S14-03 (BL-081)**: Claude compliance sync adapter for organizations, users, chats, and DLP evidence~~ (Done Aug 13)
-- ~~**S14-04 (BL-077)**: Policy-bundle regional routing for Bedrock and Vertex~~ (Done Aug 13)
-- ~~**S14-05 (BL-078)**: Gateway SLA operator dashboard for availability, p99, overhead, provider health, and shared HTTP pool reuse~~ (Done Aug 13)
-
-## Sprint 15/16 — HelixGuard Parity (closed Aug 13)
-
-- ~~**BL-083**: REST-to-MCP auto-proxy wizard~~ (Done)
-- ~~**BL-084–BL-091**: LLM Router and MCP UX enhancements~~ (Done)
-
-## Sprint 17 — Quality & shared primitives (implemented Aug 14)
-
-Plan: [quality-audit-sprint.md](./quality-audit-sprint.md)
-
-- ~~**S17-01 (BL-093)**: Ship assign-client-key modal on routing-rule key APIs~~ (Done)
-- ~~**S17-02 (BL-092)**: `components/ui/dialog.tsx` + replace seven `ModalShell` copies~~ (Done)
-- ~~**S17-03 (BL-094)**: `resolve_range()` in `app.core.date_range`~~ (Done)
-- ~~**S17-04 (BL-095)**: App Router `error.tsx` + `global-error.tsx`~~ (Done)
-- ~~**S17-05 (BL-096)**: Loading / error / empty on Audit Explorer, Compliance, Governance Graph, Monitoring~~ (Done)
-- ~~**S17-06 (BL-097)**: `LoginRequest` min_length on password and tenant_slug~~ (Done)
-- ~~**S17-07 (BL-092)**: Remaining overlays (login, prompts, policy studio, intents, platform invite)~~ (Done)
+- BL-079 endpoint agent
+- BL-038 git remote / push
+- BL-039 full pytest CI
+- BL-044 demo creds in prod

@@ -18,6 +18,7 @@ from app.schemas.access import (
     ClientApiKeyCreateResponse,
     ClientApiKeyResponse,
     ClientApiKeyUpdateRequest,
+    McpScopeConfig,
     PolicyBundleCreateRequest,
     PolicyBundleResponse,
     PolicyBundleUpdateRequest,
@@ -27,6 +28,7 @@ from app.services.client_api_key_service import (
     generate_client_key,
     get_client_api_key,
     normalize_api_key_client_protocol,
+    normalize_token_saving_mode,
     validate_bundle_for_tenant,
 )
 from app.services.policy_bundle_service import clear_other_defaults, get_policy_bundle
@@ -40,6 +42,9 @@ def _bundle_response(bundle: PolicyBundle, policy_names: dict[str, str] | None =
     ids = bundle.policy_ids if isinstance(bundle.policy_ids, list) else []
     names = [policy_names.get(str(i), str(i)) for i in ids] if policy_names else []
     c_ids = bundle.custom_intent_ids if isinstance(bundle.custom_intent_ids, list) else []
+    mcp_scope = None
+    if bundle.mcp_scope and isinstance(bundle.mcp_scope, dict):
+        mcp_scope = McpScopeConfig.model_validate(bundle.mcp_scope)
     return PolicyBundleResponse(
         id=str(bundle.id),
         name=bundle.name,
@@ -49,8 +54,54 @@ def _bundle_response(bundle: PolicyBundle, policy_names: dict[str, str] | None =
         policy_ids=[str(i) for i in ids],
         custom_intent_ids=[str(i) for i in c_ids],
         policy_names=names,
+        mcp_scope=mcp_scope,
         created_at=bundle.created_at.isoformat() if bundle.created_at else "",
     )
+
+
+async def _validate_mcp_scope(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    scope: McpScopeConfig | None,
+) -> dict | None:
+    if scope is None:
+        return None
+    mode = (scope.mode or "all").strip().lower()
+    if mode not in {"all", "allowlist"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid mcp_scope.mode")
+    if mode == "all":
+        return {"mode": "all", "entries": []}
+    server_ids: list[uuid.UUID] = []
+    for entry in scope.entries:
+        try:
+            server_ids.append(uuid.UUID(str(entry.server_id)))
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid MCP server id: {entry.server_id}",
+            ) from exc
+    if not server_ids:
+        return {"mode": "allowlist", "entries": []}
+    from app.models.governance import MCPServer
+
+    result = await db.execute(
+        select(MCPServer.id).where(MCPServer.tenant_id == tenant_id, MCPServer.id.in_(server_ids))
+    )
+    found = {str(row[0]) for row in result.all()}
+    entries: list[dict] = []
+    for entry in scope.entries:
+        if str(entry.server_id) not in found:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"MCP server not found: {entry.server_id}",
+            )
+        entries.append(
+            {
+                "server_id": str(entry.server_id),
+                "tool_names": [str(t) for t in entry.tool_names],
+            }
+        )
+    return {"mode": "allowlist", "entries": entries}
 
 
 async def _policy_name_map(db: AsyncSession, tenant_id: uuid.UUID) -> dict[str, str]:
@@ -138,6 +189,7 @@ async def create_policy_bundle(
         is_default=payload.is_default,
         policy_ids=policy_ids,
         custom_intent_ids=custom_intent_ids,
+        mcp_scope=await _validate_mcp_scope(db, current_user.tenant_id, payload.mcp_scope),
     )
     db.add(bundle)
     await db.commit()
@@ -169,6 +221,8 @@ async def update_policy_bundle(
         bundle.policy_ids = await _validate_policy_ids(db, current_user.tenant_id, payload.policy_ids)
     if payload.custom_intent_ids is not None:
         bundle.custom_intent_ids = await _validate_custom_intent_ids(db, current_user.tenant_id, payload.custom_intent_ids)
+    if payload.mcp_scope is not None:
+        bundle.mcp_scope = await _validate_mcp_scope(db, current_user.tenant_id, payload.mcp_scope)
     if payload.is_default is not None:
         if payload.is_default:
             await clear_other_defaults(db, current_user.tenant_id, except_id=bundle.id)
@@ -239,6 +293,8 @@ async def create_client_api_key(
         ai_token_limit_tpm=payload.ai_token_limit_tpm,
         ai_token_limit_tph=payload.ai_token_limit_tph,
         ai_token_limit_tpd=payload.ai_token_limit_tpd,
+        token_saving_enabled=payload.token_saving_enabled,
+        token_saving_mode=normalize_token_saving_mode(payload.token_saving_mode),
         is_active=True,
     )
     db.add(record)
@@ -284,6 +340,10 @@ async def update_client_api_key(
         record.ai_token_limit_tph = payload.ai_token_limit_tph
     if payload.ai_token_limit_tpd is not None:
         record.ai_token_limit_tpd = payload.ai_token_limit_tpd
+    if payload.token_saving_enabled is not None:
+        record.token_saving_enabled = payload.token_saving_enabled
+    if payload.token_saving_mode is not None:
+        record.token_saving_mode = normalize_token_saving_mode(payload.token_saving_mode)
 
     if payload.is_active is not None:
         record.is_active = payload.is_active

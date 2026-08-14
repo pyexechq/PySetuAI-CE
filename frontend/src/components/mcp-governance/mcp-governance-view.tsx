@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Activity, AlertTriangle, ArrowRight, CheckCircle2,
   Filter, MoreHorizontal, Plus, Search,
@@ -23,6 +24,7 @@ import { McpUrlFilterCard } from "@/components/mcp-governance/mcp-url-filter-car
 import { McpToolDenyListCard } from "@/components/mcp-governance/mcp-tool-deny-list-card";
 import { McpSsoInjectionCard } from "@/components/mcp-governance/mcp-sso-injection-card";
 import { RestToMcpWizardModal } from "@/components/mcp-governance/rest-to-mcp-wizard-modal";
+import { McpPortalView } from "@/components/mcp-portal/mcp-portal-view";
 import { useMcpServers } from "@/hooks/use-mcp-servers";
 import { api, ApiError, type ApiMcpServer } from "@/lib/api";
 import { formatNumber, cn } from "@/lib/utils";
@@ -31,15 +33,27 @@ import { usePreferencesStore } from "@/stores/preferences-store";
 
 // ─── types & helpers ──────────────────────────────────────────────────────────
 
-type Tab = "overview" | "servers" | "tools" | "access" | "settings";
+type Tab = "overview" | "servers" | "portal" | "tools" | "access" | "settings";
 
-const TABS: { id: Tab; label: string }[] = [
+const ALL_TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "servers", label: "MCP Servers" },
+  { id: "portal", label: "Portal" },
   { id: "tools", label: "Tools" },
   { id: "access", label: "Access & RBAC" },
   { id: "settings", label: "Platform Settings" },
 ];
+
+const PORTAL_ONLY_TABS: { id: Tab; label: string }[] = [{ id: "portal", label: "Portal" }];
+
+const TAB_IDS = new Set<string>(ALL_TABS.map((tab) => tab.id));
+
+function parseTabParam(value: string | null, portalOnly: boolean): Tab | null {
+  if (!value || !TAB_IDS.has(value)) return null;
+  const tab = value as Tab;
+  if (portalOnly && tab !== "portal") return null;
+  return tab;
+}
 
 const statusVariant = {
   healthy: "success" as const,
@@ -67,10 +81,20 @@ function protocolIcon(transport: string) {
 
 // ─── TabBar ───────────────────────────────────────────────────────────────────
 
-function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
+function TabBar({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: { id: Tab; label: string }[];
+  active: Tab;
+  onChange: (t: Tab) => void;
+}) {
+  if (tabs.length <= 1) return null;
+
   return (
     <div className="flex border-b border-border/60 mb-6 gap-6 overflow-x-auto">
-      {TABS.map((tab) => (
+      {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
@@ -117,10 +141,21 @@ function TrustScoreBar({ score }: { score: number }) {
 export function McpGovernanceView() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   usePreferencesStore((s) => s.timezone);
   const canEdit = user?.role === "tenant_admin" || user?.role === "security_admin";
+  const canGovern =
+    user?.role === "tenant_admin" ||
+    user?.role === "security_admin" ||
+    user?.role === "platform_admin";
+  const portalOnly = user?.role === "developer";
+  const tabs = portalOnly ? PORTAL_ONLY_TABS : ALL_TABS;
+  const defaultTab: Tab = portalOnly ? "portal" : "overview";
 
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [activeTab, setActiveTab] = useState<Tab>(
+    () => parseTabParam(searchParams.get("tab"), portalOnly) ?? defaultTab
+  );
   const [toolSearch, setToolSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingServer, setEditingServer] = useState<ApiMcpServer | null>(null);
@@ -131,6 +166,16 @@ export function McpGovernanceView() {
   const [discoveringId, setDiscoveringId] = useState<string | null>(null);
 
   const { data: servers = [], isLoading, invalidateMcpServers } = useMcpServers();
+
+  useEffect(() => {
+    const tab = parseTabParam(searchParams.get("tab"), portalOnly);
+    if (tab) setActiveTab(tab);
+  }, [searchParams, portalOnly]);
+
+  function handleTabChange(tab: Tab) {
+    setActiveTab(tab);
+    router.replace(`/mcp-governance?tab=${tab}`, { scroll: false });
+  }
 
   // KPI aggregates
   const activeCount = servers.filter((s) => s.status === "healthy").length;
@@ -237,9 +282,11 @@ export function McpGovernanceView() {
       {/* Page header bar */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <p className="text-sm text-muted-foreground">
-          Manage, secure and govern all MCP servers and tools across the enterprise.
+          {portalOnly
+            ? "Browse published integrations and connect your personal MCP credentials."
+            : "Manage, secure and govern all MCP servers and tools across the enterprise."}
         </p>
-        {canEdit && (
+        {canEdit && !portalOnly && (
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm" variant="outline" className="gap-1.5"
@@ -266,10 +313,13 @@ export function McpGovernanceView() {
 
       {actionError && <p className="mb-3 text-sm text-red-400">{actionError}</p>}
 
-      <TabBar active={activeTab} onChange={setActiveTab} />
+      <TabBar tabs={tabs} active={activeTab} onChange={handleTabChange} />
+
+      {/* ── PORTAL ────────────────────────────────────────────────────────────── */}
+      {activeTab === "portal" && <McpPortalView />}
 
       {/* ── OVERVIEW ──────────────────────────────────────────────────────────── */}
-      {activeTab === "overview" && (
+      {canGovern && activeTab === "overview" && (
         <div className="space-y-6">
           {/* KPI row */}
           <div className="grid gap-4 sm:grid-cols-5">
@@ -296,7 +346,7 @@ export function McpGovernanceView() {
                 <CardTitle className="text-sm font-semibold">MCP Servers</CardTitle>
                 <button
                   type="button"
-                  onClick={() => setActiveTab("servers")}
+                  onClick={() => handleTabChange("servers")}
                   className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
                 >
                   View all <ArrowRight className="h-3 w-3" />
@@ -433,7 +483,7 @@ export function McpGovernanceView() {
       )}
 
       {/* ── MCP SERVERS (card grid) ───────────────────────────────────────────── */}
-      {activeTab === "servers" && (
+      {canGovern && activeTab === "servers" && (
         <div>
           {isLoading ? (
             <p className="py-12 text-center text-sm text-muted-foreground">Loading MCP servers…</p>
@@ -549,7 +599,7 @@ export function McpGovernanceView() {
       )}
 
       {/* ── TOOLS ──────────────────────────────────────────────────────────────── */}
-      {activeTab === "tools" && (
+      {canGovern && activeTab === "tools" && (
         <Card className="border-border/60 bg-card/50">
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
             <div className="relative flex-1 max-w-sm">
@@ -620,7 +670,7 @@ export function McpGovernanceView() {
       )}
 
       {/* ── ACCESS & RBAC ─────────────────────────────────────────────────────── */}
-      {activeTab === "access" && (
+      {canGovern && activeTab === "access" && (
         <div className="space-y-6">
           <McpSsoInjectionCard canEdit={canEdit} />
           <McpOAuthBrokerCard canEdit={canEdit} />
@@ -631,7 +681,7 @@ export function McpGovernanceView() {
       )}
 
       {/* ── PLATFORM SETTINGS ────────────────────────────────────────────────── */}
-      {activeTab === "settings" && (
+      {canGovern && activeTab === "settings" && (
         <div className="space-y-6">
           <McpMultiplexCard />
           <McpCatalogCard canEdit={canEdit} onInstalled={invalidateMcpServers} />

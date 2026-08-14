@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Area,
   AreaChart,
@@ -13,8 +14,10 @@ import {
 } from "recharts";
 import { Activity, Clock, ShieldAlert, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MetricCard, MetricStrip } from "@/components/dashboard/metric-card";
 import { TelemetryOperationsCard } from "@/components/monitoring/telemetry-operations-card";
 import { GatewaySlaCard } from "@/components/monitoring/gateway-sla-card";
+import { SectionHeading, SectionTabBar } from "@/components/shared/section-chrome";
 import { useObservability } from "@/hooks/use-observability";
 import { formatNumber } from "@/lib/utils";
 
@@ -32,9 +35,17 @@ const EMPTY_OVERVIEW = {
   daily_trend: [] as { date: string; total: number; blocked: number }[],
 };
 
+type DetailTab = "breakdown" | "operations";
+
+const DETAIL_TABS: { id: DetailTab; label: string }[] = [
+  { id: "breakdown", label: "Action breakdown" },
+  { id: "operations", label: "Ops & SLA" },
+];
+
 export function MonitoringOverviewTab() {
   const { overview: overviewData, isLoading, isError } = useObservability();
   const overview = overviewData ?? EMPTY_OVERVIEW;
+  const [detailTab, setDetailTab] = useState<DetailTab>("breakdown");
 
   if (isLoading && !overviewData) {
     return <p className="text-sm text-muted-foreground">Loading overview…</p>;
@@ -49,49 +60,85 @@ export function MonitoringOverviewTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          icon={Activity}
-          iconClass="text-indigo-400 bg-indigo-500/10"
-          label="Events (range)"
-          value={formatNumber(overview.total_events_today)}
-        />
-        <KpiCard
-          icon={Zap}
-          iconClass="text-emerald-400 bg-emerald-500/10"
-          label="Avg latency"
-          value={`${overview.avg_latency_ms}ms`}
-        />
-        <KpiCard
-          icon={Clock}
-          iconClass="text-amber-400 bg-amber-500/10"
-          label="P95 latency"
-          value={`${overview.p95_latency_ms}ms`}
-        />
-        <KpiCard
-          icon={ShieldAlert}
-          iconClass="text-red-400 bg-red-500/10"
-          label="Block rate"
-          value={`${overview.block_rate}%`}
-          valueClass="text-red-400"
-        />
-      </div>
+    <div className="space-y-8">
+      <section className="space-y-3">
+        <SectionHeading title="At a glance" />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            variant="hero"
+            showTrend={false}
+            title="Events (range)"
+            value={formatNumber(overview.total_events_today)}
+            change={0}
+            icon={Activity}
+            iconColor="text-indigo-400"
+          />
+          <MetricCard
+            variant="hero"
+            showTrend={false}
+            title="Avg latency"
+            value={`${overview.avg_latency_ms}ms`}
+            change={0}
+            icon={Zap}
+            iconColor="text-emerald-400"
+          />
+          <MetricCard
+            variant="hero"
+            showTrend={false}
+            title="P95 latency"
+            value={`${overview.p95_latency_ms}ms`}
+            change={0}
+            icon={Clock}
+            iconColor="text-amber-400"
+          />
+          <MetricCard
+            variant="hero"
+            showTrend={false}
+            title="Block rate"
+            value={`${overview.block_rate}%`}
+            change={0}
+            icon={ShieldAlert}
+            iconColor="text-red-400"
+          />
+        </div>
+      </section>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatusChip label="Allowed" value={overview.allowed_today} variant="success" />
-        <StatusChip label="Blocked" value={overview.blocked_today} variant="destructive" />
-        <StatusChip label="Under review" value={overview.under_review_today} variant="warning" />
-      </div>
+      <section className="space-y-3">
+        <SectionHeading title="Request outcomes" />
+        <MetricStrip
+          items={[
+            {
+              title: "Allowed",
+              value: formatNumber(overview.allowed_today),
+              change: 0,
+              icon: Activity,
+              iconColor: "text-emerald-400",
+              showTrend: false,
+            },
+            {
+              title: "Blocked",
+              value: formatNumber(overview.blocked_today),
+              change: 0,
+              icon: ShieldAlert,
+              iconColor: "text-red-400",
+              showTrend: false,
+            },
+            {
+              title: "Under review",
+              value: formatNumber(overview.under_review_today),
+              change: 0,
+              icon: Clock,
+              iconColor: "text-amber-400",
+              showTrend: false,
+            },
+          ]}
+        />
+      </section>
 
-      <TelemetryOperationsCard />
-
-      <GatewaySlaCard />
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="border-border/60 bg-card/50 lg:col-span-2">
+      <section className="grid gap-4 lg:grid-cols-12">
+        <Card className="border-border/60 bg-card/50 lg:col-span-8">
           <CardHeader>
-            <CardTitle>Request volume (7 days)</CardTitle>
+            <CardTitle className="text-base">Request volume (7 days)</CardTitle>
           </CardHeader>
           <CardContent>
             {overview.daily_trend.length === 0 ? (
@@ -131,9 +178,9 @@ export function MonitoringOverviewTab() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 bg-card/50">
+        <Card className="border-border/60 bg-card/50 lg:col-span-4">
           <CardHeader>
-            <CardTitle>By risk</CardTitle>
+            <CardTitle className="text-base">By risk</CardTitle>
           </CardHeader>
           <CardContent>
             {overview.by_risk.length === 0 ? (
@@ -162,84 +209,50 @@ export function MonitoringOverviewTab() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      <Card className="border-border/60 bg-card/50">
-        <CardHeader>
-          <CardTitle>By action</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {overview.by_action.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No action breakdown available</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={overview.by_action}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="action" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                  }}
-                />
-                <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function KpiCard({
-  icon: Icon,
-  iconClass,
-  label,
-  value,
-  valueClass,
-}: {
-  icon: typeof Activity;
-  iconClass: string;
-  label: string;
-  value: string;
-  valueClass?: string;
-}) {
-  return (
-    <Card className="border-border/60 bg-card/50">
-      <CardContent className="flex items-center gap-3 p-5">
-        <div className={`rounded-lg p-2 ${iconClass}`}>
-          <Icon className="h-5 w-5" />
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">Operational detail</h2>
+          <SectionTabBar tabs={DETAIL_TABS} active={detailTab} onChange={setDetailTab} />
         </div>
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className={`text-2xl font-bold ${valueClass ?? ""}`}>{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
-function StatusChip({
-  label,
-  value,
-  variant,
-}: {
-  label: string;
-  value: number;
-  variant: "success" | "destructive" | "warning";
-}) {
-  const colors = {
-    success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
-    destructive: "border-red-500/30 bg-red-500/10 text-red-400",
-    warning: "border-amber-500/30 bg-amber-500/10 text-amber-400",
-  };
-  return (
-    <div className={`rounded-lg border px-4 py-3 ${colors[variant]}`}>
-      <p className="text-xs uppercase tracking-wide opacity-80">{label}</p>
-      <p className="text-xl font-semibold">{formatNumber(value)}</p>
+        {detailTab === "breakdown" && (
+          <Card className="border-border/60 bg-card/50">
+            <CardHeader>
+              <CardTitle className="text-base">By action</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {overview.by_action.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">No action breakdown available</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={overview.by_action}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="action" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                      }}
+                    />
+                    <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {detailTab === "operations" && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <TelemetryOperationsCard />
+            <GatewaySlaCard />
+          </div>
+        )}
+      </section>
     </div>
   );
 }

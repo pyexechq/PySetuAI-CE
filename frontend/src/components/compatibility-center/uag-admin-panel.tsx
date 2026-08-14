@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ArrowRightLeft, Loader2, Plus, Trash2 } from "lucide-react";
@@ -22,10 +23,6 @@ export function UagAdminPanel() {
   const [targetProvider, setTargetProvider] = useState("gemini");
   const [emulateProtocol, setEmulateProtocol] = useState("openai");
   const [clientResponseProtocol, setClientResponseProtocol] = useState("openai");
-  const [policyName, setPolicyName] = useState("Finance to local LLM");
-  const [policyConditionKey, setPolicyConditionKey] = useState("department");
-  const [policyConditionValue, setPolicyConditionValue] = useState("finance");
-  const [policyRouteTo, setPolicyRouteTo] = useState("ollama");
   const [actionError, setActionError] = useState("");
 
   const {
@@ -38,16 +35,6 @@ export function UagAdminPanel() {
     enabled: Boolean(token) && canManage,
   });
 
-  const {
-    data: policies = [],
-    isLoading: policiesLoading,
-    error: policiesError,
-  } = useQuery({
-    queryKey: ["uag-policies", token],
-    queryFn: () => api.listUagPolicies(token!),
-    enabled: Boolean(token) && canManage,
-  });
-
   const { data: settings, isLoading: settingsLoading } = useQuery({
     queryKey: ["uag-settings", token],
     queryFn: () => api.getUagSettings(token!),
@@ -55,7 +42,6 @@ export function UagAdminPanel() {
   });
 
   const invalidateMappings = () => queryClient.invalidateQueries({ queryKey: ["uag-mappings"] });
-  const invalidatePolicies = () => queryClient.invalidateQueries({ queryKey: ["uag-policies"] });
   const invalidateSettings = () => queryClient.invalidateQueries({ queryKey: ["uag-settings"] });
 
   const createMapping = useMutation({
@@ -92,39 +78,6 @@ export function UagAdminPanel() {
     onError: (err) => setActionError(err instanceof ApiError ? err.message : "Unable to update mapping."),
   });
 
-  const createPolicy = useMutation({
-    mutationFn: () =>
-      api.createUagPolicy(token!, {
-        name: policyName,
-        conditions: { [policyConditionKey]: policyConditionValue },
-        actions: { route_to: policyRouteTo },
-      }),
-    onSuccess: () => {
-      setActionError("");
-      invalidatePolicies();
-    },
-    onError: (err) => setActionError(err instanceof ApiError ? err.message : "Unable to create policy."),
-  });
-
-  const togglePolicy = useMutation({
-    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
-      api.updateUagPolicy(token!, id, { enabled }),
-    onSuccess: () => {
-      setActionError("");
-      invalidatePolicies();
-    },
-    onError: (err) => setActionError(err instanceof ApiError ? err.message : "Unable to update policy."),
-  });
-
-  const deletePolicy = useMutation({
-    mutationFn: (id: string) => api.deleteUagPolicy(token!, id),
-    onSuccess: () => {
-      setActionError("");
-      invalidatePolicies();
-    },
-    onError: (err) => setActionError(err instanceof ApiError ? err.message : "Unable to delete policy."),
-  });
-
   const saveSettings = useMutation({
     mutationFn: () =>
       api.updateUagSettings(token!, {
@@ -134,7 +87,7 @@ export function UagAdminPanel() {
       setActionError("");
       invalidateSettings();
     },
-    onError: (err) => setActionError(err instanceof ApiError ? err.message : "Unable to save UAG settings."),
+    onError: (err) => setActionError(err instanceof ApiError ? err.message : "Unable to save gateway settings."),
   });
 
   useEffect(() => {
@@ -147,15 +100,13 @@ export function UagAdminPanel() {
     return (
       <Card className="border-border/60">
         <CardContent className="p-6 text-sm text-muted-foreground">
-          Universal AI Gateway configuration requires a tenant admin or security admin role.
+          Gateway and model alias configuration requires a tenant admin or security admin role.
         </CardContent>
       </Card>
     );
   }
 
-  const loadError =
-    (mappingsError instanceof ApiError ? mappingsError.message : mappingsError ? "Unable to load mappings." : "") ||
-    (policiesError instanceof ApiError ? policiesError.message : policiesError ? "Unable to load policies." : "");
+  const loadError = mappingsError instanceof ApiError ? mappingsError.message : mappingsError ? "Unable to load mappings." : "";
 
   return (
     <div className="space-y-6">
@@ -165,13 +116,28 @@ export function UagAdminPanel() {
         </div>
       )}
 
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-4 text-sm text-muted-foreground">
+          Condition-based provider routing now lives in{" "}
+          <Link href="/llm-router?tab=rules" className="text-primary underline">
+            Routing Rules
+          </Link>{" "}
+          (with optional target provider override). Model aliases are preferred on{" "}
+          <Link href="/llm-router?tab=models" className="text-primary underline">
+            Model Registry
+          </Link>{" "}
+          entries. Legacy alias rows below remain supported for per-alias client protocol overrides.
+        </CardContent>
+      </Card>
+
       <Card className="border-border/60">
         <CardHeader>
           <CardTitle className="text-base">Client response format</CardTitle>
           <CardDescription>
             Choose the API shape returned to clients. PySetu routing metadata is omitted by default for strict SDK
-            compatibility; append <code className="text-xs">?mode=debug</code> to include it. Client API keys can
-            override the tenant default. UAG model mappings still override both when a model alias matches.
+            compatibility; append <code className="text-xs">?mode=debug</code> to include it. Per-rule overrides live
+            on <Link href="/llm-router?tab=rules" className="text-primary underline">Routing Rules</Link>; client API
+            keys can override the tenant default.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -205,10 +171,12 @@ export function UagAdminPanel() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <ArrowRightLeft className="h-4 w-4" />
-            Provider mappings
+            Legacy model aliases
           </CardTitle>
           <CardDescription>
-            Enable, disable, or delete model aliases. Disabled mappings are ignored at runtime.
+            Map client model names before routing rules run. Prefer{" "}
+            <Link href="/llm-router?tab=models" className="text-primary underline">Model Registry → aliases</Link> for
+            new entries. Keep legacy rows when you need a per-alias client protocol override.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -248,14 +216,14 @@ export function UagAdminPanel() {
           </div>
           <Button size="sm" className="gap-1" disabled={createMapping.isPending} onClick={() => createMapping.mutate()}>
             {createMapping.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            Add mapping
+            Add legacy alias
           </Button>
 
           {mappingsLoading ? (
-            <p className="text-sm text-muted-foreground">Loading mappings…</p>
+            <p className="text-sm text-muted-foreground">Loading aliases…</p>
           ) : mappings.length === 0 ? (
             <p className="rounded-md border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
-              No provider mappings yet. Add one above or use seed defaults after deployment.
+              No legacy aliases configured. Add aliases on Model Registry entries instead.
             </p>
           ) : (
             <div className="overflow-x-auto rounded-md border border-border/60">
@@ -297,7 +265,7 @@ export function UagAdminPanel() {
                           size="sm"
                           disabled={deleteMapping.isPending}
                           onClick={() => deleteMapping.mutate(row.id)}
-                          title="Delete mapping"
+                          title="Delete alias"
                         >
                           <Trash2 className="h-4 w-4 text-red-400" />
                         </Button>
@@ -306,101 +274,6 @@ export function UagAdminPanel() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/60">
-        <CardHeader>
-          <CardTitle className="text-base">Provider translation policies</CardTitle>
-          <CardDescription>
-            Route by department, region, or application. Toggle Active to enable or disable without deleting.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2 md:grid-cols-4">
-            <input
-              value={policyName}
-              onChange={(e) => setPolicyName(e.target.value)}
-              placeholder="Policy name"
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-            />
-            <input
-              value={policyConditionKey}
-              onChange={(e) => setPolicyConditionKey(e.target.value)}
-              placeholder="Condition key"
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-            />
-            <input
-              value={policyConditionValue}
-              onChange={(e) => setPolicyConditionValue(e.target.value)}
-              placeholder="Condition value"
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-            />
-            <select
-              value={policyRouteTo}
-              onChange={(e) => setPolicyRouteTo(e.target.value)}
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-            >
-              <option value="ollama">ollama</option>
-              <option value="azure_openai">azure_openai</option>
-              <option value="gemini">gemini</option>
-              <option value="claude">claude</option>
-              <option value="openai">openai</option>
-            </select>
-          </div>
-          <Button size="sm" disabled={createPolicy.isPending} onClick={() => createPolicy.mutate()}>
-            {createPolicy.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add translation policy"}
-          </Button>
-
-          {policiesLoading ? (
-            <p className="text-sm text-muted-foreground">Loading policies…</p>
-          ) : policies.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
-              No translation policies configured yet.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {policies.map((policy) => (
-                <div key={policy.id} className="rounded-md border border-border/60 p-3 text-sm">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium">{policy.name}</span>
-                        <Badge variant="outline">priority {policy.priority}</Badge>
-                        <Badge variant={policy.enabled ? "default" : "warning"}>
-                          {policy.enabled ? "Enabled" : "Disabled"}
-                        </Badge>
-                      </div>
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">
-                        IF {JSON.stringify(policy.conditions)} THEN {JSON.stringify(policy.actions)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-input"
-                          checked={policy.enabled}
-                          disabled={togglePolicy.isPending}
-                          onChange={(e) => togglePolicy.mutate({ id: policy.id, enabled: e.target.checked })}
-                        />
-                        Active
-                      </label>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={deletePolicy.isPending}
-                        onClick={() => deletePolicy.mutate(policy.id)}
-                        title="Delete policy"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-400" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
             </div>
           )}
         </CardContent>

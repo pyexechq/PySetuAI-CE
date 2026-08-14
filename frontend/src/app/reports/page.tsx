@@ -5,7 +5,7 @@ export default function ReportsPage() {
   return (
     <AppShell
       title="Reports"
-      description="Executive summaries, compliance exports, and scheduled governance reports"
+      description="Export snapshots, period summaries, and scheduled deliveries"
     >
       <ReportsView />
     </AppShell>

@@ -73,6 +73,7 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
   const [percentage, setPercentage] = useState("");
   const [costIn, setCostIn] = useState("");
   const [costOut, setCostOut] = useState("");
+  const [modelAliases, setModelAliases] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
@@ -91,6 +92,7 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
     setPercentage(provider ? String(provider.percentage) : "");
     setCostIn(provider?.cost_per_1m_input != null ? String(provider.cost_per_1m_input) : "");
     setCostOut(provider?.cost_per_1m_output != null ? String(provider.cost_per_1m_output) : "");
+    setModelAliases((provider?.model_aliases ?? []).join(", "));
     setError(null);
     setConnectionStatus("idle");
   }, [open, provider]);
@@ -161,12 +163,18 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
     setSaving(true);
     setError(null);
 
+    const aliases = modelAliases
+      .split(",")
+      .map((alias) => alias.trim())
+      .filter(Boolean);
+
     try {
       if (isEdit && provider) {
         const body: ApiLlmProviderUpdateRequest = {
           name: trimmedName,
           provider_type: providerType,
           is_active: isActive,
+          model_aliases: aliases,
         };
         if (providerType === "custom") {
           body.endpoint_url = trimmedEndpoint;
@@ -189,6 +197,7 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
           name: trimmedName,
           provider_type: providerType,
           is_active: isActive,
+          model_aliases: aliases,
         };
         if (providerType === "custom") {
           body.endpoint_url = trimmedEndpoint;
@@ -228,6 +237,23 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
             placeholder="GPT-4o"
             disabled={saving}
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className={labelClass} htmlFor="provider-aliases">
+            Client model aliases
+          </label>
+          <input
+            id="provider-aliases"
+            className={inputClass}
+            value={modelAliases}
+            onChange={(e) => setModelAliases(e.target.value)}
+            placeholder="gpt-4o, gpt-4"
+            disabled={saving}
+          />
+          <p className="text-xs text-muted-foreground">
+            Comma-separated client model names that resolve to this registry entry (replaces legacy UAG alias table).
+          </p>
         </div>
 
         <div className="space-y-1.5">

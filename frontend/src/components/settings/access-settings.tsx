@@ -59,6 +59,8 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
     ai_token_limit_tpm: null as number | null,
     ai_token_limit_tph: null as number | null,
     ai_token_limit_tpd: null as number | null,
+    token_saving_enabled: null as boolean | null,
+    token_saving_mode: null as string | null,
   });
   const [editingKeyLimits, setEditingKeyLimits] = useState<ApiClientApiKey | null>(null);
   const [createdKey, setCreatedKey] = useState<ApiClientApiKeyCreateResponse | null>(null);
@@ -133,6 +135,8 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
         ai_token_limit_tpm: null,
         ai_token_limit_tph: null,
         ai_token_limit_tpd: null,
+        token_saving_enabled: null,
+        token_saving_mode: null,
       });
     },
   });
@@ -326,8 +330,8 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
           </CardTitle>
           <CardDescription>
             Ingress keys for applications calling <code className="text-xs">/v1/chat/completions</code>. Use{" "}
-            <code className="text-xs">Authorization: Bearer hg_…</code> instead of a JWT. Each key can set its own
-            client response format (OpenAI, Gemini, or Anthropic) or inherit the tenant UAG default.
+            <code className="text-xs">Authorization: Bearer hg_…</code> instead of a JWT. Configure token saving,
+            response format, and limits per key below.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -371,6 +375,14 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
                 <div className="mt-2 text-xs text-muted-foreground">
                   Limits: {key.ai_rate_limit_rpm || '∞'} RPM / {key.ai_token_limit_tpm || '∞'} TPM
                 </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Token saving:{" "}
+                  {key.token_saving_enabled == null
+                    ? "Inherit tenant default"
+                    : key.token_saving_enabled
+                      ? key.token_saving_mode || "both"
+                      : "Disabled"}
+                </p>
               </div>
               <div className="flex flex-col items-end gap-2">
                 {canEdit && (

@@ -1,5 +1,5 @@
-import { UagAdminPanel } from "@/components/compatibility-center/uag-admin-panel";
+import { redirect } from "next/navigation";
 
 export default function UagSettingsPage() {
-  return <UagAdminPanel />;
+  redirect("/llm-router?tab=gateway");
 }

@@ -71,6 +71,8 @@ async def list_mappings(db: AsyncSession, tenant_id: uuid.UUID) -> list[UagModel
 
 
 async def create_mapping(db: AsyncSession, tenant_id: uuid.UUID, data: dict) -> UagModelMapping:
+    from app.services.registry_alias_service import sync_alias_to_registry
+
     row = UagModelMapping(
         tenant_id=tenant_id,
         requested_model=data["requested_model"].strip(),
@@ -80,17 +82,34 @@ async def create_mapping(db: AsyncSession, tenant_id: uuid.UUID, data: dict) -> 
         enabled=bool(data.get("enabled", True)),
     )
     db.add(row)
+    await sync_alias_to_registry(
+        db,
+        tenant_id,
+        requested_model=row.requested_model,
+        actual_model=row.actual_model,
+        provider_type=row.target_provider,
+    )
     await db.commit()
     await db.refresh(row)
     return row
 
 
 async def update_mapping(db: AsyncSession, row: UagModelMapping, data: dict) -> UagModelMapping:
+    from app.services.registry_alias_service import sync_alias_to_registry
+
     for field in ("requested_model", "actual_model", "target_provider", "emulate_protocol"):
         if field in data and data[field] is not None:
             setattr(row, field, str(data[field]).strip())
     if "enabled" in data and data["enabled"] is not None:
         row.enabled = bool(data["enabled"])
+    if row.enabled:
+        await sync_alias_to_registry(
+            db,
+            row.tenant_id,
+            requested_model=row.requested_model,
+            actual_model=row.actual_model,
+            provider_type=row.target_provider,
+        )
     await db.commit()
     await db.refresh(row)
     return row

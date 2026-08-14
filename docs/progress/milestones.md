@@ -14,6 +14,8 @@
 | M10 | MCP Platform & Observability | Catalog, multiplex, per-user analytics, trace replay | Sprint 13 | Complete (S13-01–06, Aug 13) |
 | M11 | Enterprise Security Parity | Red team, PHI/PCI, regional routing, SLA | Sprint 14+ | Complete (S14-01–05; Aug 13, optional endpoint agent excluded) |
 | M12 | HelixGuard Parity | REST-to-MCP, SSO injection, visual routing, deny lists | Sprint 15–16 | Complete (BL-083–BL-091; Aug 13) |
+| M13 | Quality & shared primitives | Radix Dialog, date_range, error UI, query states | Sprint 17 | Complete (BL-092–BL-097; Aug 14) |
+| M14 | MCP compliance pipeline | Policy bundle MCP scope, gated audit path, framework packs | Sprint 18–20 | In progress — [mcp-policy-pipeline-design.md](../planning/mcp-policy-pipeline-design.md) |
 
 > Parity detail: [gateway-parity-roadmap.md](../planning/gateway-parity-roadmap.md)
 

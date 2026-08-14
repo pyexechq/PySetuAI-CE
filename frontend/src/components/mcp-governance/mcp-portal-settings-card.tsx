@@ -70,7 +70,7 @@ export function McpPortalSettingsCard({ canEdit }: { canEdit: boolean }) {
         </CardTitle>
         <CardDescription>
           Let end users browse published integrations and connect personal tokens at{" "}
-          <span className="font-mono text-xs">/mcp-portal</span>.
+          <span className="font-mono text-xs">/mcp-governance?tab=portal</span>.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -80,6 +80,30 @@ def test_resolve_token_saving_config_request_override():
     assert mode == "strip_markdown"
 
 
+def test_resolve_token_saving_config_key_override():
+    enabled, mode = resolve_token_saving_config(
+        tenant_enabled=False,
+        tenant_mode="both",
+        request_metadata=None,
+        key_enabled=True,
+        key_mode="json_to_toon",
+    )
+    assert enabled is True
+    assert mode == "json_to_toon"
+
+
+def test_resolve_token_saving_config_key_inherits_tenant():
+    enabled, mode = resolve_token_saving_config(
+        tenant_enabled=True,
+        tenant_mode="strip_markdown",
+        request_metadata=None,
+        key_enabled=None,
+        key_mode=None,
+    )
+    assert enabled is True
+    assert mode == "strip_markdown"
+
+
 def test_resolve_token_saving_config_invalid_mode_falls_back():
     enabled, mode = resolve_token_saving_config(
         tenant_enabled=True,

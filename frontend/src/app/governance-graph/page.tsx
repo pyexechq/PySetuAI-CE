@@ -4,7 +4,7 @@ import { GovernanceGraphView } from "@/components/governance/governance-graph-vi
 
 export default function GovernanceGraphPage() {
   return (
-    <AppShell title="Governance Graph" description="Visualize policy flows, model routing, and MCP dependencies">
+    <AppShell title="Governance Graph" description="End-to-end request topology — gateway, policy, routing, and MCP">
       <Suspense fallback={<p className="text-sm text-muted-foreground">Loading governance graph…</p>}>
         <GovernanceGraphView />
       </Suspense>

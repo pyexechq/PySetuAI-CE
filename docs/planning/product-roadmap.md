@@ -158,6 +158,30 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 - [x] Loading / error / empty states on Audit Explorer, Compliance, Governance Graph, Monitoring (BL-096)
 - [x] Login schema min_length on password and tenant slug (BL-097)
 
+## Phase 13 — MCP compliance pipeline (Sprint 18–20)
+
+> Design: [mcp-policy-pipeline-design.md](./mcp-policy-pipeline-design.md)
+
+### Layer 1 — Gateway enforcement (Sprint 18)
+
+- [ ] AuditLog on MCP `tools/call` with key metadata (BL-098)
+- [ ] Enforce tool deny lists on gateway multiplex (BL-099)
+- [ ] DLP inspect on MCP tool args and results (BL-100)
+- [ ] Policy bundle `mcp_scope` + `mcp_access_service` (BL-101)
+- [ ] Routing rules honor assigned client API keys (BL-102)
+- [ ] Bundle MCP scope UI (BL-103)
+
+### Layer 2 — Compliance metadata (Sprint 19)
+
+- [ ] JWT purpose / lawful_basis on audit rows (BL-104)
+- [ ] MCP tool response redaction (BL-105)
+
+### Layer 3 — Framework packs (Sprint 20+)
+
+- [ ] Framework rule packs (BL-106)
+- [ ] Retention + erasure workflows (BL-107)
+- [ ] Optional WORM audit ledger (BL-108)
+
 ## Milestones
 
 | Milestone | Target | Status |
@@ -175,3 +199,4 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 | M11: Enterprise Security Parity | Sprint 14+ | ✅ Complete Aug 13 — BL-077–BL-082 (BL-079 optional) |
 | M12: HelixGuard Parity — LLM Router & MCP UX | Sprint 15–16 | ✅ Complete — BL-083–BL-091 delivered; BL-079 remains optional (Aug 13, 2026) |
 | M13: Quality & shared UI primitives | Sprint 17 | ✅ Complete Aug 14 — BL-092–BL-097 ([quality-audit-sprint.md](./quality-audit-sprint.md)) |
+| M14: MCP compliance pipeline | Sprint 18–20 | 🔄 In progress — BL-098–BL-108 ([mcp-policy-pipeline-design.md](./mcp-policy-pipeline-design.md)) |

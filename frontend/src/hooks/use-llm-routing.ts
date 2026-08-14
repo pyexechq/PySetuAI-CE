@@ -30,6 +30,7 @@ function mapProvider(m: Awaited<ReturnType<typeof api.getLlmProviders>>[0]): Rou
     apiKeyMasked: m.api_key_masked,
     costPer1mInput: m.cost_per_1m_input ?? 0,
     costPer1mOutput: m.cost_per_1m_output ?? 0,
+    modelAliases: m.model_aliases ?? [],
     color: modelColors[m.model] ?? "#6366f1",
   };
 }
@@ -58,6 +59,7 @@ export function useLlmRouting() {
             targetModel: r.target_model,
             status: r.status as RoutingRule["status"],
             responseFormat: r.response_format ?? "auto",
+            targetProvider: r.target_provider ?? null,
           })
         )
       ),

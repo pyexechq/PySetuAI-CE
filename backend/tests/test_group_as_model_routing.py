@@ -50,14 +50,17 @@ async def test_select_model_resolves_routing_group():
     groups_mock = MagicMock()
     groups_mock.scalars.return_value.all.return_value = [group]
 
-    mock_db.execute.side_effect = [providers_mock, groups_mock]
+    keys_mock = MagicMock()
+    keys_mock.all.return_value = []
 
-    routed_model, matched_rule, strategy = await select_model(
+    mock_db.execute.side_effect = [keys_mock, providers_mock, groups_mock]
+
+    decision = await select_model(
         requested_model="production",
         db=mock_db,
         tenant_id=tenant_id,
     )
 
-    assert routed_model == "gpt-4o"
-    assert matched_rule == "production"
-    assert strategy == "routing_group"
+    assert decision.model == "gpt-4o"
+    assert decision.matched_rule == "production"
+    assert decision.strategy == "routing_group"

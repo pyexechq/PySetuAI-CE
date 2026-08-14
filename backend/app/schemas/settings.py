@@ -72,16 +72,25 @@ class AiAssistSettingsResponse(BaseModel):
     model: str
     api_key_set: bool
     api_key_masked: str | None = None
+    base_url: str | None = None
     available: bool
+    uses_gateway_fallback: bool = False
+    credential_source: str = "none"
+    supported_providers: list[str] = Field(default_factory=list)
+    provider_labels: dict[str, str] = Field(default_factory=dict)
     features: list[str]
     air_gap_mode: bool = False
 
 
 class AiAssistSettingsUpdate(BaseModel):
     enabled: bool | None = None
-    provider: str | None = Field(None, description="openai or gemini")
+    provider: str | None = Field(
+        None,
+        description="openai, gemini, groq, ollama, vllm, or custom",
+    )
     model: str | None = None
     api_key: str | None = Field(None, description="Set to empty string to clear")
+    base_url: str | None = Field(None, description="Endpoint for ollama, vllm, or custom providers")
 
 
 class GatewaySettingsResponse(BaseModel):
@@ -108,3 +117,27 @@ class GatewaySettingsUpdate(BaseModel):
     allowed_api_origins: list[str] | None = None
     token_saving_enabled: bool | None = None
     token_saving_mode: str | None = Field(None, description="json_to_toon, strip_markdown, or both")
+
+
+class RagGatewaySettingsResponse(BaseModel):
+    pinecone_enabled: bool
+    pinecone_api_key_set: bool
+    pinecone_api_key_masked: str | None = None
+    pinecone_host: str
+    pinecone_namespace: str
+    pinecone_dimension: int
+    embedding_model: str
+    configured: bool
+    config_source: str
+    env_fallback_note: str = (
+        "Environment variables are used when tenant Pinecone settings are empty. "
+        "Tenant settings on this page take priority."
+    )
+
+
+class RagGatewaySettingsUpdate(BaseModel):
+    pinecone_enabled: bool | None = None
+    pinecone_api_key: str | None = Field(None, description="Set to empty string to clear")
+    pinecone_host: str | None = None
+    pinecone_namespace: str | None = None
+    pinecone_dimension: int | None = Field(None, ge=64, le=4096)

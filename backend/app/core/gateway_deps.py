@@ -12,7 +12,7 @@ from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.governance import PolicyBundle
 from app.models.tenant import Tenant, User
-from app.services.client_api_key_service import resolve_client_api_key
+from app.services.client_api_key_service import normalize_token_saving_mode, resolve_client_api_key
 from app.services.gateway_context import GatewayContext
 from app.services.policy_bundle_service import get_tenant_default_bundle
 
@@ -63,6 +63,8 @@ async def get_gateway_context(
             ai_token_limit_tpm=record.ai_token_limit_tpm,
             ai_token_limit_tph=record.ai_token_limit_tph,
             ai_token_limit_tpd=record.ai_token_limit_tpd,
+            token_saving_enabled=record.token_saving_enabled,
+            token_saving_mode=normalize_token_saving_mode(record.token_saving_mode),
         )
 
     try:
