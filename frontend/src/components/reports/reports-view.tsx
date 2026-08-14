@@ -6,11 +6,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Activity,
   CalendarClock,
-  Download,
   ExternalLink,
   FileCheck,
   FileText,
-  Pencil,
   Play,
   Plus,
   Radar,
@@ -20,11 +18,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { MetricInsightModal } from "@/components/dashboard/metric-insight-modal";
 import { ReportManagementModals } from "@/components/reports/report-management-modals";
+import { ReportCatalogTable } from "@/components/reports/report-catalog-table";
+import { ReportPreviewModal } from "@/components/reports/report-preview-modal";
 import { CompoundingCostCard } from "@/components/reports/compounding-cost-card";
 import { QuickLinkPills, SectionHeading, SectionTabBar } from "@/components/shared/section-chrome";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useReports } from "@/hooks/use-reports";
+import { useMetricInsight } from "@/hooks/use-metric-insight";
 import type { ReportCatalogEntry } from "@/lib/types/domain";
+import { resolveMetricInsightKey } from "@/lib/dashboard-metric-insights";
 import { api, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -33,12 +37,6 @@ const QUICK_LINKS = [
   { href: "/monitoring?tab=security", label: "Security", icon: ShieldAlert },
   { href: "/compliance", label: "Compliance", icon: FileCheck },
 ] as const;
-
-const statusVariant = {
-  ready: "success" as const,
-  scheduled: "warning" as const,
-  generating: "secondary" as const,
-};
 
 type DetailTab = "catalog" | "summary" | "scheduler";
 
@@ -79,6 +77,16 @@ export function ReportsView() {
   const [schedulerMessage, setSchedulerMessage] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<"create" | "query" | "schedule" | null>(null);
   const [activeReport, setActiveReport] = useState<ReportCatalogEntry | null>(null);
+  const [previewReport, setPreviewReport] = useState<ReportCatalogEntry | null>(null);
+  const {
+    openMetricInsight,
+    closeMetricInsight,
+    insightOpen,
+    activeContext,
+    insightLoading,
+    insight,
+    insightError,
+  } = useMetricInsight();
 
   const tabs: { id: DetailTab; label: string }[] = canEdit
     ? [
@@ -146,7 +154,8 @@ export function ReportsView() {
   }
 
   return (
-    <div className="space-y-8">
+    <TooltipProvider delayDuration={200}>
+      <div className="space-y-8">
       <QuickLinkPills links={QUICK_LINKS} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -171,6 +180,7 @@ export function ReportsView() {
             const Icon = kpiIcon(kpi.label);
             const invertTrend =
               kpi.label.toLowerCase().includes("block") || kpi.label.toLowerCase().includes("risk");
+            const insightKey = resolveMetricInsightKey(kpi.label);
             return (
               <MetricCard
                 key={kpi.label}
@@ -183,6 +193,8 @@ export function ReportsView() {
                 icon={Icon}
                 iconColor={invertTrend ? "text-red-400" : "text-emerald-400"}
                 format="raw"
+                insightKey={insightKey}
+                onInsightClick={insightKey ? openMetricInsight : undefined}
               />
             );
           })}
@@ -210,79 +222,15 @@ export function ReportsView() {
               <Badge variant="outline">{catalog.length} reports</Badge>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-muted-foreground">
-                      <th className="pb-3 pr-4 font-medium">Report</th>
-                      <th className="pb-3 pr-4 font-medium">Category</th>
-                      <th className="pb-3 pr-4 font-medium">Frequency</th>
-                      <th className="pb-3 pr-4 font-medium">Last run</th>
-                      <th className="pb-3 pr-4 font-medium">Status</th>
-                      <th className="pb-3 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {catalog.map((report) => (
-                      <tr key={report.id} className="border-b border-border/50 last:border-0">
-                        <td className="py-3 pr-4">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{report.name}</p>
-                            {report.is_builtin && (
-                              <Badge variant="outline" className="text-[10px]">
-                                Built-in
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-1">{report.description}</p>
-                        </td>
-                        <td className="py-3 pr-4">{report.category}</td>
-                        <td className="py-3 pr-4">{report.frequency}</td>
-                        <td className="py-3 pr-4 font-mono text-xs">{report.last_generated}</td>
-                        <td className="py-3 pr-4">
-                          <Badge variant={statusVariant[report.status]}>{report.status}</Badge>
-                        </td>
-                        <td className="py-3">
-                          <div className="flex flex-wrap gap-1.5">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1.5"
-                              disabled={downloading === report.id}
-                              onClick={() => handleDownload(report)}
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                              {report.format}
-                            </Button>
-                            {canEdit && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="gap-1.5"
-                                  onClick={() => openModal("query", report)}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                  Query
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="gap-1.5"
-                                  onClick={() => openModal("schedule", report)}
-                                >
-                                  <CalendarClock className="h-3.5 w-3.5" />
-                                  Schedule
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ReportCatalogTable
+                catalog={catalog}
+                canEdit={canEdit}
+                downloading={downloading}
+                onPreview={setPreviewReport}
+                onDownload={handleDownload}
+                onQuery={(report) => openModal("query", report)}
+                onSchedule={(report) => openModal("schedule", report)}
+              />
               {!canEdit && (
                 <p className="mt-3 text-xs text-muted-foreground">
                   Tenant Admin or Security Admin role required to create, schedule, or edit report queries.
@@ -388,6 +336,12 @@ export function ReportsView() {
         )}
       </section>
 
+      <ReportPreviewModal
+        report={previewReport}
+        token={token}
+        onClose={() => setPreviewReport(null)}
+      />
+
       <ReportManagementModals
         key={`${modalMode ?? "closed"}-${activeReport?.id ?? "new"}`}
         mode={modalMode}
@@ -398,6 +352,16 @@ export function ReportsView() {
         onClose={closeModal}
         onSaved={invalidateCatalog}
       />
+
+      <MetricInsightModal
+        open={insightOpen}
+        loading={insightLoading}
+        insight={insight}
+        error={insightError}
+        pendingTitle={activeContext?.cardTitle}
+        onClose={closeMetricInsight}
+      />
     </div>
+    </TooltipProvider>
   );
 }

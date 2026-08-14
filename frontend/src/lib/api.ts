@@ -1647,6 +1647,12 @@ export const api = {
   previewReportQuery: (token: string, query: ApiReportQuery) =>
     apiFetch<ApiReportPreviewResponse>("/reports/preview", { method: "POST", body: JSON.stringify({ query }) }, token),
 
+  previewReport: (token: string, reportId: string) =>
+    apiFetch<ApiReportPreviewResponse>(`/reports/${reportId}/preview`, { method: "POST" }, token),
+
+  getReportRunResult: (token: string, reportId: string) =>
+    apiFetch<ApiReportRunResponse>(`/reports/${reportId}/run`, {}, token),
+
   runReport: async (token: string, reportId: string): Promise<ApiReportRunResponse> => {
     await apiFetch<{ report_id: string; status: string }>(
       `/reports/${reportId}/run`,
@@ -3027,6 +3033,10 @@ export interface ApiReportCatalogEntry {
   query: ApiReportQuery;
   schedule: ApiReportSchedule;
   is_builtin: boolean;
+  stats?: {
+    row_count: number;
+    generated_at: string | null;
+  };
 }
 
 export interface ApiReportCatalogResponse {

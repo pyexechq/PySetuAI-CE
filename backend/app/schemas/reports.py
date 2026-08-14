@@ -66,6 +66,11 @@ class ReportQuery(BaseModel):
     limit: int = 1000
 
 
+class ReportCatalogStats(BaseModel):
+    row_count: int = 0
+    generated_at: str | None = None
+
+
 class ReportCatalogItem(BaseModel):
     id: str
     report_uuid: str
@@ -79,6 +84,7 @@ class ReportCatalogItem(BaseModel):
     query: ReportQuery
     schedule: ReportSchedule
     is_builtin: bool = False
+    stats: ReportCatalogStats = Field(default_factory=ReportCatalogStats)
 
 
 class ExecutiveSummaryResponse(BaseModel):

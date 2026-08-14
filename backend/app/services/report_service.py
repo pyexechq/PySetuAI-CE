@@ -225,6 +225,7 @@ def report_frequency_label(report: ReportDefinition) -> str:
 
 def catalog_item_dict(report: ReportDefinition) -> dict[str, Any]:
     last = report.last_generated_at or (datetime.now(UTC) - timedelta(days=3))
+    last_result = report.last_run_result or {}
     return {
         "id": report_public_id(report),
         "report_uuid": str(report.id),
@@ -246,7 +247,11 @@ def catalog_item_dict(report: ReportDefinition) -> dict[str, Any]:
             "recipients": report.schedule_recipients or [],
         },
         "is_builtin": report.is_builtin,
-        "last_delivery": (report.last_run_result or {}).get("delivery"),
+        "last_delivery": last_result.get("delivery"),
+        "stats": {
+            "row_count": int(last_result.get("row_count") or 0),
+            "generated_at": last_result.get("generated_at") or (last.isoformat() if report.last_generated_at else None),
+        },
     }
 
 
