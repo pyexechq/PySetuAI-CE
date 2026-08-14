@@ -1,5 +1,11 @@
+import { Suspense } from "react";
+
 import { GatewaySettingsSection } from "@/components/settings/gateway-settings";
 
 export default function GatewaySettingsPage() {
-  return <GatewaySettingsSection />;
+  return (
+    <Suspense>
+      <GatewaySettingsSection />
+    </Suspense>
+  );
 }

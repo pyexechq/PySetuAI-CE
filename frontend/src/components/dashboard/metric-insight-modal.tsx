@@ -12,10 +12,18 @@ interface MetricInsightModalProps {
   loading: boolean;
   insight: ApiDashboardMetricInsight | null;
   error?: string | null;
+  pendingTitle?: string | null;
   onClose: () => void;
 }
 
-export function MetricInsightModal({ open, loading, insight, error, onClose }: MetricInsightModalProps) {
+export function MetricInsightModal({
+  open,
+  loading,
+  insight,
+  error,
+  pendingTitle,
+  onClose,
+}: MetricInsightModalProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -61,7 +69,9 @@ export function MetricInsightModal({ open, loading, insight, error, onClose }: M
               <Sparkles className="h-5 w-5 text-indigo-400" />
               AI summary & insights
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{insight?.title ?? "Dashboard metric"}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {insight?.title ?? pendingTitle ?? "Dashboard metric"}
+            </p>
           </div>
           <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
             <X className="h-4 w-4" />

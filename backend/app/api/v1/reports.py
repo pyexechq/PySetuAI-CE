@@ -32,7 +32,7 @@ from app.schemas.reports import (
     ReportSchedulerStatus,
     ReportUpdateRequest,
 )
-from app.services.compliance_service import build_compliance_frameworks
+from app.services.compliance_service import build_compliance_frameworks, overall_compliance_score
 from app.services.compounding_cost_service import summarize_compounding_savings
 from app.services.report_export_service import build_report_download
 from app.services.report_service import (
@@ -127,7 +127,7 @@ async def executive_summary(
         audit_start=range_start,
         audit_end=range_end,
     )
-    avg_score = round(sum(f.score for f in frameworks) / len(frameworks), 1) if frameworks else compliance_score
+    avg_score = overall_compliance_score(frameworks) if frameworks else compliance_score
     frameworks_compliant = sum(1 for f in frameworks if f.status == "compliant")
 
     return ExecutiveSummaryResponse(
@@ -270,6 +270,19 @@ async def delete_report(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Built-in reports cannot be deleted")
     await db.delete(report)
     await db.commit()
+
+
+@router.post("/reports/{report_id}/preview", response_model=ReportPreviewResponse)
+async def preview_report_by_id(
+    report_id: str,
+    current_user: Annotated[User, Depends(_require_compliance)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ReportPreviewResponse:
+    report = await get_report_by_id(db, current_user.tenant_id, report_id)
+    if report is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    columns, rows = await execute_report_query(db, current_user.tenant_id, report.query)
+    return ReportPreviewResponse(columns=columns, rows=rows[:50], row_count=len(rows))
 
 
 @router.post("/reports/preview", response_model=ReportPreviewResponse)

@@ -9,7 +9,11 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.dashboard import DashboardMetricInsightResponse, DashboardOverviewResponse
+from app.schemas.dashboard import (
+    DashboardMetricInsightResponse,
+    DashboardOverviewResponse,
+    MetricInsightContextRequest,
+)
 from app.schemas.openai import ChatMessage
 from app.services.ai_assist_config_service import complete_ai_assist, resolve_ai_assist_config
 from app.services.dashboard_service import build_dashboard_overview
@@ -96,8 +100,19 @@ def _metric_snapshot(metric_key: str, overview: DashboardOverviewResponse) -> di
         },
         "compliance_score": {
             "value": m.compliance_score,
+            "source": "average of live framework control scores",
             "change_pts": m.compliance_score_change_pts,
-            "period": m.comparison_period,
+            "frameworks": [
+                {
+                    "name": f.name,
+                    "score": f.score,
+                    "status": f.status,
+                    "passed": f.passed,
+                    "in_progress": f.in_progress,
+                    "not_met": f.not_met,
+                }
+                for f in overview.compliance_frameworks
+            ],
         },
     }
     if uag:
@@ -112,7 +127,76 @@ def _metric_snapshot(metric_key: str, overview: DashboardOverviewResponse) -> di
     return snapshots.get(metric_key, {"value": 0})
 
 
-def _playbook_insight(metric_key: str, overview: DashboardOverviewResponse) -> DashboardMetricInsightResponse:
+def _resolve_insight_title(metric_key: str, context: MetricInsightContextRequest | None) -> str:
+    if context and context.card_title:
+        return context.card_title.strip()
+    return METRIC_TITLES[metric_key]
+
+
+def _merge_snapshot(
+    metric_key: str,
+    overview: DashboardOverviewResponse,
+    context: MetricInsightContextRequest | None,
+) -> dict:
+    snapshot = dict(_metric_snapshot(metric_key, overview))
+    if not context:
+        return snapshot
+    if context.display_value is not None:
+        snapshot["card_display_value"] = context.display_value
+    if context.card_title:
+        snapshot["card_title"] = context.card_title
+    if context.period_label:
+        snapshot["period"] = context.period_label
+    if context.change is not None:
+        snapshot["card_change"] = context.change
+    return snapshot
+
+
+def _display_differs_from_baseline(baseline: object | None, display_value: str) -> bool:
+    if baseline is None:
+        return False
+    normalized_display = display_value.replace("%", "").replace(",", "").strip()
+    try:
+        return abs(float(normalized_display) - float(baseline)) > 0.05
+    except ValueError:
+        return str(baseline) != normalized_display
+
+
+def _apply_card_context(
+    metric_key: str,
+    overview: DashboardOverviewResponse,
+    insight: DashboardMetricInsightResponse,
+    context: MetricInsightContextRequest | None,
+) -> DashboardMetricInsightResponse:
+    if not context or not context.display_value:
+        return insight
+
+    title = _resolve_insight_title(metric_key, context)
+    period = f" ({context.period_label})" if context.period_label else ""
+    summary = f"{title} is {context.display_value}{period}."
+
+    baseline = _metric_snapshot(metric_key, overview).get("value")
+    insights = list(insight.insights)
+    if baseline is not None and _display_differs_from_baseline(baseline, context.display_value):
+        insights.insert(
+            0,
+            f"Tenant dashboard baseline for this metric (last 30 days) is {baseline}; this card may use a different period or view.",
+        )
+
+    return insight.model_copy(
+        update={
+            "title": title,
+            "summary": summary,
+            "insights": insights[:5],
+        }
+    )
+
+
+def _playbook_insight(
+    metric_key: str,
+    overview: DashboardOverviewResponse,
+    context: MetricInsightContextRequest | None = None,
+) -> DashboardMetricInsightResponse:
     m = overview.metrics
     uag = overview.uag
     title = METRIC_TITLES[metric_key]
@@ -200,14 +284,26 @@ def _playbook_insight(metric_key: str, overview: DashboardOverviewResponse) -> D
             ],
         ),
         "compliance_score": (
-            f"Composite compliance posture is {m.compliance_score}% ({_trend_label(m.compliance_score_change_pts or 0)}).",
+            f"Overall compliance score is {m.compliance_score:g}% — the average of "
+            f"{len(overview.compliance_frameworks)} live framework scores "
+            f"({sum(1 for f in overview.compliance_frameworks if f.status == 'compliant')} compliant).",
             [
-                "Score blends block rate, PII handling, and live framework control status.",
-                f"{len(overview.compliance_frameworks)} frameworks are monitored on this dashboard.",
+                (
+                    "At-risk frameworks: "
+                    + (
+                        ", ".join(f.name for f in overview.compliance_frameworks if f.status == "at-risk")
+                        or "none"
+                    )
+                    + "."
+                ),
+                (
+                    f"Open gaps: {sum((f.not_met or 0) + (f.in_progress or 0) for f in overview.compliance_frameworks)} "
+                    "controls are not fully met. This is the same score shown in Compliance Center."
+                ),
             ],
             [
-                "Open Compliance Center to re-evaluate failing controls.",
-                "Export audit evidence from Reports for auditor review.",
+                "Open Compliance Center to remediate failing controls.",
+                "Export evidence snapshots from Compliance Center → Evidence & exports.",
             ],
         ),
     }
@@ -263,14 +359,19 @@ def _playbook_insight(metric_key: str, overview: DashboardOverviewResponse) -> D
         metric_key,
         (f"Summary for {title} is unavailable.", ["No additional context."], ["Refresh dashboard data."]),
     )
-    return DashboardMetricInsightResponse(
-        metric_key=metric_key,
-        title=title,
-        summary=summary,
-        insights=insights,
-        recommended_actions=actions,
-        ai_generated=False,
-        generated_at=datetime.now(UTC),
+    return _apply_card_context(
+        metric_key,
+        overview,
+        DashboardMetricInsightResponse(
+            metric_key=metric_key,
+            title=_resolve_insight_title(metric_key, context),
+            summary=summary,
+            insights=insights,
+            recommended_actions=actions,
+            ai_generated=False,
+            generated_at=datetime.now(UTC),
+        ),
+        context,
     )
 
 
@@ -297,14 +398,15 @@ async def build_metric_insight(
     db: AsyncSession,
     tenant_id: uuid.UUID,
     metric_key: str,
+    context: MetricInsightContextRequest | None = None,
 ) -> DashboardMetricInsightResponse:
     key = metric_key.strip().lower()
     if key not in METRIC_KEYS:
         raise ValueError(f"Unknown metric key '{metric_key}'")
 
     overview = await build_dashboard_overview(db, tenant_id)
-    snapshot = _metric_snapshot(key, overview)
-    playbook = _playbook_insight(key, overview)
+    snapshot = _merge_snapshot(key, overview, context)
+    playbook = _playbook_insight(key, overview, context)
 
     config = await resolve_ai_assist_config(db, tenant_id)
     if not config.available:
@@ -314,11 +416,23 @@ async def build_metric_insight(
         "You are PySetu AI, an enterprise AI governance analyst. "
         "Return ONLY JSON with keys summary (string), insights (array of 2-3 strings), "
         "recommended_actions (array of 2-3 strings). No markdown.\n\n"
-        f"Metric: {METRIC_TITLES[key]}\n"
+        f"Metric: {_resolve_insight_title(key, context)}\n"
         f"Snapshot: {json.dumps(snapshot)}\n"
         f"Top threats: {[t.name for t in overview.top_threats[:3]]}\n"
         f"Top policies: {[p.name for p in overview.top_policies[:3]]}"
     )
+    if context and context.display_value:
+        prompt += (
+            f"\nThe user clicked the card titled '{context.card_title or METRIC_TITLES[key]}' "
+            f"which displays '{context.display_value}'. "
+            "Your summary MUST describe this exact card title and value first."
+        )
+    if key == "compliance_score":
+        prompt += (
+            "\nThe displayed compliance score is the average of live framework control scores "
+            "(GDPR, HIPAA, SOC 2, ISO 27001, NIST AI RMF). Do not treat gateway block rate as the score. "
+            "Summary must cite the snapshot value and match Compliance Center."
+        )
 
     try:
         text, ok = await complete_ai_assist(
@@ -330,14 +444,19 @@ async def build_metric_insight(
             parsed = _parse_ai_insights(text)
             if parsed:
                 summary, insights, actions = parsed
-                return DashboardMetricInsightResponse(
-                    metric_key=key,
-                    title=METRIC_TITLES[key],
-                    summary=summary,
-                    insights=insights,
-                    recommended_actions=actions,
-                    ai_generated=True,
-                    generated_at=datetime.now(UTC),
+                return _apply_card_context(
+                    key,
+                    overview,
+                    DashboardMetricInsightResponse(
+                        metric_key=key,
+                        title=_resolve_insight_title(key, context),
+                        summary=summary,
+                        insights=insights,
+                        recommended_actions=actions,
+                        ai_generated=True,
+                        generated_at=datetime.now(UTC),
+                    ),
+                    context,
                 )
     except Exception:
         pass

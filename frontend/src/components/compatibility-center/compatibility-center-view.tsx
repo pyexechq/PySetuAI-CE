@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ArrowRightLeft, Settings2 } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { MetricInsightModal } from "@/components/dashboard/metric-insight-modal";
 import { SectionHeading } from "@/components/shared/section-chrome";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useMetricInsight } from "@/hooks/use-metric-insight";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +18,15 @@ const UNSUPPORTED_FEATURES = ["Tool calling parity", "Structured outputs", "Stre
 
 export function CompatibilityCenterView({ embedded = false }: { embedded?: boolean }) {
   const token = useAuthStore((s) => s.token);
+  const {
+    openMetricInsight,
+    closeMetricInsight,
+    insightOpen,
+    activeContext,
+    insightLoading,
+    insight,
+    insightError,
+  } = useMetricInsight();
 
   const { data: stats } = useQuery({
     queryKey: ["uag-stats", token],
@@ -23,7 +35,8 @@ export function CompatibilityCenterView({ embedded = false }: { embedded?: boole
   });
 
   return (
-    <div className="space-y-6">
+    <TooltipProvider delayDuration={200}>
+      <div className="space-y-6">
       {!embedded && (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -60,6 +73,8 @@ export function CompatibilityCenterView({ embedded = false }: { embedded?: boole
           change={0}
           icon={ArrowRightLeft}
           iconColor="text-blue-400"
+          insightKey="protocol_translations"
+          onInsightClick={openMetricInsight}
         />
         <MetricCard
           variant="hero"
@@ -67,9 +82,12 @@ export function CompatibilityCenterView({ embedded = false }: { embedded?: boole
           title="Success rate"
           value={`${Math.round((stats?.success_rate ?? 1) * 100)}%`}
           change={0}
+          periodLabel="UAG translations"
           icon={ArrowRightLeft}
           iconColor="text-emerald-400"
           format="raw"
+          insightKey="legacy_app_compatibility"
+          onInsightClick={openMetricInsight}
         />
         <MetricCard
           variant="hero"
@@ -77,8 +95,11 @@ export function CompatibilityCenterView({ embedded = false }: { embedded?: boole
           title="Failed"
           value={stats?.failed_translations ?? 0}
           change={0}
+          periodLabel="UAG translations"
           icon={ArrowRightLeft}
           iconColor="text-red-400"
+          insightKey="protocol_translations"
+          onInsightClick={openMetricInsight}
         />
         <MetricCard
           variant="hero"
@@ -151,6 +172,16 @@ export function CompatibilityCenterView({ embedded = false }: { embedded?: boole
           </CardContent>
         </Card>
       )}
+
+      <MetricInsightModal
+        open={insightOpen}
+        loading={insightLoading}
+        insight={insight}
+        error={insightError}
+        pendingTitle={activeContext?.cardTitle}
+        onClose={closeMetricInsight}
+      />
     </div>
+    </TooltipProvider>
   );
 }

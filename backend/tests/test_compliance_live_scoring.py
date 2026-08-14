@@ -10,6 +10,7 @@ from app.services.compliance_service import (
     _build_soc2_controls,
     _finalize_framework,
     _framework_status,
+    overall_compliance_score,
 )
 from app.services.compliance_snapshot_service import compute_period_compliance_metrics
 
@@ -60,6 +61,29 @@ def test_framework_status_partial_for_mid_scores() -> None:
 
 def test_framework_status_at_risk_when_low_score() -> None:
     assert _framework_status(55.0, 3, 10) == "at-risk"
+
+
+def test_overall_compliance_score_averages_frameworks() -> None:
+    frameworks = [
+        _finalize_framework(
+            "GDPR",
+            [
+                DashboardComplianceControl(id="a", title="A", requirement="R", status="met"),
+                DashboardComplianceControl(id="b", title="B", requirement="R", status="not_met"),
+            ],
+        ),
+        _finalize_framework(
+            "HIPAA",
+            [
+                DashboardComplianceControl(id="c", title="C", requirement="R", status="met"),
+                DashboardComplianceControl(id="d", title="D", requirement="R", status="in_progress"),
+            ],
+        ),
+    ]
+    assert frameworks[0].score == 50.0
+    assert frameworks[1].score == 75.0
+    assert overall_compliance_score(frameworks) == 62.5
+    assert overall_compliance_score([]) == 0.0
 
 
 def test_finalize_framework_weights_in_progress_controls() -> None:

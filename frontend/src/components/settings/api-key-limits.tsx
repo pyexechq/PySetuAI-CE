@@ -95,7 +95,7 @@ export function ApiKeyLimitsForm({ limits, onChange, disabled }: ApiKeyLimitsPro
       <div className="space-y-2 rounded-md border border-border/60 bg-muted/10 p-3">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Token Saving</p>
         <p className="text-xs text-muted-foreground">
-          Ingress compression for this API key. Converts JSON to TOON and strips markdown from user messages.
+          Ingress compression for this API key. Inherit uses the tenant default on Gateway limits → Token saving.
         </p>
         <select
           value={

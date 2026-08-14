@@ -15,11 +15,14 @@ import {
 import { Activity, Clock, ShieldAlert, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetricCard, MetricStrip } from "@/components/dashboard/metric-card";
+import { MetricInsightModal } from "@/components/dashboard/metric-insight-modal";
 import { TelemetryOperationsCard } from "@/components/monitoring/telemetry-operations-card";
 import { GatewaySlaCard } from "@/components/monitoring/gateway-sla-card";
 import { SectionHeading, SectionTabBar } from "@/components/shared/section-chrome";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useMetricInsight } from "@/hooks/use-metric-insight";
 import { useObservability } from "@/hooks/use-observability";
-import { formatNumber } from "@/lib/utils";
+import { resolveMetricInsightKey } from "@/lib/dashboard-metric-insights";
 
 const EMPTY_OVERVIEW = {
   total_events_today: 0,
@@ -46,6 +49,15 @@ export function MonitoringOverviewTab() {
   const { overview: overviewData, isLoading, isError } = useObservability();
   const overview = overviewData ?? EMPTY_OVERVIEW;
   const [detailTab, setDetailTab] = useState<DetailTab>("breakdown");
+  const {
+    openMetricInsight,
+    closeMetricInsight,
+    insightOpen,
+    activeContext,
+    insightLoading,
+    insight,
+    insightError,
+  } = useMetricInsight();
 
   if (isLoading && !overviewData) {
     return <p className="text-sm text-muted-foreground">Loading overview…</p>;
@@ -60,7 +72,8 @@ export function MonitoringOverviewTab() {
   }
 
   return (
-    <div className="space-y-8">
+    <TooltipProvider delayDuration={200}>
+      <div className="space-y-8">
       <section className="space-y-3">
         <SectionHeading title="At a glance" />
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -68,10 +81,13 @@ export function MonitoringOverviewTab() {
             variant="hero"
             showTrend={false}
             title="Events (range)"
-            value={formatNumber(overview.total_events_today)}
+            value={overview.total_events_today}
             change={0}
+            periodLabel="selected range"
             icon={Activity}
             iconColor="text-indigo-400"
+            insightKey={resolveMetricInsightKey("Events (range)")}
+            onInsightClick={openMetricInsight}
           />
           <MetricCard
             variant="hero"
@@ -97,8 +113,12 @@ export function MonitoringOverviewTab() {
             title="Block rate"
             value={`${overview.block_rate}%`}
             change={0}
+            periodLabel="selected range"
+            format="raw"
             icon={ShieldAlert}
             iconColor="text-red-400"
+            insightKey={resolveMetricInsightKey("Block rate")}
+            onInsightClick={openMetricInsight}
           />
         </div>
       </section>
@@ -106,26 +126,31 @@ export function MonitoringOverviewTab() {
       <section className="space-y-3">
         <SectionHeading title="Request outcomes" />
         <MetricStrip
+          onInsightClick={openMetricInsight}
           items={[
             {
               title: "Allowed",
-              value: formatNumber(overview.allowed_today),
+              value: overview.allowed_today,
               change: 0,
+              periodLabel: "selected range",
               icon: Activity,
               iconColor: "text-emerald-400",
               showTrend: false,
+              insightKey: resolveMetricInsightKey("Allowed"),
             },
             {
               title: "Blocked",
-              value: formatNumber(overview.blocked_today),
+              value: overview.blocked_today,
               change: 0,
+              periodLabel: "selected range",
               icon: ShieldAlert,
               iconColor: "text-red-400",
               showTrend: false,
+              insightKey: resolveMetricInsightKey("Blocked"),
             },
             {
               title: "Under review",
-              value: formatNumber(overview.under_review_today),
+              value: overview.under_review_today,
               change: 0,
               icon: Clock,
               iconColor: "text-amber-400",
@@ -253,6 +278,16 @@ export function MonitoringOverviewTab() {
           </div>
         )}
       </section>
+
+      <MetricInsightModal
+        open={insightOpen}
+        loading={insightLoading}
+        insight={insight}
+        error={insightError}
+        pendingTitle={activeContext?.cardTitle}
+        onClose={closeMetricInsight}
+      />
     </div>
+    </TooltipProvider>
   );
 }

@@ -146,6 +146,13 @@ class CostAnalyticsResponse(BaseModel):
     daily_trend: list[CostAnalyticsDailyPoint]
 
 
+class MetricInsightContextRequest(BaseModel):
+  card_title: str | None = None
+  display_value: str | None = None
+  period_label: str | None = None
+  change: float | None = None
+
+
 class DashboardMetricInsightResponse(BaseModel):
     metric_key: str
     title: str

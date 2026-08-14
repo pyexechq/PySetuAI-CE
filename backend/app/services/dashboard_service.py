@@ -22,7 +22,7 @@ from app.schemas.dashboard import (
     DashboardUagMetrics,
     DashboardUagRouteItem,
 )
-from app.services.compliance_service import build_compliance_frameworks
+from app.services.compliance_service import build_compliance_frameworks, overall_compliance_score
 from app.services.cost_analytics_service import build_cost_analytics, llm_usage_items_from_models
 from app.services.token_saving_service import summarize_token_saving
 
@@ -85,11 +85,8 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
 
     success_rate = round((allowed_current / total_current * 100) if total_current else 0.0, 1)
     success_rate_previous = round((allowed_previous / total_previous * 100) if total_previous else 0.0, 1)
-    compliance_score = max(
+    traffic_compliance_score = max(
         0.0, min(100.0, round(100 - (blocked_current / total_current * 100) if total_current else 92.0, 1))
-    )
-    compliance_previous = max(
-        0.0, min(100.0, round(100 - (blocked_previous / total_previous * 100) if total_previous else 92.0, 1))
     )
 
     metrics = DashboardMetricsResponse(
@@ -99,14 +96,14 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
         policy_violations=policy_violations,
         mcp_violations=mcp_current,
         cost_savings=0.0,
-        compliance_score=compliance_score,
+        compliance_score=traffic_compliance_score,
         success_rate=success_rate,
         total_requests_change_pct=_pct_change(total_current, total_previous),
         blocked_requests_change_pct=_pct_change(blocked_current, blocked_previous),
         pii_redactions_change_pct=_pct_change(pii_current, pii_previous),
         policy_violations_change_pct=_pct_change(policy_violations, policy_violations_previous),
         mcp_violations_change_pct=_pct_change(mcp_current, mcp_previous),
-        compliance_score_change_pts=round(compliance_score - compliance_previous, 1),
+        compliance_score_change_pts=0.0,
         success_rate_change_pts=round(success_rate - success_rate_previous, 1),
     )
 
@@ -268,7 +265,7 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
     compliance_frameworks = await build_compliance_frameworks(
         db,
         tenant_id,
-        compliance_score=compliance_score,
+        compliance_score=traffic_compliance_score,
         block_rate=block_rate,
         pii_events=pii_current,
         blocked_requests=blocked_current,
@@ -276,6 +273,8 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
         audit_start=current_start,
         audit_end=today_end,
     )
+    overall = overall_compliance_score(compliance_frameworks)
+    metrics = metrics.model_copy(update={"compliance_score": overall, "compliance_score_change_pts": 0.0})
 
     uag_filters = (
         UagTranslationEvent.tenant_id == tenant_id,

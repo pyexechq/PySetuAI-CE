@@ -27,6 +27,7 @@ from app.schemas.dashboard import (
     CostAnalyticsResponse,
     DashboardMetricInsightResponse,
     DashboardOverviewResponse,
+    MetricInsightContextRequest,
 )
 from app.services.cost_analytics_service import build_cost_analytics
 from app.services.dashboard_metric_insights_service import build_metric_insight
@@ -255,5 +256,18 @@ async def get_dashboard_metric_insights(
 ) -> DashboardMetricInsightResponse:
     try:
         return await build_metric_insight(db, current_user.tenant_id, metric_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/dashboard/metrics/{metric_key}/insights", response_model=DashboardMetricInsightResponse)
+async def post_dashboard_metric_insights(
+    metric_key: str,
+    context: MetricInsightContextRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DashboardMetricInsightResponse:
+    try:
+        return await build_metric_insight(db, current_user.tenant_id, metric_key, context)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

@@ -3,7 +3,7 @@
 import { cn, formatNumber, formatCurrency } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { DASHBOARD_METRIC_TOOLTIP, type DashboardMetricKey } from "@/lib/dashboard-metric-insights";
+import { DASHBOARD_METRIC_TOOLTIP, type DashboardMetricKey, type MetricInsightClickHandler } from "@/lib/dashboard-metric-insights";
 import { type LucideIcon, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
 
 interface MetricCardProps {
@@ -16,16 +16,19 @@ interface MetricCardProps {
   periodLabel?: string;
   invertTrend?: boolean;
   insightKey?: DashboardMetricKey;
-  onInsightClick?: (metricKey: DashboardMetricKey) => void;
+  onInsightClick?: MetricInsightClickHandler;
   variant?: "default" | "hero" | "compact";
   showTrend?: boolean;
 }
 
 function formatMetricValue(value: string | number, format: MetricCardProps["format"]) {
-  if (format === "currency") return formatCurrency(Number(value));
-  if (format === "percent") return `${value}%`;
-  if (format === "number") return formatNumber(Number(value));
-  return value;
+  if (format === "raw") return String(value ?? "—");
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric)) return "—";
+  if (format === "currency") return formatCurrency(numeric);
+  if (format === "percent") return `${numeric}%`;
+  if (format === "number") return formatNumber(numeric);
+  return String(value);
 }
 
 function TrendBadge({
@@ -41,6 +44,7 @@ function TrendBadge({
 }) {
   const isPositive = invertTrend ? change <= 0 : change >= 0;
   const TrendIcon = isPositive ? TrendingUp : TrendingDown;
+  const safeChange = Number.isFinite(change) ? change : 0;
 
   if (compact) {
     return (
@@ -52,7 +56,7 @@ function TrendBadge({
       >
         <TrendIcon className="h-2.5 w-2.5" />
         {isPositive ? "+" : ""}
-        {change}%
+        {safeChange}%
       </span>
     );
   }
@@ -62,7 +66,7 @@ function TrendBadge({
       <TrendIcon className={cn("h-3 w-3", isPositive ? "text-emerald-400" : "text-red-400")} />
       <span className={cn(isPositive ? "text-emerald-400" : "text-red-400")}>
         {isPositive ? "+" : ""}
-        {change}%
+        {safeChange}%
       </span>
       <span className="text-muted-foreground">{periodLabel}</span>
     </div>
@@ -71,10 +75,18 @@ function TrendBadge({
 
 function InsightButton({
   insightKey,
+  cardTitle,
+  displayValue,
+  periodLabel,
+  change,
   onInsightClick,
 }: {
   insightKey: DashboardMetricKey;
-  onInsightClick: (metricKey: DashboardMetricKey) => void;
+  cardTitle: string;
+  displayValue: string;
+  periodLabel?: string;
+  change?: number;
+  onInsightClick: MetricInsightClickHandler;
 }) {
   return (
     <Tooltip>
@@ -84,7 +96,12 @@ function InsightButton({
           aria-label={DASHBOARD_METRIC_TOOLTIP}
           onClick={(event) => {
             event.stopPropagation();
-            onInsightClick(insightKey);
+            onInsightClick(insightKey, {
+              cardTitle,
+              displayValue,
+              periodLabel,
+              change,
+            });
           }}
           className={cn(
             "rounded-md border border-border/60 bg-background/90 p-1.5 text-indigo-400 shadow-sm",
@@ -116,13 +133,21 @@ export function MetricCard({
 }: MetricCardProps) {
   const formattedValue = formatMetricValue(value, format);
   const showInsight = Boolean(insightKey && onInsightClick);
+  const insightButtonProps = {
+    insightKey: insightKey!,
+    cardTitle: title,
+    displayValue: formattedValue,
+    periodLabel,
+    change,
+    onInsightClick: onInsightClick!,
+  };
 
   if (variant === "compact") {
     return (
       <div className="group relative flex min-w-0 flex-col gap-1 px-4 py-3 sm:px-5">
-        {showInsight && insightKey && onInsightClick && (
+        {showInsight && (
           <div className="absolute right-2 top-2">
-            <InsightButton insightKey={insightKey} onInsightClick={onInsightClick} />
+            <InsightButton {...insightButtonProps} />
           </div>
         )}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -143,9 +168,9 @@ export function MetricCard({
     return (
       <Card className="group relative border-border/60 bg-card/50 transition-colors hover:border-border">
         <CardContent className="p-5">
-          {showInsight && insightKey && onInsightClick && (
+          {showInsight && (
             <div className="absolute right-3 top-3">
-              <InsightButton insightKey={insightKey} onInsightClick={onInsightClick} />
+              <InsightButton {...insightButtonProps} />
             </div>
           )}
           <div className="flex items-start justify-between gap-3">
@@ -168,9 +193,9 @@ export function MetricCard({
   return (
     <Card className="group relative border-border/60 bg-card/50 transition-colors hover:border-border">
       <CardContent className="p-5">
-        {showInsight && insightKey && onInsightClick && (
+        {showInsight && (
           <div className="absolute right-3 top-3">
-            <InsightButton insightKey={insightKey} onInsightClick={onInsightClick} />
+            <InsightButton {...insightButtonProps} />
           </div>
         )}
         <div className="flex items-start justify-between">
@@ -192,7 +217,13 @@ export function MetricCard({
 
 export interface MetricStripItem extends Omit<MetricCardProps, "variant"> {}
 
-export function MetricStrip({ items, onInsightClick }: { items: MetricStripItem[]; onInsightClick?: (key: DashboardMetricKey) => void }) {
+export function MetricStrip({
+  items,
+  onInsightClick,
+}: {
+  items: MetricStripItem[];
+  onInsightClick?: MetricInsightClickHandler;
+}) {
   const colClass = items.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4";
   return (
     <Card className="border-border/60 bg-card/50 overflow-hidden">

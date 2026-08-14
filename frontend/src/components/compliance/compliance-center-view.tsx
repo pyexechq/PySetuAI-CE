@@ -59,6 +59,7 @@ export function ComplianceCenterView() {
     openMetricInsight,
     closeMetricInsight,
     insightOpen,
+    activeContext,
     insightLoading,
     insight,
     insightError,
@@ -72,7 +73,7 @@ export function ComplianceCenterView() {
   const stats = useMemo(() => {
     const avgScore =
       frameworks.length > 0
-        ? Math.round(frameworks.reduce((sum, f) => sum + f.score, 0) / frameworks.length)
+        ? Math.round((frameworks.reduce((sum, f) => sum + f.score, 0) / frameworks.length) * 10) / 10
         : 0;
     const compliant = frameworks.filter((f) => f.status === "compliant").length;
     const totalControls = frameworks.reduce((sum, f) => sum + f.controls, 0);
@@ -136,12 +137,12 @@ export function ComplianceCenterView() {
             <MetricCard
               variant="hero"
               showTrend={false}
-              title="Compliance score"
-              value={`${stats.avgScore}%`}
+              title="Compliance Score"
+              value={stats.avgScore}
               change={0}
               icon={FileCheck}
               iconColor="text-blue-400"
-              format="raw"
+              format="percent"
               insightKey="compliance_score"
               onInsightClick={openMetricInsight}
             />
@@ -225,6 +226,7 @@ export function ComplianceCenterView() {
           loading={insightLoading}
           insight={insight}
           error={insightError}
+          pendingTitle={activeContext?.cardTitle}
           onClose={closeMetricInsight}
         />
       </div>

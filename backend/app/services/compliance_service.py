@@ -205,7 +205,7 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Embed privacy controls in AI gateway and policy enforcement before data reaches models.",
             status=art25_status,
             evidence=art25_evidence,
-            remediation="Activate PII Redaction — EU and US policies in Policy Studio.",
+            remediation="Activate PII Redaction — EU and PII Redaction — US in Policy Studio.",
             pysetu_module="Policy Studio",
         ),
         _control(
@@ -214,8 +214,8 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Maintain auditable records of AI requests, policy actions, and data classifications.",
             status=art30_status,
             evidence=art30_evidence,
-            remediation="Enable gateway traffic and route requests through PySetu to populate Audit Explorer.",
-            pysetu_module="Audit Explorer",
+            remediation="Issue a client API key and send gateway traffic so Audit Explorer has processing records.",
+            pysetu_module="Client API keys",
         ),
         _control(
             id="gdpr-art32",
@@ -223,7 +223,7 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Apply technical measures (encryption, access control, prompt/output inspection).",
             status=art32_status,
             evidence=art32_evidence,
-            remediation="Enable Jailbreak Prevention and Prompt Injection Guard policies.",
+            remediation="Activate Jailbreak Prevention and Prompt Injection Guard in Policy Studio.",
             pysetu_module="Policy Studio",
         ),
         _control(
@@ -232,8 +232,11 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Document and execute erasure requests for personal data used in AI workflows.",
             status=art17_status,
             evidence=art17_evidence,
-            remediation="Define an erasure runbook and link retention policies to audit log purge schedules.",
-            pysetu_module="Settings",
+            remediation=(
+                "Confirm request-log retention and purge in Audit Explorer → Export & SIEM, "
+                "then document who fulfills erasure requests using those logs."
+            ),
+            pysetu_module="Audit Explorer",
         ),
         _control(
             id="gdpr-art33",
@@ -241,8 +244,8 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Detect incidents within 72 hours and maintain an escalation path.",
             status=art33_status,
             evidence=art33_evidence,
-            remediation="Configure alert routing in Observability and document breach notification owners.",
-            pysetu_module="Observability",
+            remediation="Review blocked events on Monitoring → Security and configure alert webhooks under Settings → Integrations.",
+            pysetu_module="Security Center",
         ),
         _control(
             id="gdpr-art35",
@@ -250,8 +253,8 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Complete a Data Protection Impact Assessment for high-risk LLM use cases.",
             status=art35_status,
             evidence=art35_evidence,
-            remediation="Finalize DLP Classification policy and attach DPIA evidence in Reports.",
-            pysetu_module="Reports",
+            remediation="Keep DLP Classification active in Policy Studio and attach a DPIA note on a Compliance evidence snapshot.",
+            pysetu_module="Compliance Center",
         ),
         _control(
             id="gdpr-transfer",
@@ -259,7 +262,7 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Block or alert when EU personal data leaves approved regions.",
             status=transfer_status,
             evidence=transfer_evidence,
-            remediation="Enable EU residency rules on the PII Redaction — EU policy bundle.",
+            remediation="Enable PII Redaction — EU in Policy Studio (EU residency gate).",
             pysetu_module="Policy Studio",
         ),
         _control(
@@ -268,8 +271,8 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Log purpose and lawful basis for automated decisions affecting individuals.",
             status=transparency_status,
             evidence=transparency_evidence,
-            remediation="Tag audit exports with lawful-basis fields in Reports.",
-            pysetu_module="Reports",
+            remediation="Export Audit Explorer logs for automated decisions; lawful-basis tags are not a separate Reports field today.",
+            pysetu_module="Audit Explorer",
         ),
     ]
 
@@ -326,7 +329,8 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Assign security responsibility and enforce role-based access to AI controls.",
             status="met",
             evidence="RBAC roles enforced for tenant users and admin APIs.",
-            pysetu_module="Settings",
+            remediation="Review tenant roles on Settings → Users & RBAC.",
+            pysetu_module="Users & RBAC",
         ),
         _control(
             id="hipaa-164312",
@@ -334,7 +338,7 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Control access to ePHI in prompts, tool outputs, and model responses.",
             status=tech_status,
             evidence=tech_evidence,
-            remediation="Activate PII redaction policies and block PHI in outbound tool calls.",
+            remediation="Activate PII redaction in Policy Studio, then verify PHI events on Data Protection.",
             pysetu_module="Data Protection",
         ),
         _control(
@@ -343,8 +347,8 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Track business associate agreements for third-party LLM and MCP vendors.",
             status=org_status,
             evidence=org_evidence,
-            remediation="Upload BAA attestations per LLM provider in Integrations settings.",
-            pysetu_module="Settings",
+            remediation="Register LLM/MCP vendors in Settings → Integrations. PySetu does not store BAA PDFs; keep attestations in your vendor file and note them there.",
+            pysetu_module="Integrations",
         ),
         _control(
             id="hipaa-audit",
@@ -352,8 +356,8 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Record who accessed PHI-bearing AI requests and what action was taken.",
             status=audit_status,
             evidence=audit_evidence,
-            remediation="Route production AI traffic through PySetu gateway.",
-            pysetu_module="Audit Explorer",
+            remediation="Issue client API keys and route PHI-bearing traffic through the gateway so Audit Explorer has integrity records.",
+            pysetu_module="Client API keys",
         ),
         _control(
             id="hipaa-minimum",
@@ -361,7 +365,7 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Limit PHI sent to models and MCP tools to the minimum required.",
             status=minimum_status,
             evidence=minimum_evidence,
-            remediation="Add field-level redaction rules and MCP tool allowlists.",
+            remediation="Keep PII redaction on, then restrict tools with Tool Allowlist in MCP Governance.",
             pysetu_module="MCP Governance",
         ),
         _control(
@@ -370,7 +374,7 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Encrypt PHI in transit to LLM providers and MCP endpoints.",
             status=tx_status,
             evidence=tx_evidence,
-            remediation="Register providers with TLS-only endpoints in LLM Router.",
+            remediation="Register HTTPS LLM providers in LLM Router (TLS is required for configured upstreams).",
             pysetu_module="LLM Router",
         ),
         _control(
@@ -379,8 +383,8 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Detect and respond to PHI leakage in model outputs.",
             status=incident_status,
             evidence=incident_evidence,
-            remediation="Enable alert mode on PII policies and review blocked events daily.",
-            pysetu_module="Observability",
+            remediation="Review PII and blocked events on Monitoring → Security.",
+            pysetu_module="Security Center",
         ),
         _control(
             id="hipaa-retention",
@@ -388,8 +392,8 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             requirement="Define retention for audit logs containing PHI metadata.",
             status=retention_status,
             evidence=retention_evidence,
-            remediation="Set audit retention policy and schedule exports in Reports.",
-            pysetu_module="Reports",
+            remediation="Set request-log retention and purge expired bodies in Audit Explorer → Export & SIEM.",
+            pysetu_module="Audit Explorer",
         ),
     ]
 
@@ -448,7 +452,8 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Restrict configuration changes to authorized admin roles.",
             status="met",
             evidence="Tenant Admin and Security Admin roles gate write APIs.",
-            pysetu_module="Settings",
+            remediation="Review write access on Settings → Users & RBAC.",
+            pysetu_module="Users & RBAC",
         ),
         _control(
             id="soc2-cc72",
@@ -456,8 +461,8 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Monitor AI gateway traffic, blocks, and anomalies continuously.",
             status=monitor_status,
             evidence=monitor_evidence,
-            remediation="Enable Observability dashboards and alert thresholds.",
-            pysetu_module="Observability",
+            remediation="Open Monitoring overview and confirm gateway traffic, blocks, and anomalies are visible.",
+            pysetu_module="Monitoring",
         ),
         _control(
             id="soc2-cc81",
@@ -465,7 +470,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Track policy and routing changes with approval evidence.",
             status=change_status,
             evidence=change_evidence,
-            remediation="Move draft policies through review before activation.",
+            remediation="Activate remaining draft policies in Policy Studio, or keep the set fully active with no pending drafts.",
             pysetu_module="Policy Studio",
         ),
         _control(
@@ -474,7 +479,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Prevent unauthorized disclosure via DLP and output inspection.",
             status=conf_status,
             evidence=conf_evidence,
-            remediation="Activate Data Exfiltration Block and secret detection rules.",
+            remediation="Activate Data Exfiltration Block in Policy Studio.",
             pysetu_module="Policy Studio",
         ),
         _control(
@@ -483,8 +488,8 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Align AI data use with published privacy commitments.",
             status=privacy_status,
             evidence=privacy_evidence,
-            remediation="Map each active policy to privacy notice sections in Reports.",
-            pysetu_module="Reports",
+            remediation="Confirm PII handling on Data Protection matches your published privacy notice.",
+            pysetu_module="Data Protection",
         ),
         _control(
             id="soc2-availability",
@@ -492,7 +497,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Track LLM provider uptime and failover readiness.",
             status=avail_status,
             evidence=avail_evidence,
-            remediation="Register backup providers and weighted routing in LLM Router.",
+            remediation="Register a second LLM provider in LLM Router for failover.",
             pysetu_module="LLM Router",
         ),
         _control(
@@ -501,7 +506,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Assess and monitor third-party AI integrations.",
             status=vendor_status,
             evidence=vendor_evidence,
-            remediation="Review MCP risk scores and disable high-risk tools.",
+            remediation="Review MCP risk scores in MCP Governance and disable high-risk servers.",
             pysetu_module="MCP Governance",
         ),
         _control(
@@ -510,7 +515,7 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Investigate blocked requests and policy violations.",
             status=incident_status,
             evidence=incident_evidence,
-            remediation="Assign on-call rotation for Security Center alerts.",
+            remediation="Triage blocked requests on Monitoring → Security.",
             pysetu_module="Security Center",
         ),
     ]
@@ -571,7 +576,8 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             requirement="Define and enforce access rules for AI administration.",
             status="met",
             evidence="RBAC matrix enforced across UI and API.",
-            pysetu_module="Settings",
+            remediation="Review access roles on Settings → Users & RBAC.",
+            pysetu_module="Users & RBAC",
         ),
         _control(
             id="iso-a124",
@@ -579,8 +585,8 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             requirement="Log security events for AI gateway and MCP activity.",
             status=log_status,
             evidence=log_evidence,
-            remediation="Ensure all agents use PySetu gateway keys.",
-            pysetu_module="Audit Explorer",
+            remediation="Issue client API keys so agents send security events through the gateway.",
+            pysetu_module="Client API keys",
         ),
         _control(
             id="iso-a131",
@@ -588,7 +594,7 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             requirement="Protect data in transit to external LLM and MCP endpoints.",
             status=net_status,
             evidence=net_evidence,
-            remediation="Configure TLS-only upstream endpoints.",
+            remediation="Register HTTPS providers in LLM Router.",
             pysetu_module="LLM Router",
         ),
         _control(
@@ -597,8 +603,8 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             requirement="Govern prompt templates and tool usage in Studio.",
             status=dev_status,
             evidence=dev_evidence,
-            remediation="Link Studio experiments to approved policy bundles before promotion.",
-            pysetu_module="Studio",
+            remediation="Create or activate governed prompt templates under Settings → Prompt templates.",
+            pysetu_module="Prompt templates",
         ),
         _control(
             id="iso-a181",
@@ -606,7 +612,7 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             requirement="Map controls to GDPR, HIPAA, and regional obligations.",
             status=legal_status,
             evidence=legal_evidence,
-            remediation="Attach evidence exports per framework in Reports.",
+            remediation="Export a compliance snapshot from Compliance Center → Evidence & exports.",
             pysetu_module="Compliance Center",
         ),
         _control(
@@ -615,7 +621,7 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             requirement="Block prompt injection and jailbreak attempts.",
             status=abuse_status,
             evidence=abuse_evidence,
-            remediation="Enable Prompt Injection Guard and Jailbreak Prevention.",
+            remediation="Activate Prompt Injection Guard and Jailbreak Prevention in Policy Studio.",
             pysetu_module="Policy Studio",
         ),
         _control(
@@ -624,8 +630,8 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             requirement="Restrict high-risk MCP tools via allowlists.",
             status=mcp_status,
             evidence=mcp_evidence,
-            remediation="Activate Tool Allowlist under MCP Governance.",
-            pysetu_module="MCP Governance",
+            remediation="Activate Tool Allowlist in Policy Studio (MCP Governance folder).",
+            pysetu_module="Policy Studio",
         ),
         _control(
             id="iso-a161",
@@ -633,7 +639,7 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             requirement="Document response steps for AI security incidents.",
             status=incident_status,
             evidence=incident_evidence,
-            remediation="Define severity tiers in Security Center playbooks.",
+            remediation="Review captured incidents on Monitoring → Security.",
             pysetu_module="Security Center",
         ),
     ]
@@ -692,7 +698,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Establish AI governance policies with named owners.",
             status=govern1_status,
             evidence=govern1_evidence,
-            remediation="Activate organization policy folders in Policy Studio.",
+            remediation="Activate remaining organization policies in Policy Studio.",
             pysetu_module="Policy Studio",
         ),
         _control(
@@ -701,7 +707,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Define acceptable risk for MCP tools and model outputs.",
             status=govern2_status,
             evidence=govern2_evidence,
-            remediation="Remediate or disable high-risk MCP integrations.",
+            remediation="Lower MCP risk or disable high-risk servers in MCP Governance.",
             pysetu_module="MCP Governance",
         ),
         _control(
@@ -710,7 +716,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Inventory LLM use cases, data classes, and downstream tools.",
             status=map1_status,
             evidence=map1_evidence,
-            remediation="Register all production agents and MCP servers.",
+            remediation="Register production agents, MCP servers, and LLM providers so Governance Graph can inventory them.",
             pysetu_module="Governance Graph",
         ),
         _control(
@@ -719,7 +725,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Document trade-offs for high-impact AI workflows.",
             status=map2_status,
             evidence=map2_evidence,
-            remediation="Add harm analysis worksheets to Reports for each agent.",
+            remediation="Record use-case trade-offs in a Reports note or compliance snapshot. PySetu does not include a harm-analysis worksheet.",
             pysetu_module="Reports",
         ),
         _control(
@@ -728,8 +734,8 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Track block rate, redactions, and model error rates.",
             status=measure1_status,
             evidence=measure1_evidence,
-            remediation="Route traffic through gateway to collect baseline metrics.",
-            pysetu_module="Observability",
+            remediation="Send traffic through the gateway and review block rate on Monitoring.",
+            pysetu_module="Monitoring",
         ),
         _control(
             id="nist-measure-2",
@@ -737,7 +743,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Monitor toxic content and unsafe completions.",
             status=measure2_status,
             evidence=measure2_evidence,
-            remediation="Enable toxic content rules and review blocked samples weekly.",
+            remediation="Keep Prompt Injection Guard and Jailbreak Prevention in Block/Alert and review samples in Audit Explorer.",
             pysetu_module="Policy Studio",
         ),
         _control(
@@ -746,7 +752,7 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Apply controls when risks exceed tolerance (block, alert, route).",
             status=manage1_status,
             evidence=manage1_evidence,
-            remediation="Set enforcement to Block on high-severity rules.",
+            remediation="Set high-severity Policy Studio rules to Block.",
             pysetu_module="Policy Studio",
         ),
         _control(
@@ -755,10 +761,17 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             requirement="Review policy effectiveness and rebalance routing monthly.",
             status=manage2_status,
             evidence=manage2_evidence,
-            remediation="Schedule rebalance jobs and review top policies monthly.",
+            remediation="Review weighted pools and the scheduled rebalance job in LLM Router.",
             pysetu_module="LLM Router",
         ),
     ]
+
+
+def overall_compliance_score(frameworks: list[DashboardComplianceFramework]) -> float:
+    """Headline score used by Dashboard, Compliance Center, Reports, and snapshots."""
+    if not frameworks:
+        return 0.0
+    return round(sum(f.score for f in frameworks) / len(frameworks), 1)
 
 
 def _finalize_framework(name: str, controls: list[DashboardComplianceControl]) -> DashboardComplianceFramework:

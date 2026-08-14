@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.governance import AuditLog, ComplianceSnapshot
 from app.models.tenant import User
 from app.schemas.dashboard import DashboardComplianceFramework
-from app.services.compliance_service import build_compliance_frameworks
+from app.services.compliance_service import build_compliance_frameworks, overall_compliance_score
 
 
 def compute_period_compliance_metrics(*, total_requests: int, blocked_requests: int) -> tuple[float, float]:
@@ -67,7 +67,7 @@ async def _load_compliance_metrics(
         audit_start=period_start,
         audit_end=period_end,
     )
-    overall = round(sum(f.score for f in frameworks) / len(frameworks), 1) if frameworks else 0.0
+    overall = overall_compliance_score(frameworks)
     compliant = sum(1 for f in frameworks if f.status == "compliant")
     return frameworks, period_start, period_end, overall, compliant, len(frameworks)
 

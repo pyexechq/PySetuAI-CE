@@ -252,9 +252,18 @@ export interface ApiComplianceRemediationResponse {
   summary: string;
   steps: string[];
   manual_route?: string | null;
+  module_name?: string | null;
+  evidence?: string | null;
   ai_generated: boolean;
   estimated_effort?: string | null;
   generated_at: string;
+}
+
+export interface ApiMetricInsightContext {
+  card_title?: string;
+  display_value?: string;
+  period_label?: string;
+  change?: number;
 }
 
 export interface ApiDashboardMetricInsight {
@@ -900,8 +909,21 @@ export const api = {
   getCostAnalytics: (token: string, days = 30) =>
     apiFetch<ApiCostAnalytics>(`/dashboard/cost-analytics?days=${days}`, {}, token),
 
-  getDashboardMetricInsight: (token: string, metricKey: string) =>
-    apiFetch<ApiDashboardMetricInsight>(`/dashboard/metrics/${metricKey}/insights`, {}, token),
+  getDashboardMetricInsight: (
+    token: string,
+    metricKey: string,
+    context?: ApiMetricInsightContext
+  ) =>
+    apiFetch<ApiDashboardMetricInsight>(
+      `/dashboard/metrics/${metricKey}/insights`,
+      context
+        ? {
+            method: "POST",
+            body: JSON.stringify(context),
+          }
+        : {},
+      token
+    ),
 
   getNotifications: (token: string, readIds: string[] = [], limit = 30) => {
     const query = new URLSearchParams({ limit: String(limit) });

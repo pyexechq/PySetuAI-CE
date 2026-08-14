@@ -15,10 +15,8 @@ import { QuickLinkPills, SectionTabBar } from "@/components/shared/section-chrom
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { useDashboardMetrics } from "@/hooks/use-dashboard-metrics";
+import { useMetricInsight } from "@/hooks/use-metric-insight";
 import { EMPTY_DASHBOARD_OVERVIEW, useDashboardOverview } from "@/hooks/use-dashboard-overview";
-import { ApiError, api, type ApiDashboardMetricInsight } from "@/lib/api";
-import type { DashboardMetricKey } from "@/lib/dashboard-metric-insights";
-import { useAuthStore } from "@/stores/auth-store";
 import {
   Activity,
   ShieldAlert,
@@ -50,42 +48,23 @@ const DETAIL_TABS: { id: DetailTab; label: string }[] = [
 ];
 
 export function DashboardContent() {
-  const token = useAuthStore((s) => s.token);
   const { data: metrics, isFetching: metricsFetching } = useDashboardMetrics();
   const { data: overview, isLoading, isFetching } = useDashboardOverview();
   const data = overview ?? EMPTY_DASHBOARD_OVERVIEW;
 
   const [detailTab, setDetailTab] = useState<DetailTab>("governance");
-  const [activeMetric, setActiveMetric] = useState<DashboardMetricKey | null>(null);
-  const [insightLoading, setInsightLoading] = useState(false);
-  const [insight, setInsight] = useState<ApiDashboardMetricInsight | null>(null);
-  const [insightError, setInsightError] = useState<string | null>(null);
+  const {
+    openMetricInsight,
+    closeMetricInsight,
+    insightOpen,
+    activeContext,
+    insightLoading,
+    insight,
+    insightError,
+  } = useMetricInsight();
 
   const isLiveLoading = isLoading || isFetching || metricsFetching;
   const periodLabel = metrics.comparisonPeriod;
-
-  async function openMetricInsight(metricKey: DashboardMetricKey) {
-    if (!token) return;
-    (document.activeElement as HTMLElement | null)?.blur();
-    setActiveMetric(metricKey);
-    setInsightLoading(true);
-    setInsight(null);
-    setInsightError(null);
-    try {
-      const result = await api.getDashboardMetricInsight(token, metricKey);
-      setInsight(result);
-    } catch (err) {
-      setInsightError(err instanceof ApiError ? err.message : "Unable to load metric insights.");
-    } finally {
-      setInsightLoading(false);
-    }
-  }
-
-  function closeMetricInsight() {
-    setActiveMetric(null);
-    setInsight(null);
-    setInsightError(null);
-  }
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -131,8 +110,8 @@ export function DashboardContent() {
               variant="hero"
               title="Compliance Score"
               value={metrics.complianceScore}
-              change={metrics.complianceScoreChange}
-              periodLabel={periodLabel}
+              change={0}
+              showTrend={false}
               icon={FileCheck}
               iconColor="text-blue-400"
               format="percent"
@@ -241,10 +220,11 @@ export function DashboardContent() {
         </section>
 
         <MetricInsightModal
-          open={activeMetric !== null}
+          open={insightOpen}
           loading={insightLoading}
           insight={insight}
           error={insightError}
+          pendingTitle={activeContext?.cardTitle}
           onClose={closeMetricInsight}
         />
       </div>
