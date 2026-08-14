@@ -42,9 +42,16 @@ def build_gateway_opa_input(
     risk: str,
     content_length: int,
     routing_context: dict | None = None,
+    entity_classifications: list[str] | None = None,
+    sensitivity_labels: list[str] | None = None,
+    highest_sensitivity: str | None = None,
+    movement_to: str = "llm",
+    movement_operation: str = "completion",
 ) -> dict[str, Any]:
     role = ctx.user.role if ctx.user else "client_key"
     auth_type = "client_key" if ctx.client_api_key_id else "jwt"
+    classifications = entity_classifications or []
+    labels = sensitivity_labels or []
     return {
         "subject": {
             "role": role,
@@ -64,12 +71,77 @@ def build_gateway_opa_input(
             "has_pii": has_pii,
             "risk": risk,
         },
+        "data": {
+            "classifications": classifications,
+            "sensitivity_labels": labels,
+            "highest_sensitivity": highest_sensitivity or "",
+        },
+        "movement": {
+            "from": "prompt",
+            "to": movement_to,
+            "operation": movement_operation,
+        },
         "environment": {
             "region": region,
             "hour_utc": datetime.now(UTC).hour,
         },
         "routing_context": routing_context or request.routing_context or {},
     }
+
+
+def build_data_movement_opa_input(
+    *,
+    tenant_id: str,
+    bundle_name: str | None,
+    region: str,
+    risk: str,
+    entity_classifications: list[str],
+    sensitivity_labels: list[str],
+    highest_sensitivity_label: str | None,
+    movement_from: str,
+    movement_to: str,
+    movement_operation: str,
+    role: str = "client_key",
+    auth_type: str = "jwt",
+    exemption: dict | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "subject": {
+            "role": role,
+            "actor": "rag-gateway",
+            "auth_type": auth_type,
+        },
+        "resource": {
+            "bundle": bundle_name or "",
+            "tenant_id": tenant_id,
+        },
+        "request": {
+            "model": "",
+            "routed_model": "",
+        },
+        "content": {
+            "text_length": 0,
+            "has_pii": bool(entity_classifications),
+            "risk": risk,
+        },
+        "data": {
+            "classifications": entity_classifications,
+            "sensitivity_labels": sensitivity_labels,
+            "highest_sensitivity": highest_sensitivity_label or "",
+        },
+        "movement": {
+            "from": movement_from,
+            "to": movement_to,
+            "operation": movement_operation,
+        },
+        "environment": {
+            "region": region,
+            "hour_utc": datetime.now(UTC).hour,
+        },
+        "routing_context": {},
+        "exemption": exemption or {"valid": False, "allowed_destinations": {}},
+    }
+    return payload
 
 
 async def check_opa_health() -> tuple[bool, str | None]:
@@ -183,6 +255,9 @@ async def evaluate_gateway_abac(
     has_pii: bool,
     region: str,
     content_length: int,
+    entity_classifications: list[str] | None = None,
+    sensitivity_labels: list[str] | None = None,
+    highest_sensitivity: str | None = None,
 ) -> tuple[InspectionResult, OpaDecision]:
     payload = build_gateway_opa_input(
         ctx,
@@ -192,6 +267,9 @@ async def evaluate_gateway_abac(
         region=region,
         risk=ingress.risk,
         content_length=content_length,
+        entity_classifications=entity_classifications,
+        sensitivity_labels=sensitivity_labels,
+        highest_sensitivity=highest_sensitivity,
     )
     opa = await evaluate_gateway_opa(payload)
     return merge_opa_into_inspection(ingress, opa), opa

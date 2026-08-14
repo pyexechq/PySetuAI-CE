@@ -7,6 +7,8 @@ class DlpScanRequest(BaseModel):
 
 class DlpScanResponse(BaseModel):
     classifications: list[str]
+    sensitivity_labels: list[str] = Field(default_factory=list)
+    highest_sensitivity: str | None = None
     has_pii: bool
     region: str
     match_count: int

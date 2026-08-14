@@ -147,6 +147,98 @@ export interface ApiComplianceSnapshotDetail extends ApiComplianceSnapshotSummar
   frameworks: ApiDashboardOverview["compliance_frameworks"];
 }
 
+export interface ApiGenaiEvidenceSummary {
+  id: string;
+  created_at: string;
+  actor: string;
+  bundle_type: string;
+  allowed: boolean;
+  highest_sensitivity: string | null;
+  destination?: string | null;
+  blocked_hop?: string | null;
+}
+
+export interface ApiRagGatewaySettings {
+  pinecone_enabled: boolean;
+  pinecone_api_key_set: boolean;
+  pinecone_api_key_masked: string | null;
+  pinecone_host: string;
+  pinecone_namespace: string;
+  pinecone_dimension: number;
+  embedding_model: string;
+  configured: boolean;
+  config_source: string;
+  env_fallback_note: string;
+}
+
+export interface ApiRagMovementResponse {
+  allowed: boolean;
+  classifications: string[];
+  sensitivity_labels: string[];
+  highest_sensitivity: string | null;
+  movement: Record<string, string>;
+  violations: { rule: string; message: string; severity: string }[];
+  evidence_bundle_id: string | null;
+  stub_note: string | null;
+  exemption_applied?: boolean;
+  exemption_error?: string | null;
+}
+
+export interface ApiRagIngestResponse {
+  allowed: boolean;
+  blocked_hop: string | null;
+  hops: {
+    hop: string;
+    movement_from: string;
+    movement_to: string;
+    operation: string;
+    allowed: boolean;
+    blocked_locally: boolean;
+  }[];
+  classifications: string[];
+  sensitivity_labels: string[];
+  highest_sensitivity: string | null;
+  vector_id: string | null;
+  upserted: boolean;
+  embedding_source: string | null;
+  evidence_bundle_id: string | null;
+  note: string | null;
+  exemption_applied?: boolean;
+  exemption_error?: string | null;
+}
+
+export interface ApiIacEvidenceReport {
+  id: string;
+  generated_at: string;
+  scanner: string;
+  deploy_root: string;
+  files_scanned: number;
+  score: number;
+  summary: { pass: number; warn: number; fail: number };
+  checks: {
+    id: string;
+    title: string;
+    framework: string;
+    status: string;
+    evidence_files: string[];
+    detail: string;
+  }[];
+}
+
+export interface ApiPolicyExemption {
+  id: string;
+  created_by: string;
+  reason: string;
+  ticket_ref: string | null;
+  allowed_destinations: string[];
+  expires_at: string;
+  revoked_at: string | null;
+  use_count: number;
+  max_uses: number | null;
+  created_at: string;
+  status: string;
+}
+
 export interface ApiComplianceReevaluateResponse {
   framework: ApiDashboardOverview["compliance_frameworks"][number];
   evaluated_at: string;
@@ -1139,6 +1231,93 @@ export const api = {
   getComplianceSnapshot: (token: string, snapshotId: string) =>
     apiFetch<ApiComplianceSnapshotDetail>(`/compliance/snapshots/${snapshotId}`, {}, token),
 
+  listGenaiEvidenceBundles: (token: string) =>
+    apiFetch<ApiGenaiEvidenceSummary[]>("/rag-gateway/evidence", {}, token),
+
+  getRagGatewaySettings: (token: string) =>
+    apiFetch<ApiRagGatewaySettings>("/rag-gateway/settings", {}, token),
+
+  updateRagGatewaySettings: (
+    token: string,
+    body: {
+      pinecone_enabled?: boolean;
+      pinecone_api_key?: string;
+      pinecone_host?: string;
+      pinecone_namespace?: string;
+      pinecone_dimension?: number;
+    }
+  ) =>
+    apiFetch<ApiRagGatewaySettings>("/rag-gateway/settings", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  evaluateRagMovement: (
+    token: string,
+    body: {
+      content: string;
+      destination?: string;
+      operation?: string;
+      policy_bundle?: string;
+      region?: string;
+      exemption_id?: string;
+    }
+  ) =>
+    apiFetch<ApiRagMovementResponse>("/rag-gateway/evaluate", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  ingestRagContent: (
+    token: string,
+    body: {
+      content: string;
+      destination?: string;
+      policy_bundle?: string;
+      region?: string;
+      namespace?: string;
+      document_id?: string;
+      exemption_id?: string;
+    }
+  ) =>
+    apiFetch<ApiRagIngestResponse>("/rag-gateway/ingest", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  scanIacEvidence: (token: string) =>
+    apiFetch<ApiIacEvidenceReport>("/rag-gateway/iac-evidence", {}, token),
+
+  createDemoRagEvents: (token: string) =>
+    apiFetch<{ seeded: boolean; evidence_count: number; message: string }>(
+      "/rag-gateway/demo-events",
+      { method: "POST" },
+      token
+    ),
+
+  listPolicyExemptions: (token: string) =>
+    apiFetch<ApiPolicyExemption[]>("/rag-gateway/exemptions", {}, token),
+
+  createPolicyExemption: (
+    token: string,
+    body: {
+      reason: string;
+      ticket_ref?: string;
+      duration_minutes?: number;
+      max_uses?: number;
+      allowed_destinations?: ("llm" | "embedding")[];
+    }
+  ) =>
+    apiFetch<ApiPolicyExemption>("/rag-gateway/exemptions", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  revokePolicyExemption: (token: string, exemptionId: string) =>
+    apiFetch<ApiPolicyExemption>(`/rag-gateway/exemptions/${exemptionId}`, {
+      method: "DELETE",
+    }, token),
+
   reevaluateComplianceFramework: (token: string, frameworkKey: string) =>
     apiFetch<ApiComplianceReevaluateResponse>(
       `/compliance/frameworks/${encodeURIComponent(frameworkKey)}/reevaluate`,
@@ -1395,9 +1574,10 @@ export const api = {
     token: string,
     body: {
       enabled?: boolean;
-      provider?: "openai" | "gemini";
+      provider?: "openai" | "gemini" | "groq" | "ollama" | "vllm" | "custom";
       model?: string;
       api_key?: string;
+      base_url?: string;
     },
   ) =>
     apiFetch<ApiAiAssistSettings>("/settings/ai-assist", {
@@ -2254,6 +2434,7 @@ export interface ApiRoutingModel {
   api_key_masked?: string | null;
   cost_per_1m_input?: number;
   cost_per_1m_output?: number;
+  model_aliases?: string[];
 }
 
 export interface ApiLlmProviderCreateRequest {
@@ -2262,6 +2443,7 @@ export interface ApiLlmProviderCreateRequest {
   endpoint_url?: string;
   is_active?: boolean;
   api_key?: string;
+  model_aliases?: string[];
   cost_per_1m_input?: number;
   cost_per_1m_output?: number;
 }
@@ -2273,6 +2455,7 @@ export interface ApiLlmProviderUpdateRequest {
   is_active?: boolean;
   percentage?: number;
   api_key?: string;
+  model_aliases?: string[];
   cost_per_1m_input?: number;
   cost_per_1m_output?: number;
 }
@@ -2285,6 +2468,7 @@ export interface ApiRoutingRule {
   target_model: string;
   status: string;
   response_format: "openai" | "anthropic" | "vertex" | "auto";
+  target_provider?: string | null;
 }
 
 export interface ApiProviderRebalanceResponse {
@@ -2323,6 +2507,7 @@ export interface ApiRoutingRuleCreateRequest {
   target_model: string;
   status?: string;
   response_format?: "openai" | "anthropic" | "vertex" | "auto";
+  target_provider?: string | null;
 }
 
 export interface ApiRoutingRuleUpdateRequest {
@@ -2332,6 +2517,7 @@ export interface ApiRoutingRuleUpdateRequest {
   target_model?: string;
   status?: string;
   response_format?: "openai" | "anthropic" | "vertex" | "auto";
+  target_provider?: string | null;
 }
 
 export interface ApiRoutingGroupMember {
@@ -2442,6 +2628,8 @@ export interface ApiClientApiKey {
   ai_token_limit_tpm: number | null;
   ai_token_limit_tph: number | null;
   ai_token_limit_tpd: number | null;
+  token_saving_enabled: boolean | null;
+  token_saving_mode: string | null;
   is_active: boolean;
   last_used_at: string | null;
   created_at: string | null;
@@ -2458,6 +2646,8 @@ export interface ApiClientApiKeyCreateRequest {
   ai_token_limit_tpm?: number | null;
   ai_token_limit_tph?: number | null;
   ai_token_limit_tpd?: number | null;
+  token_saving_enabled?: boolean | null;
+  token_saving_mode?: string | null;
 }
 
 export interface ApiClientApiKeyCreateResponse extends ApiClientApiKey {
@@ -2475,6 +2665,8 @@ export interface ApiClientApiKeyUpdateRequest {
   ai_token_limit_tpm?: number | null;
   ai_token_limit_tph?: number | null;
   ai_token_limit_tpd?: number | null;
+  token_saving_enabled?: boolean | null;
+  token_saving_mode?: string | null;
   is_active?: boolean;
 }
 
@@ -2601,11 +2793,16 @@ export interface ApiIntegrationSettings {
 
 export interface ApiAiAssistSettings {
   enabled: boolean;
-  provider: "openai" | "gemini";
+  provider: "openai" | "gemini" | "groq" | "ollama" | "vllm" | "custom";
   model: string;
   api_key_set: boolean;
   api_key_masked: string | null;
+  base_url?: string | null;
   available: boolean;
+  uses_gateway_fallback?: boolean;
+  credential_source?: string;
+  supported_providers?: string[];
+  provider_labels?: Record<string, string>;
   features: string[];
   air_gap_mode: boolean;
 }

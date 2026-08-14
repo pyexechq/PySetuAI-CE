@@ -27,6 +27,8 @@ def test_scan_content_detects_phi_pci_and_financial_data() -> None:
 
     assert result.has_pii is True
     assert {"PHI", "PCI Card", "Financial Account"}.issubset(result.classifications)
+    assert "RESTRICTED_PHI" in result.sensitivity_labels
+    assert "RESTRICTED_PCI" in result.sensitivity_labels
     assert result.match_count >= 3
     assert result.redacted_content is not None
     assert "diagnosis" not in result.redacted_content.lower()

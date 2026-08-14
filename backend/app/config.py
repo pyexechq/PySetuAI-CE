@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     opa_timeout_seconds: float = 2.0
     opa_fail_open: bool = True
 
+    pinecone_enabled: bool = False
+    pinecone_api_key: str | None = None
+    pinecone_host: str | None = None
+    pinecone_namespace: str = ""
+    pinecone_dimension: int = 1536
+    embedding_model: str = "text-embedding-3-small"
+
     oidc_enabled: bool = True
     oidc_state_redis_prefix: str = "oidc:state:"
     oidc_jit_provision_default: bool = False

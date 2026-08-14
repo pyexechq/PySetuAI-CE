@@ -20,6 +20,7 @@ from app.api.v1.oidc import router as oidc_router
 from app.api.v1.platform import router as platform_router
 from app.api.v1.prompt_templates import router as prompt_templates_router
 from app.api.v1.qa import router as qa_router
+from app.api.v1.rag_gateway import router as rag_gateway_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.router import router as auth_router
 from app.api.v1.routing_groups import router as routing_groups_router
@@ -33,6 +34,7 @@ from app.core.rate_limit import AuthRateLimitMiddleware
 from app.core.security import get_jwt_secret, set_jwt_secret_override
 from app.core.telemetry import setup_telemetry
 from app.db.seed import seed_demo_data, seed_platform_admin
+from app.db.seed_genai_dlp import seed_genai_dlp_demo_events
 from app.db.seed_governance import seed_access_data, seed_governance_data, seed_uag_data
 from app.services.vault_service import assert_production_security, load_jwt_secret_from_vault
 from app.services.health_service import build_dependency_status
@@ -53,6 +55,9 @@ async def lifespan(app: FastAPI):
             await seed_governance_data()
             await seed_access_data()
             await seed_uag_data()
+            seeded = await seed_genai_dlp_demo_events()
+            if seeded:
+                print(f"GenAI DLP seed: demo events added for {seeded} tenant(s).")
         except Exception as exc:
             print(f"Seed skipped (database may be unavailable): {exc}")
     yield
@@ -92,6 +97,7 @@ app.include_router(compliance_router, prefix=settings.api_prefix)
 app.include_router(qa_router, prefix=settings.api_prefix)
 app.include_router(security_router, prefix=settings.api_prefix)
 app.include_router(data_protection_router, prefix=settings.api_prefix)
+app.include_router(rag_gateway_router, prefix=settings.api_prefix)
 app.include_router(notifications_router, prefix=settings.api_prefix)
 app.include_router(mcp_security_router, prefix=settings.api_prefix)
 app.include_router(routing_groups_router, prefix=settings.api_prefix)

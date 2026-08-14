@@ -1,15 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRightLeft, Shield, CheckCircle2, Copy, Check, Settings2, Radar } from "lucide-react";
+import {
+  ArrowRightLeft,
+  CheckCircle2,
+  Cloud,
+  Copy,
+  Check,
+  Route,
+  Radar,
+  Settings2,
+  Shield,
+} from "lucide-react";
 import { GatewayTester } from "@/components/ai-gateway/gateway-tester";
+import { RagGatewayTester } from "@/components/ai-gateway/rag-gateway-tester";
+import { CompatibilityCenterView } from "@/components/compatibility-center/compatibility-center-view";
+import { MetricCard } from "@/components/dashboard/metric-card";
+import { QuickLinkPills, SectionTabBar } from "@/components/shared/section-chrome";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { API_BASE, api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
+
+const QUICK_LINKS = [
+  { href: "/monitoring", label: "Monitoring", icon: Radar },
+  { href: "/llm-router?tab=gateway", label: "Gateway & aliases", icon: ArrowRightLeft },
+  { href: "/llm-router", label: "LLM Router", icon: Route },
+] as const;
+
+const TABS = [
+  { id: "connect", label: "Connect" },
+  { id: "test", label: "Test console" },
+  { id: "rag", label: "Governed RAG" },
+  { id: "compatibility", label: "Compatibility" },
+] as const;
+
+type GatewayTab = (typeof TABS)[number]["id"];
+const TAB_IDS = new Set<string>(TABS.map((t) => t.id));
 
 function gatewayHttpMethod(endpoint: string): "GET" | "POST" {
   return endpoint === "/v1/models" ? "GET" : "POST";
@@ -49,9 +80,34 @@ const EMPTY_GATEWAY_STATUS = {
   proxy_mode: "none",
 };
 
+const PIPELINE_STEPS = [
+  "PII & secret detection on ingress",
+  "Policy engine evaluation",
+  "LLM router selection",
+  "Output leakage scan on egress",
+  "Full audit trace logging",
+];
+
+function upstreamLabel(status: typeof EMPTY_GATEWAY_STATUS): string {
+  const parts: string[] = [];
+  if (status.openai_compatible) parts.push("OpenAI");
+  if (status.gemini_compatible) parts.push("Gemini");
+  if (status.proxy_mode === "ollama") parts.push("Ollama");
+  else if (status.proxy_mode && status.proxy_mode !== "none") parts.push(status.proxy_mode);
+  return parts.length > 0 ? parts.join(" · ") : "Not configured";
+}
+
 export function AiGatewayView() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const token = useAuthStore((s) => s.token);
   const [copiedEndpoint, setCopiedEndpoint] = useState<string | null>(null);
+
+  const requestedTab = searchParams.get("tab");
+  const initialTab: GatewayTab =
+    requestedTab && TAB_IDS.has(requestedTab) ? (requestedTab as GatewayTab) : "connect";
+  const [tab, setTab] = useState<GatewayTab>(initialTab);
+
   const { data, isLoading } = useQuery({
     queryKey: ["gateway-status", token],
     queryFn: () => api.getGatewayStatus(token!),
@@ -60,6 +116,16 @@ export function AiGatewayView() {
   });
 
   const status = data ?? EMPTY_GATEWAY_STATUS;
+
+  useEffect(() => {
+    const next = searchParams.get("tab");
+    if (next && TAB_IDS.has(next)) setTab(next as GatewayTab);
+  }, [searchParams]);
+
+  function selectTab(next: GatewayTab) {
+    setTab(next);
+    router.replace(`/ai-gateway?tab=${next}`, { scroll: false });
+  }
 
   async function copySampleCurl(endpoint: string) {
     try {
@@ -72,152 +138,128 @@ export function AiGatewayView() {
   }
 
   return (
-    <div className="space-y-6">
-      {isLoading && (
-        <p className="text-sm text-muted-foreground">Loading gateway status…</p>
-      )}
+    <div className="space-y-8">
+      <QuickLinkPills links={QUICK_LINKS} />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="border-border/60 bg-card/50">
-          <CardContent className="flex items-center gap-3 p-5">
-            <div className="rounded-lg bg-emerald-500/10 p-2">
-              <Shield className="h-5 w-5 text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Gateway status</p>
-              <p className="font-semibold capitalize">{status.status}</p>
-            </div>
-          </CardContent>
-        </Card>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          variant="hero"
+          showTrend={false}
+          title="Gateway status"
+          value={isLoading ? "…" : status.status.charAt(0).toUpperCase() + status.status.slice(1)}
+          change={0}
+          icon={Shield}
+          iconColor="text-emerald-400"
+          format="raw"
+        />
+        <MetricCard
+          variant="hero"
+          showTrend={false}
+          title="Active upstream"
+          value={upstreamLabel(status)}
+          change={0}
+          icon={Cloud}
+          iconColor="text-blue-400"
+          format="raw"
+        />
+        <MetricCard
+          variant="hero"
+          showTrend={false}
+          title="Ingress endpoints"
+          value={status.endpoints.length}
+          change={0}
+          icon={ArrowRightLeft}
+          iconColor="text-violet-400"
+        />
+        <MetricCard
+          variant="hero"
+          showTrend={false}
+          title="Proxy mode"
+          value={status.proxy_mode === "none" ? "Direct" : status.proxy_mode}
+          change={0}
+          icon={Route}
+          iconColor="text-amber-400"
+          format="raw"
+        />
+      </section>
 
-        <Card className="border-border/60 bg-card/50">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-sm text-muted-foreground">Active upstream</p>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {status.openai_compatible && <Badge variant="success">OpenAI</Badge>}
-                  {status.gemini_compatible && <Badge variant="secondary">Gemini</Badge>}
-                  <Badge variant="outline">
-                    {status.proxy_mode === "ollama"
-                      ? "Ollama"
-                      : status.proxy_mode === "openai"
-                        ? "OpenAI"
-                        : status.proxy_mode === "gemini"
-                          ? "Gemini"
-                          : status.proxy_mode === "none"
-                            ? "Not configured"
-                            : status.proxy_mode}
-                  </Badge>
-                </div>
-              </div>
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" asChild>
-                <Link href="/settings/integrations">
-                  <Settings2 className="h-3.5 w-3.5" />
-                  Configure
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60 bg-card/50">
-          <CardContent className="space-y-3 p-5">
-            <p className="text-sm text-muted-foreground">Request volume & blocks</p>
-            <p className="text-xs text-muted-foreground">
-              Live traffic KPIs and trends are in Monitoring — this page focuses on ingress endpoints and testing.
-            </p>
-            <Button variant="outline" size="sm" className="gap-1.5" asChild>
-              <Link href="/monitoring">
-                <Radar className="h-3.5 w-3.5" />
-                Open Monitoring
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex flex-wrap gap-2 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
-        <span className="text-xs text-muted-foreground">Related:</span>
-        <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" asChild>
-          <Link href="/settings/uag">
-            <ArrowRightLeft className="h-3.5 w-3.5" />
-            UAG mappings & policies
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SectionTabBar tabs={TABS} active={tab} onChange={selectTab} />
+        <Button variant="outline" size="sm" className="gap-1.5" asChild>
+          <Link href="/settings/ai-assist#tenant-llm-defaults">
+            <Settings2 className="h-3.5 w-3.5" />
+            Provider defaults
           </Link>
         </Button>
-        <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" asChild>
-          <Link href="/compatibility-center">Compatibility Center</Link>
-        </Button>
-        <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" asChild>
-          <Link href="/llm-router">LLM Router</Link>
-        </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="border-border/60 bg-card/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-primary" />
-              Supported Endpoints
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2 font-mono text-sm">
-              {status.endpoints.map((endpoint) => (
-                <li
-                  key={endpoint}
-                  className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2"
-                >
-                  <span>{gatewayHttpMethod(endpoint)} {endpoint}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 shrink-0 gap-1.5 font-sans text-xs text-muted-foreground"
-                    onClick={() => copySampleCurl(endpoint)}
-                    aria-label={`Copy sample cURL for ${endpoint}`}
+      {tab === "connect" && (
+        <div className="grid gap-4 lg:grid-cols-12">
+          <Card className="border-border/60 bg-card/50 lg:col-span-7">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Supported endpoints</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 font-mono text-sm">
+                {status.endpoints.map((endpoint) => (
+                  <li
+                    key={endpoint}
+                    className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2"
                   >
-                    {copiedEndpoint === endpoint ? (
-                      <>
-                        <Check className="h-3.5 w-3.5 text-emerald-400" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3.5 w-3.5" />
-                        Copy cURL
-                      </>
-                    )}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60 bg-card/50">
-          <CardHeader>
-            <CardTitle>Inspection Pipeline</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {[
-              "PII & secret detection on ingress",
-              "Policy engine evaluation",
-              "LLM router selection",
-              "Output leakage scan on egress",
-              "Full audit trace logging",
-              "OpenAI-compatible /v1/chat/completions",
-            ].map((step) => (
-              <div key={step} className="flex items-center gap-2 text-sm">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                {step}
+                    <span>
+                      {gatewayHttpMethod(endpoint)} {endpoint}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 shrink-0 gap-1.5 font-sans text-xs text-muted-foreground"
+                      onClick={() => copySampleCurl(endpoint)}
+                      aria-label={`Copy sample cURL for ${endpoint}`}
+                    >
+                      {copiedEndpoint === endpoint ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          Copy cURL
+                        </>
+                      )}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {status.openai_compatible && <Badge variant="success">OpenAI-compatible</Badge>}
+                {status.gemini_compatible && <Badge variant="secondary">Gemini-compatible</Badge>}
               </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
 
-      <GatewayTester />
+          <Card className="border-border/60 bg-card/50 lg:col-span-5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Inspection pipeline</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {PIPELINE_STEPS.map((step) => (
+                <div key={step} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                  {step}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {tab === "test" && <GatewayTester />}
+
+      {tab === "rag" && <RagGatewayTester />}
+
+      {tab === "compatibility" && <CompatibilityCenterView embedded />}
     </div>
   );
 }

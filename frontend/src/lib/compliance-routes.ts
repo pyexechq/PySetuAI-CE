@@ -7,7 +7,7 @@ export const COMPLIANCE_MODULE_ROUTES: Record<string, string> = {
   "LLM Router": "/llm-router",
   "MCP Governance": "/mcp-governance",
   "Governance Sandbox": "/studio",
-  "Compatibility Center": "/compatibility-center",
+  "Compatibility Center": "/ai-gateway?tab=compatibility",
   Reports: "/reports",
   "Data Protection": "/data-protection",
   Settings: "/settings/organization",

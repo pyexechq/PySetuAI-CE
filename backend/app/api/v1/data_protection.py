@@ -31,6 +31,8 @@ async def scan_data_protection_content(
     result = scan_content(payload.content)
     return DlpScanResponse(
         classifications=result.classifications,
+        sensitivity_labels=result.sensitivity_labels,
+        highest_sensitivity=result.highest_sensitivity,
         has_pii=result.has_pii,
         region=result.region,
         match_count=result.match_count,

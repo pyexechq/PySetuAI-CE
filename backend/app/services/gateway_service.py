@@ -21,7 +21,7 @@ from app.schemas.openai import (
     InspectionResult,
 )
 from app.modules.uag.canonical import CanonicalPrompt, TranslationTrace
-from app.modules.uag.client_response import serialize_gateway_response
+from app.modules.uag.client_response import normalize_client_protocol, serialize_gateway_response
 from app.modules.uag.provider_registry import get_provider
 from app.modules.uag.protocol_translator import resolve_target_protocol
 from app.modules.uag.service import run_uag_post_upstream, run_uag_pre_governance
@@ -416,6 +416,9 @@ async def prepare_chat_request(
                 risk=ingress.risk if ingress.risk != "low" else "medium",
             )
         if dlp.classifications:
+            sensitivity_detail = ""
+            if dlp.highest_sensitivity:
+                sensitivity_detail = f"; highest sensitivity: {dlp.highest_sensitivity}"
             await _write_audit(
                 db,
                 ctx,
@@ -423,7 +426,7 @@ async def prepare_chat_request(
                 "gateway /ingress",
                 "allowed",
                 ingress.risk,
-                f"PII types: {', '.join(dlp.classifications)}; {dlp.match_count} match(es) redacted",
+                f"PII types: {', '.join(dlp.classifications)}; {dlp.match_count} match(es) redacted{sensitivity_detail}",
             )
 
     if not ingress.allowed:
@@ -493,6 +496,8 @@ async def prepare_chat_request(
         tenant_enabled=tenant.token_saving_enabled if tenant else False,
         tenant_mode=tenant.token_saving_mode if tenant else "both",
         request_metadata=request.metadata,
+        key_enabled=ctx.token_saving_enabled,
+        key_mode=ctx.token_saving_mode,
     )
     token_saving = apply_token_saving(
         messages,
@@ -511,6 +516,10 @@ async def prepare_chat_request(
     )
     mcp_rows = await db.execute(select(MCPServer).where(MCPServer.tenant_id == ctx.tenant_id))
     all_mcp_servers = list(mcp_rows.scalars().all())
+    from app.services.mcp_access_service import filter_servers_for_bundle
+
+    bundle_for_mcp = await _load_bundle(db, ctx.policy_bundle_id)
+    all_mcp_servers = filter_servers_for_bundle(all_mcp_servers, bundle_for_mcp)
     agent = detect_agent(user_agent, request.metadata)
     agent_toggles = toggles_from_tenant(tenant.mcp_agent_toggles if tenant else None)
     mcp_servers = filter_servers_for_agent(all_mcp_servers, agent, agent_toggles)
@@ -528,12 +537,40 @@ async def prepare_chat_request(
     if dynamic_tools.enabled:
         uag_trace.governance_actions.append("dynamic_tools")
 
-    routed_model, matched_rule, routing_strategy = await select_model(
+    routing = await select_model(
         effective_request.model,
         db,
         ctx.tenant_id,
         build_routing_context(request),
+        client_api_key_id=ctx.client_api_key_id,
     )
+    routed_model = routing.model
+    matched_rule = routing.matched_rule
+    routing_strategy = routing.strategy
+    client_response_protocol = uag_pipeline.client_response_protocol
+    if routing.response_format and routing.response_format.strip().lower() not in {"", "auto"}:
+        client_response_protocol = normalize_client_protocol(routing.response_format)
+
+    if routing.target_provider and canonical:
+        canonical = CanonicalPrompt(
+            tenant_id=canonical.tenant_id,
+            request_id=canonical.request_id,
+            source_protocol=client_response_protocol,
+            target_provider=routing.target_provider,
+            target_protocol=resolve_target_protocol(routing.target_provider),
+            model=routed_model,
+            requested_model=canonical.requested_model,
+            messages=canonical.messages,
+            tools=dynamic_tools_payload or canonical.tools,
+            system_prompt=canonical.system_prompt,
+            temperature=canonical.temperature,
+            max_tokens=canonical.max_tokens,
+            metadata=canonical.metadata,
+        )
+        if uag_trace:
+            uag_trace.target_provider = routing.target_provider
+            uag_trace.target_protocol = resolve_target_protocol(routing.target_provider)
+            uag_trace.policy_applied = matched_rule or uag_trace.policy_applied
 
     ingress, opa_decision = await evaluate_gateway_abac(
         ctx,
@@ -543,6 +580,9 @@ async def prepare_chat_request(
         has_pii=dlp.has_pii,
         region=dlp.region,
         content_length=len(combined),
+        entity_classifications=dlp.classifications,
+        sensitivity_labels=dlp.sensitivity_labels,
+        highest_sensitivity=dlp.highest_sensitivity,
     )
     if not ingress.allowed:
         violation_names = [v.rule_name for v in ingress.violations]
@@ -624,7 +664,7 @@ async def prepare_chat_request(
         uag_canonical=canonical,
         uag_trace=uag_trace,
         requested_model=request.model,
-        client_response_protocol=uag_pipeline.client_response_protocol,
+        client_response_protocol=client_response_protocol,
         prompt_template_id=prompt_tmpl_id,
         prompt_version=prompt_ver,
         prompt_enforce_mode=prompt_enforce,

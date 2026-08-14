@@ -77,3 +77,56 @@ premium_model = {
 	"Claude 3.5 Sonnet": true,
 	"Gemini 1.5 Pro": true,
 }
+
+# Data-movement: restricted sensitivity labels cannot reach vector stores or embedding pipelines.
+restricted_data_movement = {
+	"RESTRICTED_PII": true,
+	"RESTRICTED_PHI": true,
+	"RESTRICTED_PCI": true,
+}
+
+vector_destinations = {
+	"pinecone": true,
+	"vector_store": true,
+	"embedding": true,
+}
+
+never_exempt_labels = {
+	"RESTRICTED_PHI": true,
+	"RESTRICTED_PCI": true,
+}
+
+exemption_covers_movement {
+	input.exemption.valid == true
+	input.exemption.allowed_destinations[input.movement.to]
+	count(blocked_exempt_labels) == 0
+}
+
+blocked_exempt_labels[label] {
+	label := input.data.sensitivity_labels[_]
+	never_exempt_labels[label]
+}
+
+blocked_exempt_labels[label] {
+	label := input.data.sensitivity_labels[_]
+	label == "RESTRICTED_PII"
+	vector_store_destinations[input.movement.to]
+}
+
+vector_store_destinations = {
+	"pinecone": true,
+	"vector_store": true,
+}
+
+violations[v] {
+	input.movement.to == dest
+	vector_destinations[dest]
+	label := input.data.sensitivity_labels[_]
+	restricted_data_movement[label]
+	not exemption_covers_movement
+	v := {
+		"rule": "ABAC Data Movement Restriction",
+		"message": sprintf("Sensitivity label %s cannot be sent to %s (%s)", [label, input.movement.to, input.movement.operation]),
+		"severity": "critical",
+	}
+}

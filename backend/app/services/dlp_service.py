@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from app.services.dlp_classification import derive_sensitivity_labels, highest_sensitivity
+
 SSN_PATTERN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 US_PHONE_PATTERN = re.compile(r"\b\d{3}-\d{3}-\d{4}\b")
@@ -29,6 +31,8 @@ CLASSIFIERS: list[tuple[str, re.Pattern[str]]] = [
 @dataclass
 class DlpScanResult:
     classifications: list[str] = field(default_factory=list)
+    sensitivity_labels: list[str] = field(default_factory=list)
+    highest_sensitivity: str | None = None
     has_pii: bool = False
     region: str = "US"
     redacted_content: str | None = None
@@ -48,8 +52,11 @@ def scan_content(content: str, *, region: str = "US") -> DlpScanResult:
             match_count += len(matches)
             redacted = pattern.sub("[REDACTED]", redacted)
 
+    sensitivity_labels = derive_sensitivity_labels(labels)
     return DlpScanResult(
         classifications=labels,
+        sensitivity_labels=sensitivity_labels,
+        highest_sensitivity=highest_sensitivity(sensitivity_labels),
         has_pii=bool(labels),
         region=region,
         redacted_content=redacted if redacted != content else None,

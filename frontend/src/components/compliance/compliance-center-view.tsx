@@ -6,6 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FrameworkComplianceCard } from "@/components/compliance/framework-compliance-card";
 import { ComplianceEvidencePanel } from "@/components/compliance/compliance-evidence-panel";
+import { GenaiEvidencePanel } from "@/components/compliance/genai-evidence-panel";
+import { IacEvidencePanel } from "@/components/compliance/iac-evidence-panel";
+import { PolicyExemptionPanel } from "@/components/compliance/policy-exemption-panel";
 import { useComplianceFrameworks } from "@/hooks/use-compliance-frameworks";
 import type { ApiDashboardOverview } from "@/lib/api";
 
@@ -125,6 +128,9 @@ export function ComplianceCenterView() {
       )}
 
       <ComplianceEvidencePanel />
+      <GenaiEvidencePanel />
+      <PolicyExemptionPanel />
+      <IacEvidencePanel />
     </div>
   );
 }

@@ -185,6 +185,7 @@ class LLMProvider(Base):
     api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     cost_per_1m_input: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     cost_per_1m_output: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    model_aliases: Mapped[list] = mapped_column(JSONB, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -199,6 +200,7 @@ class RoutingRule(Base):
     target_model: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active")
     response_format: Mapped[str] = mapped_column(String(20), default="auto", server_default="auto")
+    target_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -227,6 +229,7 @@ class PolicyBundle(Base):
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     policy_ids: Mapped[list] = mapped_column(JSONB, default=list)
     custom_intent_ids: Mapped[list] = mapped_column(JSONB, default=list)
+    mcp_scope: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -250,6 +253,8 @@ class ClientApiKey(Base):
     ai_token_limit_tpm: Mapped[int | None] = mapped_column(Integer, nullable=True)
     ai_token_limit_tph: Mapped[int | None] = mapped_column(Integer, nullable=True)
     ai_token_limit_tpd: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    token_saving_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    token_saving_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -288,11 +293,43 @@ class TenantIntegration(Base):
     ai_assist_provider: Mapped[str] = mapped_column(String(32), default="openai")
     ai_assist_model: Mapped[str] = mapped_column(String(255), default="gpt-4o-mini")
     ai_assist_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_assist_base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     uag_client_protocol: Mapped[str] = mapped_column(String(32), default="openai")
     uag_include_metadata: Mapped[bool] = mapped_column(Boolean, default=False)
+    pinecone_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    pinecone_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pinecone_host: Mapped[str] = mapped_column(String(512), default="")
+    pinecone_namespace: Mapped[str] = mapped_column(String(255), default="")
+    pinecone_dimension: Mapped[int] = mapped_column(Integer, default=1536)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class GenaiEvidenceBundle(Base):
+    __tablename__ = "genai_evidence_bundles"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    actor: Mapped[str] = mapped_column(String(255), default="")
+    payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class PolicyExemption(Base):
+    __tablename__ = "policy_exemptions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    created_by: Mapped[str] = mapped_column(String(255), default="")
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    ticket_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    allowed_destinations: Mapped[list] = mapped_column(JSONB, default=list)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    use_count: Mapped[int] = mapped_column(Integer, default=0)
+    max_uses: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
 class ReportDefinition(Base):
