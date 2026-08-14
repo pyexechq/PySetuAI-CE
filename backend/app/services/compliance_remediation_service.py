@@ -36,6 +36,8 @@ MODULE_ROUTES: dict[str, str] = {
     "Data Protection": "/data-protection",
     "Settings": "/settings/organization",
     "Compliance Center": "/compliance",
+    "Studio": "/studio",
+    "Governance Graph": "/governance-graph",
 }
 
 

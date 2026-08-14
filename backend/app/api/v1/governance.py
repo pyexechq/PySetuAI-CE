@@ -1687,6 +1687,9 @@ async def list_audit_logs(
             risk=log.risk,
             details=log.details,
             has_request_log=log.id in body_ids,
+            matched_routing_rule=(log.usage_metadata or {}).get("matched_routing_rule"),
+            routing_strategy=(log.usage_metadata or {}).get("routing_strategy"),
+            upstream=(log.usage_metadata or {}).get("upstream"),
         )
         for log in logs
     ]

@@ -126,6 +126,9 @@ export interface AuditLogEntry {
   risk: "low" | "medium" | "high";
   details: string;
   has_request_log?: boolean;
+  matched_routing_rule?: string | null;
+  routing_strategy?: string | null;
+  upstream?: string | null;
 }
 
 export interface DataClassification {
@@ -181,6 +184,10 @@ export interface ReportCatalogEntry {
     recipients?: string[];
   };
   is_builtin?: boolean;
+  stats?: {
+    row_count: number;
+    generated_at: string | null;
+  };
 }
 
 export interface ExecutiveSummary {

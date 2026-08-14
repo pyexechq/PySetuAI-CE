@@ -41,3 +41,27 @@ def test_build_usage_metadata_for_jwt_user() -> None:
     )
     assert meta["auth_type"] == "jwt"
     assert meta["user_id"] is not None
+
+
+def test_build_usage_metadata_includes_routing_fields() -> None:
+    ctx = SimpleNamespace(
+        client_api_key_id=None,
+        client_api_key_name=None,
+        user=SimpleNamespace(id=uuid4()),
+    )
+    meta = _build_usage_metadata(
+        ctx,
+        model="gpt-4o",
+        prompt_tokens=10,
+        completion_tokens=5,
+        total_tokens=15,
+        latency_ms=200,
+        matched_routing_rule="production-openai",
+        routing_strategy="routing_rule",
+        upstream="openai",
+        requested_model="gpt-4o-mini",
+    )
+    assert meta["matched_routing_rule"] == "production-openai"
+    assert meta["routing_strategy"] == "routing_rule"
+    assert meta["upstream"] == "openai"
+    assert meta["requested_model"] == "gpt-4o-mini"

@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { GridApi } from "ag-grid-community";
@@ -22,12 +23,13 @@ import { formatDateRangeLabel } from "@/lib/date-range";
 import { useDateRangeStore } from "@/stores/date-range-store";
 import { usePreferencesStore } from "@/stores/preferences-store";
 import { formatTime } from "@/lib/date-utils";
-import { formatNumber } from "@/lib/utils";
+import { resolveAuditRoutingRule } from "@/lib/audit-routing";
 import {
   Activity,
   Download,
   FileCheck,
   LayoutDashboard,
+  Route,
   Pause,
   Play,
   Radar,
@@ -91,6 +93,10 @@ export function AuditExplorerView() {
   });
 
   const lastUpdated = dataUpdatedAt ? formatTime(new Date(dataUpdatedAt), timezone) : null;
+  const selectedRouting = useMemo(
+    () => (selectedLog ? resolveAuditRoutingRule(selectedLog) : null),
+    [selectedLog]
+  );
 
   const statusCounts = useMemo(() => {
     const counts = { allowed: 0, blocked: 0, review: 0 };
@@ -129,7 +135,7 @@ export function AuditExplorerView() {
           items={[
             {
               title: "Total events",
-              value: formatNumber(logs.length),
+              value: logs.length,
               change: 0,
               icon: Activity,
               iconColor: "text-blue-400",
@@ -137,7 +143,7 @@ export function AuditExplorerView() {
             },
             {
               title: "Allowed",
-              value: formatNumber(statusCounts.allowed),
+              value: statusCounts.allowed,
               change: 0,
               icon: FileCheck,
               iconColor: "text-emerald-400",
@@ -145,7 +151,7 @@ export function AuditExplorerView() {
             },
             {
               title: "Blocked",
-              value: formatNumber(statusCounts.blocked),
+              value: statusCounts.blocked,
               change: 0,
               icon: ShieldAlert,
               iconColor: "text-red-400",
@@ -153,7 +159,7 @@ export function AuditExplorerView() {
             },
             {
               title: "Under review",
-              value: formatNumber(statusCounts.review),
+              value: statusCounts.review,
               change: 0,
               icon: Search,
               iconColor: "text-amber-400",
@@ -293,9 +299,22 @@ export function AuditExplorerView() {
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold">
-            {selectedLog ? `Selected: ${selectedLog.action}` : "Detail panels"}
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-semibold">
+              {selectedLog ? `Selected: ${selectedLog.action}` : "Detail panels"}
+            </h2>
+            {selectedRouting?.rule && (
+              <Badge variant="outline" className="gap-1 border-indigo-500/30 bg-indigo-500/10 text-indigo-300">
+                <Route className="h-3 w-3" />
+                {selectedRouting.label}: {selectedRouting.rule}
+              </Badge>
+            )}
+            {selectedRouting?.rule && (
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
+                <Link href="/llm-router">Open LLM Router</Link>
+              </Button>
+            )}
+          </div>
           <SectionTabBar tabs={DETAIL_TABS} active={detailTab} onChange={setDetailTab} />
         </div>
 

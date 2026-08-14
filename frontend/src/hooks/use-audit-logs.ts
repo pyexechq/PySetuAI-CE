@@ -17,6 +17,9 @@ function mapLog(log: {
   risk: string;
   details: string;
   has_request_log?: boolean;
+  matched_routing_rule?: string | null;
+  routing_strategy?: string | null;
+  upstream?: string | null;
 }): AuditLogEntry {
   return {
     id: log.id,
@@ -28,6 +31,9 @@ function mapLog(log: {
     risk: log.risk as AuditLogEntry["risk"],
     details: log.details,
     has_request_log: log.has_request_log ?? false,
+    matched_routing_rule: log.matched_routing_rule ?? null,
+    routing_strategy: log.routing_strategy ?? null,
+    upstream: log.upstream ?? null,
   };
 }
 

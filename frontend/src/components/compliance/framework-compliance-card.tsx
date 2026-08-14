@@ -1,18 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ClipboardList,
   Download,
   Loader2,
   RefreshCw,
-  Sparkles,
-  Wrench,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { FrameworkControlPanel } from "@/components/compliance/framework-control-panel";
 import { ComplianceRemediationDialog } from "@/components/compliance/compliance-remediation-dialog";
 import { useComplianceActions } from "@/hooks/use-compliance-actions";
@@ -98,6 +97,10 @@ export function FrameworkComplianceCard({ framework, onFrameworkUpdated }: Frame
   const [plan, setPlan] = useState<ApiComplianceRemediationResponse | null>(null);
   const [activeControlTitle, setActiveControlTitle] = useState<string | undefined>();
 
+  useEffect(() => {
+    setLocalFramework(framework);
+  }, [framework]);
+
   const status = statusLabel[localFramework.status as keyof typeof statusLabel] ?? statusLabel.partial;
   const inProgress = localFramework.in_progress ?? 0;
   const notMet = localFramework.not_met ?? Math.max(0, localFramework.controls - localFramework.passed - inProgress);
@@ -148,48 +151,70 @@ export function FrameworkComplianceCard({ framework, onFrameworkUpdated }: Frame
 
           <div className="mt-4 flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Key controls</span>
-            <span>
-              <span className={cn(localFramework.passed === localFramework.controls ? "text-emerald-400" : "")}>
-                {localFramework.passed}
+            <span className="text-right">
+              <span className={cn(notMet === 0 && inProgress === 0 ? "text-emerald-400" : "")}>
+                {localFramework.passed} met
               </span>
-              /{localFramework.controls} met
+              {inProgress > 0 && <span className="text-amber-400"> · {inProgress} in progress</span>}
+              {notMet > 0 && <span className="text-red-400"> · {notMet} not met</span>}
             </span>
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-primary transition-all"
               style={{
-                width: `${localFramework.controls ? (localFramework.passed / localFramework.controls) * 100 : 0}%`,
+                width: `${Math.max(0, Math.min(100, localFramework.score))}%`,
               }}
             />
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 gap-1 text-xs"
-              disabled={reevaluateFramework.isPending}
-              onClick={() => void handleReevaluate()}
-            >
-              {reevaluateFramework.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
-              Re-evaluate
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => exportFrameworkCsv(localFramework)}>
-              <Download className="h-3.5 w-3.5" />
-              Export CSV
-            </Button>
+          <div className="mt-4 flex items-center gap-0.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  disabled={reevaluateFramework.isPending}
+                  onClick={() => void handleReevaluate()}
+                  aria-label="Re-evaluate framework"
+                >
+                  {reevaluateFramework.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Re-evaluate</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  onClick={() => exportFrameworkCsv(localFramework)}
+                  aria-label="Export controls CSV"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Export CSV</TooltipContent>
+            </Tooltip>
             {gapCount > 0 && (
-              <Button size="sm" variant="secondary" className="h-8 gap-1 text-xs" asChild>
-                <Link href="/reports">
-                  <ClipboardList className="h-3.5 w-3.5" />
-                  {gapCount} gap{gapCount === 1 ? "" : "s"}
-                </Link>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
+                    <Link href="/reports" aria-label={`${gapCount} open gaps`}>
+                      <ClipboardList className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {gapCount} gap{gapCount === 1 ? "" : "s"} — view reports
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
 

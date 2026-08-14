@@ -267,6 +267,10 @@ def _build_usage_metadata(
     latency_ms: int | None = None,
     token_saving: dict | None = None,
     dynamic_tools: dict | None = None,
+    matched_routing_rule: str | None = None,
+    routing_strategy: str | None = None,
+    upstream: str | None = None,
+    requested_model: str | None = None,
 ) -> dict:
     end_user = request.user if request and request.user else (getattr(ctx.user, "external_subject", None) if ctx.user else None)
     metadata = request.metadata if request else None
@@ -287,7 +291,48 @@ def _build_usage_metadata(
         result["token_saving"] = token_saving
     if dynamic_tools:
         result["dynamic_tools"] = dynamic_tools
+    if matched_routing_rule:
+        result["matched_routing_rule"] = matched_routing_rule
+    if routing_strategy:
+        result["routing_strategy"] = routing_strategy
+    if upstream:
+        result["upstream"] = upstream
+    if requested_model:
+        result["requested_model"] = requested_model
     return result
+
+
+def _usage_metadata_from_prepared(
+    ctx: GatewayContext,
+    prepared: PreparedChat,
+    request: ChatCompletionRequest | None,
+    *,
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+    total_tokens: int = 0,
+    latency_ms: int | None = None,
+) -> dict:
+    return _build_usage_metadata(
+        ctx,
+        request,
+        model=prepared.routed_model,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+        latency_ms=latency_ms,
+        token_saving=_token_saving_metadata(prepared),
+        dynamic_tools=_dynamic_tools_metadata(prepared),
+        matched_routing_rule=prepared.matched_routing_rule,
+        routing_strategy=prepared.routing_strategy,
+        upstream=prepared.upstream,
+        requested_model=prepared.requested_model,
+    )
+
+
+def _routing_audit_prefix(prepared: PreparedChat) -> str:
+    if prepared.matched_routing_rule:
+        return f"routing_rule={prepared.matched_routing_rule}; "
+    return ""
 
 
 async def _dispatch_gateway_block_alert(
@@ -1010,7 +1055,7 @@ async def stream_chat_completion(
         yield _chunk_payload(completion_id, model_name, None, finish=True)
         yield "data: [DONE]\n\n"
 
-        audit_details = f"Streamed to {model_name} via {prepared.upstream}"
+        audit_details = f"{_routing_audit_prefix(prepared)}Streamed to {model_name} via {prepared.upstream}"
         latency_ms = max(1, int((time.perf_counter() - started) * 1000))
         if latency_ms >= LATENCY_ALERT_THRESHOLD_MS:
             await _dispatch_gateway_telemetry_alert(
@@ -1085,16 +1130,14 @@ async def stream_chat_completion(
             audit_status, 
             audit_risk, 
             audit_details,
-            usage_metadata=_build_usage_metadata(
+            usage_metadata=_usage_metadata_from_prepared(
                 ctx,
-                request=request,
-                model=prepared.routed_model,
+                prepared,
+                request,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 total_tokens=prompt_tokens + completion_tokens,
                 latency_ms=latency_ms,
-                token_saving=_token_saving_metadata(prepared),
-                dynamic_tools=_dynamic_tools_metadata(prepared),
             ),
             request_log={
                 "request_payload": serialize_chat_request(request),
@@ -1119,7 +1162,16 @@ async def stream_chat_completion(
         yield "data: [DONE]\n\n"
         latency_ms = max(1, int((time.perf_counter() - started) * 1000))
         await record_provider_request(db, ctx.tenant_id, prepared.routed_model, latency_ms, success=False)
-        await _write_audit(db, ctx, "LLM Request", f"{prepared.routed_model} /chat", "review", "medium", str(exc))
+        await _write_audit(
+            db,
+            ctx,
+            "LLM Request",
+            f"{prepared.routed_model} /chat",
+            "review",
+            "medium",
+            f"{_routing_audit_prefix(prepared)}{exc}",
+            usage_metadata=_usage_metadata_from_prepared(ctx, prepared, request, latency_ms=latency_ms),
+        )
         await db.commit()
         await _dispatch_gateway_telemetry_alert(
             db,
@@ -1197,8 +1249,17 @@ async def process_chat_completion(
             span.record_exception(last_exception)
             latency_ms = max(1, int((time.perf_counter() - started) * 1000))
             failover_summary = "; ".join(f"{item['model']}({item['upstream']}): {item['error']}" for item in failover_chain)
-            audit_msg = f"All provider targets failed: {failover_summary}"
-            await _write_audit(db, ctx, "LLM Request", f"{prepared.routed_model} /chat", "review", "medium", audit_msg)
+            audit_msg = f"{_routing_audit_prefix(prepared)}All provider targets failed: {failover_summary}"
+            await _write_audit(
+                db,
+                ctx,
+                "LLM Request",
+                f"{prepared.routed_model} /chat",
+                "review",
+                "medium",
+                audit_msg,
+                usage_metadata=_usage_metadata_from_prepared(ctx, prepared, request, latency_ms=latency_ms),
+            )
             await db.commit()
             await _dispatch_gateway_telemetry_alert(
                 db,
@@ -1239,7 +1300,8 @@ async def process_chat_completion(
                 f"{prepared.routed_model} /chat",
                 "blocked",
                 egress.risk,
-                "Output blocked by egress policy",
+                f"{_routing_audit_prefix(prepared)}Output blocked by egress policy",
+                usage_metadata=_usage_metadata_from_prepared(ctx, prepared, request, latency_ms=latency_ms),
                 request_log={
                     "request_payload": serialize_chat_request(request),
                     "response_payload": serialize_chat_response(response),
@@ -1282,9 +1344,10 @@ async def process_chat_completion(
             )
 
         audit_status = "review" if prepared.ingress.violations else "allowed"
-        audit_details = f"Routed to {prepared.routed_model} via {prepared.upstream}"
+        audit_details = f"{_routing_audit_prefix(prepared)}Routed to {prepared.routed_model} via {prepared.upstream}"
         if prepared.requested_model and prepared.requested_model != prepared.routed_model:
             audit_details = (
+                f"{_routing_audit_prefix(prepared)}"
                 f"UAG translated {prepared.requested_model} → {prepared.routed_model} via {prepared.upstream}"
             )
         if prepared.ollama_model:
@@ -1327,16 +1390,14 @@ async def process_chat_completion(
             audit_status,
             prepared.ingress.risk,
             audit_details,
-            usage_metadata=_build_usage_metadata(
+            usage_metadata=_usage_metadata_from_prepared(
                 ctx,
-                request=request,
-                model=prepared.routed_model,
+                prepared,
+                request,
                 prompt_tokens=response.usage.prompt_tokens,
                 completion_tokens=response.usage.completion_tokens,
                 total_tokens=response.usage.total_tokens,
                 latency_ms=latency_ms,
-                token_saving=_token_saving_metadata(prepared),
-                dynamic_tools=_dynamic_tools_metadata(prepared),
             ),
             request_log={
                 "request_payload": serialize_chat_request(request),

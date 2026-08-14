@@ -5,6 +5,7 @@ import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, type ColDef, type GridApi, type GridReadyEvent } from "ag-grid-community";
 import { useTheme } from "next-themes";
 import type { AuditLogEntry } from "@/lib/types/domain";
+import { resolveAuditRoutingRule } from "@/lib/audit-routing";
 import { usePreferencesStore } from "@/stores/preferences-store";
 import { formatDateTime } from "@/lib/date-utils";
 
@@ -42,6 +43,17 @@ export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridRead
       },
       { field: "actor", headerName: "Actor", filter: "agTextColumnFilter", flex: 1, minWidth: 140 },
       { field: "action", headerName: "Action", filter: "agTextColumnFilter", flex: 1, minWidth: 130 },
+      {
+        field: "matched_routing_rule",
+        headerName: "Routing rule",
+        filter: "agTextColumnFilter",
+        width: 140,
+        valueGetter: (params) => {
+          if (!params.data) return null;
+          return resolveAuditRoutingRule(params.data).rule;
+        },
+        valueFormatter: (params) => params.value ?? "—",
+      },
       { field: "resource", headerName: "Resource", filter: "agTextColumnFilter", flex: 1, minWidth: 160 },
       {
         field: "status",

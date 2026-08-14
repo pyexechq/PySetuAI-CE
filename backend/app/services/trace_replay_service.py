@@ -151,6 +151,28 @@ def _llm_trace_spans(log: AuditLog, details: str, usage: dict[str, Any], total_m
             attributes=dynamic_tools,
         )
 
+    matched_rule = usage.get("matched_routing_rule")
+    if not matched_rule and "routing_rule=" in details:
+        matched_rule = details.split("routing_rule=", 1)[1].split(";", 1)[0].strip() or None
+    routing_detail = f"Matched rule: {matched_rule}" if matched_rule else f"Resolved model {model}"
+    if usage.get("routing_strategy") == "routing_group" and matched_rule:
+        routing_detail = f"Routing group: {matched_rule}"
+    offset = _append_span(
+        spans,
+        name="routing.select",
+        service="LLM Router",
+        duration_ms=min(30, total_ms // 10),
+        status="ok",
+        stage="routing",
+        offset_ms=offset,
+        detail=routing_detail,
+        attributes={
+            "matched_routing_rule": matched_rule,
+            "routing_strategy": usage.get("routing_strategy"),
+            "upstream": usage.get("upstream"),
+        },
+    )
+
     uag_trace = _parse_json_marker(details, UAG_TRACE_MARKER)
     if isinstance(uag_trace, dict):
         offset = _append_span(
@@ -163,17 +185,6 @@ def _llm_trace_spans(log: AuditLog, details: str, usage: dict[str, Any], total_m
             offset_ms=offset,
             detail=f"{uag_trace.get('source_protocol')} → {uag_trace.get('target_provider')}",
             attributes=uag_trace,
-        )
-    else:
-        offset = _append_span(
-            spans,
-            name="routing.select",
-            service="LLM Router",
-            duration_ms=min(30, total_ms // 10),
-            status="ok",
-            stage="routing",
-            offset_ms=offset,
-            detail=f"Resolved model {model}",
         )
 
     failover_chain = _parse_json_marker(details, FAILOVER_MARKER)

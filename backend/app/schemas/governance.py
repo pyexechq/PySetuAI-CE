@@ -483,6 +483,9 @@ class AuditLogResponse(BaseModel):
     risk: str
     details: str
     has_request_log: bool = False
+    matched_routing_rule: str | None = None
+    routing_strategy: str | None = None
+    upstream: str | None = None
 
 
 class AuditLogBodyResponse(BaseModel):

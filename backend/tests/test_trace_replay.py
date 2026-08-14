@@ -62,6 +62,51 @@ def test_build_trace_failover_chain() -> None:
     assert failover_spans[1]["status"] == "ok"
 
 
+def test_build_trace_routing_rule_span() -> None:
+    trace = build_trace_from_audit_log(
+        _log(
+            usage_metadata={
+                "model": "gpt-4o",
+                "latency_ms": 420,
+                "matched_routing_rule": "production-openai",
+                "routing_strategy": "routing_rule",
+                "upstream": "openai",
+            }
+        )
+    )
+    routing = next(s for s in trace["spans"] if s["name"] == "routing.select")
+    assert routing["detail"] == "Matched rule: production-openai"
+    assert routing["attributes"]["matched_routing_rule"] == "production-openai"
+    assert routing["attributes"]["upstream"] == "openai"
+
+
+def test_build_trace_routing_group_span() -> None:
+    trace = build_trace_from_audit_log(
+        _log(
+            usage_metadata={
+                "model": "gpt-4o",
+                "latency_ms": 420,
+                "matched_routing_rule": "enterprise-pool",
+                "routing_strategy": "routing_group",
+                "upstream": "openai",
+            }
+        )
+    )
+    routing = next(s for s in trace["spans"] if s["name"] == "routing.select")
+    assert routing["detail"] == "Routing group: enterprise-pool"
+
+
+def test_build_trace_routing_rule_from_details() -> None:
+    trace = build_trace_from_audit_log(
+        _log(
+            details="routing_rule=legacy-openai; Routed to gpt-4o via openai",
+            usage_metadata={"model": "gpt-4o", "latency_ms": 120},
+        )
+    )
+    routing = next(s for s in trace["spans"] if s["name"] == "routing.select")
+    assert routing["detail"] == "Matched rule: legacy-openai"
+
+
 def test_build_trace_blocked_ingress() -> None:
     trace = build_trace_from_audit_log(
         _log(
