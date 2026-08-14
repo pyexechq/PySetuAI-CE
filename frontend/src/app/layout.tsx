@@ -17,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PySetu AI | Governance, Gateway, and Guardrails across the Agentic Frontier",
+  title: "PySetu AI | Govern every byte from prompt to vector store",
   description:
-    "Production-grade multi-tenant AI governance platform for LLM routing, MCP governance, policy enforcement, and compliance.",
+    "Enterprise AI governance platform for LLM gateway, MCP compliance, GenAI DLP, governed RAG, OPA data-movement policy, and compliance evidence.",
 };
 
 export default function RootLayout({
