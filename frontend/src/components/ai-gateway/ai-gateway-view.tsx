@@ -88,7 +88,11 @@ const PIPELINE_STEPS = [
   "Full audit trace logging",
 ];
 
-function upstreamLabel(status: typeof EMPTY_GATEWAY_STATUS): string {
+function upstreamLabel(status: {
+  openai_compatible: boolean;
+  gemini_compatible: boolean;
+  proxy_mode?: string;
+}): string {
   const parts: string[] = [];
   if (status.openai_compatible) parts.push("OpenAI");
   if (status.gemini_compatible) parts.push("Gemini");
@@ -175,7 +179,7 @@ export function AiGatewayView() {
           variant="hero"
           showTrend={false}
           title="Proxy mode"
-          value={status.proxy_mode === "none" ? "Direct" : status.proxy_mode}
+          value={!status.proxy_mode || status.proxy_mode === "none" ? "Direct" : status.proxy_mode}
           change={0}
           icon={Route}
           iconColor="text-amber-400"

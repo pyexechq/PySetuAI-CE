@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any, Awaitable, Callable
 
+from app.services.dynamic_tool_service import catalog_from_servers
+
 MCP_PROTOCOL_VERSION = "2024-11-05"
 MULTIPLEX_SERVER_NAME = "pysetu-mcp-multiplex"
 _SLUG_RE = re.compile(r"[^a-z0-9]+")

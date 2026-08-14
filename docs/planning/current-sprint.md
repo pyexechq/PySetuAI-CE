@@ -16,7 +16,7 @@
 | S18-04 | Chat path uses shared MCP access filter | Done |
 | S18-05 | `select_model` honors `routing_rule_client_keys` | Done |
 | S18-06 | Bundle MCP scope UI in Policy Studio | Pending |
-| S18-07 | Tests + test-plan / release-readiness updates | Partial |
+| S18-07 | Tests + test-plan / release-readiness updates | Done (mcp_access + multiplex tests; RAG DLP suite) |
 
 ## Exit criteria
 

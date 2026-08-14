@@ -158,17 +158,29 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 - [x] Loading / error / empty states on Audit Explorer, Compliance, Governance Graph, Monitoring (BL-096)
 - [x] Login schema min_length on password and tenant slug (BL-097)
 
+## Phase 14 — GenAI DLP Gateway (complete — Aug 14)
+
+> Roadmap: [genai-dlp-gateway-roadmap.md](./genai-dlp-gateway-roadmap.md)
+
+- [x] DLP sensitivity label mapping (BL-109)
+- [x] OPA data-movement Rego rules (BL-110)
+- [x] RAG gateway API with Pinecone adapter (BL-111)
+- [x] Conditional RAG orchestrator (BL-112)
+- [x] GenAI evidence bundle export UI (BL-113)
+- [x] IaC evidence static scanner (BL-114)
+- [x] Break-glass policy exemptions (BL-115)
+
 ## Phase 13 — MCP compliance pipeline (Sprint 18–20)
 
 > Design: [mcp-policy-pipeline-design.md](./mcp-policy-pipeline-design.md)
 
 ### Layer 1 — Gateway enforcement (Sprint 18)
 
-- [ ] AuditLog on MCP `tools/call` with key metadata (BL-098)
-- [ ] Enforce tool deny lists on gateway multiplex (BL-099)
-- [ ] DLP inspect on MCP tool args and results (BL-100)
-- [ ] Policy bundle `mcp_scope` + `mcp_access_service` (BL-101)
-- [ ] Routing rules honor assigned client API keys (BL-102)
+- [x] AuditLog on MCP `tools/call` with key metadata (BL-098)
+- [x] Enforce tool deny lists on gateway multiplex (BL-099)
+- [x] DLP inspect on MCP tool args and results (BL-100)
+- [x] Policy bundle `mcp_scope` + `mcp_access_service` (BL-101)
+- [x] Routing rules honor assigned client API keys (BL-102)
 - [ ] Bundle MCP scope UI (BL-103)
 
 ### Layer 2 — Compliance metadata (Sprint 19)
@@ -200,3 +212,4 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 | M12: HelixGuard Parity — LLM Router & MCP UX | Sprint 15–16 | ✅ Complete — BL-083–BL-091 delivered; BL-079 remains optional (Aug 13, 2026) |
 | M13: Quality & shared UI primitives | Sprint 17 | ✅ Complete Aug 14 — BL-092–BL-097 ([quality-audit-sprint.md](./quality-audit-sprint.md)) |
 | M14: MCP compliance pipeline | Sprint 18–20 | 🔄 In progress — BL-098–BL-108 ([mcp-policy-pipeline-design.md](./mcp-policy-pipeline-design.md)) |
+| M15: GenAI DLP Gateway | Aug 14, 2026 | ✅ Complete — BL-109–BL-115 ([genai-dlp-gateway-roadmap.md](./genai-dlp-gateway-roadmap.md)) |

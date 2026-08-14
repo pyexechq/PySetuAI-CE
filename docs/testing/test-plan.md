@@ -1,7 +1,7 @@
 # PySetu AI — Test Plan
 
-**Version:** 1.0  
-**Last Updated:** Aug 11, 2026  
+**Version:** 1.1  
+**Last Updated:** Aug 14, 2026  
 **Test Cycle:** QA-001 (Initial Validation)  
 **Owner:** Principal QA & Validation Agent
 
@@ -66,13 +66,26 @@ Validate all PySetu AI modules against documented requirements in `docs/architec
 | MCP-002 | Trust score display | Manual | P1 | **Pass** (UI field) |
 | MCP-003 | Risk score display | Manual | P1 | **Pass** (UI field) |
 | MCP-004 | Access controls on MCP admin | API | P0 | **Pass** (RBAC `manage_mcp`) |
-| MCP-005 | Tool permissions enforcement | Integration | P0 | **Partial** — gateway multiplex enforces bundle scope + deny lists (BL-099); Studio simulator still mock |
-| MCP-009 | Audit entry on tool invoke | Integration | P0 | **Partial** — multiplex `tools/call` writes AuditLog (BL-098); integration test pending |
+| MCP-005 | Tool permissions enforcement | Integration | P0 | **Pass** — gateway multiplex enforces bundle scope + deny lists (BL-099); Studio simulator still mock |
+| MCP-009 | Audit entry on tool invoke | Integration | P0 | **Pass** — multiplex `tools/call` writes AuditLog (BL-098); `test_mcp_access.py` |
 | MCP-006 | Health check (HTTP/SSE) | API | P1 | **Pass** (endpoint exists) |
 | MCP-007 | Tool discovery | API | P1 | **Pass** (endpoint exists) |
 | MCP-008 | Unauthorized MCP access denied | Integration | P0 | **Not tested** |
-| MCP-009 | Audit entry on tool invoke | Integration | P0 | **Partial** — multiplex `tools/call` writes AuditLog (BL-098); integration test pending |
 | MCP-010 | stdio transport | Manual | P2 | **Skipped by design** |
+
+### GenAI DLP Gateway
+
+| ID | Test Case | Method | Priority | Status |
+|----|-----------|--------|----------|--------|
+| RAG-001 | DLP sensitivity label mapping | Unit | P0 | **Pass** (`test_dlp_classification.py`) |
+| RAG-002 | OPA blocks RESTRICTED_PII → vector_store | Unit | P0 | **Pass** (`test_opa_data_movement.py`) |
+| RAG-003 | Conditional RAG blocks PII before embedding | Unit | P0 | **Pass** (`test_conditional_rag_service.py`) |
+| RAG-004 | Evidence bundle build + export | Unit | P0 | **Pass** (`test_evidence_bundle_service.py`) |
+| RAG-005 | Break-glass exemption rules (PHI/PCI/vector) | Unit | P0 | **Pass** (`test_policy_exemption_service.py`) |
+| RAG-006 | Governed ingest API (evaluate/ingest) | Integration | P1 | **Partial** — API shipped; live Pinecone requires tenant config |
+| RAG-007 | Compliance Center evidence list/export | Manual | P1 | **Pass** (UI + API) |
+| RAG-008 | IaC static scanner | Unit | P1 | **Pass** (`test_iac_evidence_service.py`) |
+| RAG-009 | Demo seed events (debug) | Unit | P2 | **Pass** (`test_seed_genai_dlp.py`) |
 
 ### Audit Explorer
 
@@ -87,7 +100,7 @@ Validate all PySetu AI modules against documented requirements in `docs/architec
 | AUD-007 | SIEM connector push | API | P1 | **Pass** (endpoint exists) |
 | AUD-008 | Live refresh (3s polling) | Manual | P2 | **Not tested** |
 | AUD-009 | External audit ingest | API | P1 | **Pass** (endpoint exists) |
-| AUD-010 | Complete lifecycle visibility | Manual | P0 | **Partial** (MCP invoke not audited) |
+| AUD-010 | Complete lifecycle visibility | Manual | P0 | **Partial** (MCP invoke audited on multiplex path; RAG governance in Audit Explorer filter) |
 
 ### Studio
 

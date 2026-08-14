@@ -1,8 +1,8 @@
 # GenAI DLP Gateway — Implementation Plan
 
-> **For agent:** Execute Phase 1–2 in this session; Phases 3–6 are follow-up work.
+> **Status:** Complete (Aug 14, 2026). Backlog IDs **BL-109–BL-115**.
 
-**Goal:** Extend PySetu from LLM ingress DLP to a governed data-movement control plane with sensitivity labels, OPA enforcement for vector destinations, RAG gateway stub, and evidence bundles.
+**Goal:** Extend PySetu from LLM ingress DLP to a governed data-movement control plane with sensitivity labels, OPA enforcement for vector destinations, RAG gateway, evidence bundles, and break-glass exemptions.
 
 **Architecture:** DLP scan → sensitivity mapping → OPA input (`data` + `movement`) → allow/deny → audit + evidence JSON.
 
@@ -10,111 +10,63 @@
 
 ---
 
-## Phase 1: DLP v2 — Sensitivity labels
+## Phase 1: DLP v2 — Sensitivity labels ✅
 
-### Task 1.1: Classification mapper
+- [x] `dlp_classification.py` — `ENTITY_TO_SENSITIVITY`, `derive_sensitivity_labels()`, `highest_sensitivity()`
+- [x] Extended `DlpScanResult` with sensitivity fields
+- [x] Scan API returns sensitivity labels
+- [x] Tests: `test_dlp_classification.py`
 
-**Files:**
-- Create: `backend/app/services/dlp_classification.py`
-- Modify: `backend/app/services/dlp_service.py`
-- Test: `backend/tests/test_dlp_classification.py`
+## Phase 2: OPA data-movement ✅
 
-- [ ] **Step 1:** Add `ENTITY_TO_SENSITIVITY`, `derive_sensitivity_labels()`, `highest_sensitivity()`.
-- [ ] **Step 2:** Extend `DlpScanResult` with `sensitivity_labels`, `highest_sensitivity`.
-- [ ] **Step 3:** Call mapper from `scan_content()`.
-- [ ] **Step 4:** Run `pytest backend/tests/test_dlp_classification.py -v`.
+- [x] `build_data_movement_opa_input()` + `data`/`movement` blocks in OPA input
+- [x] Rego rules block restricted labels → vector destinations
+- [x] `data_movement_service.py` — DLP + OPA evaluation
+- [x] Gateway wiring for sensitivity in audit detail
+- [x] Tests: `test_opa_data_movement.py`
 
-### Task 1.2: API + schemas
+## Phase 3: RAG gateway ✅
 
-**Files:**
-- Modify: `backend/app/schemas/data_protection.py`
-- Modify: `backend/app/api/v1/data_protection.py`
-- Modify: `backend/tests/test_data_protection_service.py`
+- [x] `POST /rag-gateway/evaluate`, `/upsert`, `/ingest`
+- [x] `embedding_service.py`, `pinecone_adapter.py`
+- [x] Pinecone settings in Settings → Integrations
 
-- [ ] **Step 1:** Add fields to `DlpScanResponse`.
-- [ ] **Step 2:** Return new fields from scan endpoint.
-- [ ] **Step 3:** Update existing scan tests.
+## Phase 4: Conditional RAG orchestrator ✅
 
----
+- [x] `conditional_rag_service.py` — multi-hop pipeline
+- [x] Evidence bundles per hop
+- [x] Tests: `test_conditional_rag_service.py`
 
-## Phase 2: OPA data-movement
+## Phase 5: Evidence bundles ✅
 
-### Task 2.1: OPA input extension
+- [x] `evidence_bundle_service.py` + `genai_evidence_bundles` table
+- [x] Compliance Center export UI
+- [x] RAG audit events
+- [x] Tests: `test_evidence_bundle_service.py`, `test_rag_audit_service.py`
 
-**Files:**
-- Modify: `backend/app/services/opa_service.py`
-- Modify: `backend/tests/test_opa_service.py`
+## Phase 6: IaC evidence ✅
 
-- [ ] **Step 1:** Add `data` and `movement` blocks to `build_gateway_opa_input()`.
-- [ ] **Step 2:** Pass `sensitivity_labels` / `entity_classifications` from `evaluate_gateway_abac()`.
-- [ ] **Step 3:** Add `build_data_movement_opa_input()` for RAG paths.
+- [x] Static Helm/OPA manifest scanner (`iac_evidence_service.py`)
+- [x] Compliance Center IaC panel
+- [x] Tests: `test_iac_evidence_service.py`
 
-### Task 2.2: Rego rules
+## Phase 7: Break-glass exemptions ✅
 
-**Files:**
-- Modify: `deploy/opa/policies/gateway.rego`
-- Modify: `deploy/helm/pysetu/files/gateway.rego`
-
-- [ ] **Step 1:** Add `restricted_data_movement` set and vector destination rules.
-- [ ] **Step 2:** Block restricted labels → `pinecone`, `vector_store`, `embedding`.
-
-### Task 2.3: Gateway wiring
-
-**Files:**
-- Modify: `backend/app/services/gateway_service.py`
-
-- [ ] **Step 1:** Pass DLP sensitivity into `evaluate_gateway_abac()`.
-- [ ] **Step 2:** Include sensitivity in DLP audit detail.
-
-### Task 2.4: Data movement service
-
-**Files:**
-- Create: `backend/app/services/data_movement_service.py`
-- Test: `backend/tests/test_opa_data_movement.py`
-
-- [ ] **Step 1:** `evaluate_content_movement(content, destination, operation)` → DLP + OPA.
-- [ ] **Step 2:** Unit tests for blocked PII → vector_store.
-
----
-
-## Phase 3: RAG gateway stub (this session — minimal)
-
-### Task 3.1: API
-
-**Files:**
-- Create: `backend/app/schemas/rag_gateway.py`
-- Create: `backend/app/api/v1/rag_gateway.py`
-- Modify: `backend/app/main.py`
-
-- [ ] **Step 1:** `POST /rag-gateway/evaluate` — dry-run movement check.
-- [ ] **Step 2:** `POST /rag-gateway/upsert` — governed stub (no Pinecone yet); returns allow/deny + evidence id.
-
----
-
-## Phase 4: Evidence bundles (this session — minimal)
-
-### Task 4.1: Evidence service
-
-**Files:**
-- Create: `backend/app/services/evidence_bundle_service.py`
-- Test: `backend/tests/test_evidence_bundle_service.py`
-
-- [ ] **Step 1:** `build_evidence_bundle()` — JSON with classification, movement, OPA, control refs.
-- [ ] **Step 2:** Wire into RAG gateway responses.
-
----
+- [x] `policy_exemptions` table + `policy_exemption_service.py`
+- [x] OPA exemption block + Rego `exemption_covers_movement`
+- [x] Exemption CRUD API + Compliance Center panel
+- [x] Governed RAG tester exemption ID field
+- [x] Tests: `test_policy_exemption_service.py`
 
 ## Verification
 
 ```bash
-cd backend && pytest tests/test_dlp_classification.py tests/test_opa_data_movement.py tests/test_evidence_bundle_service.py tests/test_opa_service.py tests/test_data_protection_service.py -v
+cd backend && pytest tests/test_dlp_classification.py tests/test_opa_data_movement.py tests/test_evidence_bundle_service.py tests/test_conditional_rag_service.py tests/test_iac_evidence_service.py tests/test_rag_audit_service.py tests/test_seed_genai_dlp.py tests/test_policy_exemption_service.py -v
 ```
 
----
+## Deferred (future)
 
-## Out of scope (later sessions)
-
-- Real Pinecone / Weaviate adapters
-- Conditional RAG document pipeline
-- Compliance Center UI for evidence export
-- Checkov / Terraform scanner
+- Full Checkov integration (static scanner v1 shipped)
+- Weaviate / Qdrant adapters
+- Approval workflow UI for exemptions
+- Audit Explorer exemption event filter

@@ -107,13 +107,14 @@ Time-bound overrides for **embedding** and **llm** hops only (`POST /rag-gateway
 - [Gateway parity roadmap](./gateway-parity-roadmap.md)
 - [Future enhancements](./future-enhancements.md) — RAG source governance
 
-## Backlog IDs (new)
+## Backlog IDs
 
 | ID | Item | Phase |
 |----|------|-------|
-| BL-098 | DLP sensitivity label mapping | 1 |
-| BL-099 | OPA data-movement Rego rules | 2 |
-| BL-100 | RAG gateway API (stub → Pinecone) | 3 |
-| BL-101 | Conditional RAG orchestrator | 4 |
-| BL-102 | GenAI evidence bundle export | 5 |
-| BL-103 | IaC evidence (Checkov) | 6 |
+| BL-109 | DLP sensitivity label mapping | 1 |
+| BL-110 | OPA data-movement Rego rules | 2 |
+| BL-111 | RAG gateway API (stub → Pinecone) | 3 |
+| BL-112 | Conditional RAG orchestrator | 4 |
+| BL-113 | GenAI evidence bundle export | 5 |
+| BL-114 | IaC evidence (Checkov) | 6 |
+| BL-115 | Break-glass policy exemptions | 7 |

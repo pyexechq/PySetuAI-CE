@@ -255,16 +255,16 @@
 | — | Monitoring hub + UI overlap consolidation | Aug 2026 |
 | — | Compliance remediation API + dedicated compliance fetch | Aug 2026 |
 
-## Phase 8 — GenAI DLP Gateway (in progress)
+## Phase 14 — GenAI DLP Gateway (complete)
 
 > Roadmap: [genai-dlp-gateway-roadmap.md](./genai-dlp-gateway-roadmap.md)
 
 | ID | Item | Module | Phase | Status |
 |----|------|--------|-------|--------|
-| BL-098 | DLP sensitivity label mapping | Data Protection | 8.1 | Done |
-| BL-099 | OPA data-movement Rego rules | Gateway / OPA | 8.2 | Done |
-| BL-100 | RAG gateway API (stub → Pinecone) | RAG Gateway | 8.3 | Done |
-| BL-101 | Conditional RAG orchestrator | RAG Gateway | 8.4 | Done (v1) |
-| BL-102 | GenAI evidence bundle export UI | Compliance | 8.5 | Done |
-| BL-103 | IaC evidence (Checkov) | Compliance | 8.6 | Done (static scanner v1) |
-| BL-104 | Break-glass policy exemptions (time-bound, audited) | RAG Gateway / OPA | 8.7 | Done |
+| BL-109 | DLP sensitivity label mapping | Data Protection | 14.1 | Done |
+| BL-110 | OPA data-movement Rego rules | Gateway / OPA | 14.2 | Done |
+| BL-111 | RAG gateway API (stub → Pinecone) | RAG Gateway | 14.3 | Done |
+| BL-112 | Conditional RAG orchestrator | RAG Gateway | 14.4 | Done (v1) |
+| BL-113 | GenAI evidence bundle export UI | Compliance | 14.5 | Done |
+| BL-114 | IaC evidence (Checkov) | Compliance | 14.6 | Done (static scanner v1) |
+| BL-115 | Break-glass policy exemptions (time-bound, audited) | RAG Gateway / OPA | 14.7 | Done |
