@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ComplianceCenterView } from "@/components/compliance/compliance-center-view";
 
@@ -5,9 +6,11 @@ export default function CompliancePage() {
   return (
     <AppShell
       title="Compliance Center"
-      description="GDPR, HIPAA, SOC2, ISO27001, and NIST framework tracking"
+      description="Framework posture, evidence exports, and break-glass exemptions"
     >
-      <ComplianceCenterView />
+      <Suspense fallback={<p className="text-sm text-muted-foreground">Loading compliance…</p>}>
+        <ComplianceCenterView />
+      </Suspense>
     </AppShell>
   );
 }

@@ -3,6 +3,7 @@
 import { CheckCircle2, CircleDashed, XCircle, ChevronDown, ChevronUp, Sparkles, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ApiComplianceControl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -76,30 +77,40 @@ function ControlRow({
             )}
           </div>
           {showActions && (
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="flex gap-0.5 pt-1">
               {onManualFix && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1 text-xs"
-                  disabled={remediationLoading}
-                  onClick={() => onManualFix(control)}
-                >
-                  <Wrench className="h-3 w-3" />
-                  Manual fix
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={remediationLoading}
+                      onClick={() => onManualFix(control)}
+                      aria-label="Manual fix"
+                    >
+                      <Wrench className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Manual fix</TooltipContent>
+                </Tooltip>
               )}
               {onAiAssist && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="h-7 gap-1 text-xs"
-                  disabled={remediationLoading}
-                  onClick={() => onAiAssist(control)}
-                >
-                  <Sparkles className="h-3 w-3" />
-                  AI assist
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={remediationLoading}
+                      onClick={() => onAiAssist(control)}
+                      aria-label="AI assist"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>AI assist</TooltipContent>
+                </Tooltip>
               )}
             </div>
           )}

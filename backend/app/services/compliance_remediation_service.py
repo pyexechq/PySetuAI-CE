@@ -35,9 +35,36 @@ MODULE_ROUTES: dict[str, str] = {
     "Reports": "/reports",
     "Data Protection": "/data-protection",
     "Settings": "/settings/organization",
+    "Users & RBAC": "/settings/users",
+    "Integrations": "/settings/integrations",
+    "Prompt templates": "/settings/prompts",
+    "Client API keys": "/settings/api-keys",
     "Compliance Center": "/compliance",
     "Studio": "/studio",
     "Governance Graph": "/governance-graph",
+}
+
+CONTROL_ROUTES: dict[str, str] = {
+    "gdpr-art17": "/audit-explorer?tab=integrations",
+    "gdpr-art30": "/settings/api-keys",
+    "gdpr-art33": "/monitoring?tab=security",
+    "gdpr-art35": "/compliance?tab=evidence",
+    "gdpr-transparency": "/audit-explorer",
+    "hipaa-164308": "/settings/users",
+    "hipaa-164314": "/settings/integrations",
+    "hipaa-audit": "/settings/api-keys",
+    "hipaa-incident": "/monitoring?tab=security",
+    "hipaa-retention": "/audit-explorer?tab=integrations",
+    "soc2-cc61": "/settings/users",
+    "soc2-cc72": "/monitoring",
+    "soc2-incident": "/monitoring?tab=security",
+    "iso-a91": "/settings/users",
+    "iso-a124": "/settings/api-keys",
+    "iso-a141": "/settings/prompts",
+    "iso-a181": "/compliance?tab=evidence",
+    "iso-a161": "/monitoring?tab=security",
+    "nist-measure-1": "/monitoring",
+    "nist-map-2": "/reports",
 }
 
 
@@ -82,37 +109,30 @@ def find_control(framework: DashboardComplianceFramework, control_id: str) -> Da
     raise ValueError(f"Control '{control_id}' not found in {framework.name}")
 
 
+def _module_route(control: DashboardComplianceControl) -> str | None:
+    return CONTROL_ROUTES.get(control.id) or MODULE_ROUTES.get(control.pysetu_module or "") or None
+
+
 def _manual_steps(control: DashboardComplianceControl) -> list[str]:
     steps: list[str] = []
     if control.remediation:
         steps.append(control.remediation)
-    if control.pysetu_module:
-        route = MODULE_ROUTES.get(control.pysetu_module, "/")
-        steps.append(
-            f"Navigate to {control.pysetu_module} ({route}) and apply the configuration described above."
-        )
     if control.status == "not_met":
-        steps.append("Validate evidence appears under the control (status should move to In progress or Met).")
+        steps.append("After the change, re-evaluate this framework so the control can move to In progress or Met.")
     elif control.status == "in_progress":
-        steps.append("Complete remaining configuration and confirm evidence is captured in Audit Explorer or Reports.")
-    steps.append(f"Return to Compliance Center and re-evaluate {control.title}.")
+        steps.append("Finish any remaining operator work, then re-evaluate this framework to refresh evidence.")
+    else:
+        steps.append(f"Re-evaluate {control.title} in Compliance Center if you need a fresh score.")
     return steps
 
 
-def _template_ai_steps(control: DashboardComplianceControl, framework: DashboardComplianceFramework) -> list[str]:
-    """Deterministic expanded plan when live LLM is unavailable."""
-    base = _manual_steps(control)
-    prefix = [
-        f"Framework: {framework.name} · Control: {control.title}",
-        f"Gap: control is currently '{control.status.replace('_', ' ')}'.",
-        "Recommended execution order:",
-    ]
-    numbered = [f"{index + 1}. {step}" for index, step in enumerate(base)]
-    suffix = [
-        "Assign an owner and target date in your GRC tracker.",
-        "Attach exported evidence from Reports or a Compliance snapshot after verification.",
-    ]
-    return prefix + numbered + suffix
+def _template_ai_steps(control: DashboardComplianceControl, _framework: DashboardComplianceFramework) -> list[str]:
+    """Deterministic plan when live LLM is unavailable."""
+    route = _module_route(control) or "/"
+    module = control.pysetu_module or "Compliance Center"
+    steps = _manual_steps(control)
+    steps.insert(1, f"Open {module} at {route} and complete the action in the product — do not use a different Settings page.")
+    return steps
 
 
 def _parse_ai_steps(text: str) -> list[str]:
@@ -145,19 +165,22 @@ async def build_remediation_plan(
     control: DashboardComplianceControl,
     mode: str,
 ) -> dict:
-    manual_route = MODULE_ROUTES.get(control.pysetu_module or "")
+    manual_route = _module_route(control)
     effort = "Low" if control.status == "in_progress" else "Medium" if control.status == "not_met" else "Low"
 
     if mode == "manual":
         steps = _manual_steps(control)
+        summary = control.evidence or control.remediation or f"Manual remediation for {control.title}."
         return {
             "control_id": control.id,
             "framework_name": framework.name,
             "framework_slug": framework_slug(framework.name),
             "mode": "manual",
-            "summary": control.remediation or f"Manual remediation for {control.title}.",
+            "summary": summary,
             "steps": steps,
-            "manual_route": manual_route or None,
+            "manual_route": manual_route,
+            "module_name": control.pysetu_module,
+            "evidence": control.evidence,
             "ai_generated": False,
             "estimated_effort": effort,
             "generated_at": datetime.now(UTC),
@@ -168,14 +191,18 @@ async def build_remediation_plan(
 
     ai_config = await resolve_ai_assist_config(db, tenant_id)
     prompt = (
-        "You are a GRC engineer helping remediate PySetu AI compliance gaps. "
-        "Return ONLY a JSON array of 4-6 short imperative steps (strings), no markdown.\n\n"
+        "You are a GRC engineer helping remediate a PySetu AI compliance gap. "
+        "Return ONLY a JSON array of 4-6 short imperative steps (strings), no markdown.\n"
+        "Use only the PySetu screen and URL provided. Do not send the user to Organization settings "
+        "unless that URL is explicitly given. Do not invent DSAR consoles, BAA upload forms, or worksheets "
+        "that are not named below.\n\n"
         f"Framework: {framework.name}\n"
         f"Control: {control.title}\n"
         f"Status: {control.status}\n"
         f"Requirement: {control.requirement}\n"
-        f"PySetu module: {control.pysetu_module or 'N/A'}\n"
-        f"Known remediation hint: {control.remediation or 'None'}\n"
+        f"PySetu screen: {control.pysetu_module or 'Compliance Center'}\n"
+        f"URL: {_module_route(control) or '/compliance'}\n"
+        f"Known remediation: {control.remediation or 'None'}\n"
         f"Evidence today: {control.evidence or 'None'}"
     )
 
@@ -202,7 +229,9 @@ async def build_remediation_plan(
         "mode": "ai",
         "summary": summary,
         "steps": steps,
-        "manual_route": manual_route or None,
+        "manual_route": manual_route,
+        "module_name": control.pysetu_module,
+        "evidence": control.evidence,
         "ai_generated": ai_generated,
         "estimated_effort": effort,
         "generated_at": datetime.now(UTC),

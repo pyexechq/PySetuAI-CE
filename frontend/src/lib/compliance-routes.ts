@@ -7,11 +7,17 @@ export const COMPLIANCE_MODULE_ROUTES: Record<string, string> = {
   "LLM Router": "/llm-router",
   "MCP Governance": "/mcp-governance",
   "Governance Sandbox": "/studio",
-  "Compatibility Center": "/ai-gateway?tab=compatibility",
+  "Compatibility Center": "/compatibility-center",
   Reports: "/reports",
   "Data Protection": "/data-protection",
   Settings: "/settings/organization",
+  "Users & RBAC": "/settings/users",
+  Integrations: "/settings/integrations",
+  "Prompt templates": "/settings/prompts",
+  "Client API keys": "/settings/api-keys",
   "Compliance Center": "/compliance",
+  Studio: "/studio",
+  "Governance Graph": "/governance-graph",
 };
 
 export function complianceFrameworkSlug(name: string): string {

@@ -72,12 +72,15 @@ export function AuditExplorerView() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [actionFilter, setActionFilter] = useState<string>("all");
   const [live, setLive] = useState(true);
-  const [detailTab, setDetailTab] = useState<DetailTab>("inspect");
   const [gridApi, setGridApi] = useState<GridApi<AuditLogEntry> | null>(null);
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const from = useDateRangeStore((s) => s.from);
   const to = useDateRangeStore((s) => s.to);
   const auditIdParam = searchParams.get("audit_id")?.trim() || undefined;
+  const requestedTab = searchParams.get("tab");
+  const [detailTab, setDetailTab] = useState<DetailTab>(
+    requestedTab === "integrations" ? "integrations" : "inspect"
+  );
   const { data: logs = [], recentIds, isFetching, isLoading, isError, dataUpdatedAt } = useAuditLogs(
     actionFilter === "rag" ? "RAG" : search,
     statusFilter,
@@ -109,10 +112,8 @@ export function AuditExplorerView() {
   }, [logs]);
 
   useEffect(() => {
-    const auditId = searchParams.get("audit_id")?.trim();
-    if (auditId) return;
-    const q = searchParams.get("q")?.trim();
-    if (q) setSearch(q);
+    const next = searchParams.get("tab");
+    if (next === "integrations" || next === "inspect") setDetailTab(next);
   }, [searchParams]);
 
   useEffect(() => {

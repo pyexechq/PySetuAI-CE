@@ -50,14 +50,25 @@ export function ComplianceRemediationDialog({
               )}
             </div>
             <p className="text-sm text-muted-foreground">{plan.summary}</p>
+            {plan.evidence && (
+              <p className="text-sm">
+                <span className="font-medium text-emerald-400/90">Current evidence: </span>
+                {plan.evidence}
+              </p>
+            )}
             <ol className="list-decimal space-y-2 pl-5 text-sm">
-              {plan.steps.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
+              {plan.steps
+                .filter((step) => {
+                  const text = step.trim();
+                  return text !== plan.summary.trim() && text !== (plan.evidence ?? "").trim();
+                })
+                .map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
             </ol>
             {plan.manual_route && (
               <Button asChild variant="secondary" className="gap-2">
-                <Link href={plan.manual_route}>Open PySetu module</Link>
+                <Link href={plan.manual_route}>Open {plan.module_name ?? "module"}</Link>
               </Button>
             )}
           </div>
