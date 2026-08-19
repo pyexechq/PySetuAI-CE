@@ -33,14 +33,14 @@ export function usePolicyTree() {
   return { ...query, invalidatePolicyTree };
 }
 
-export function usePolicyRules(policyId?: string) {
+export function usePolicyRules(policyId?: string, bundleId?: string, defaultBundle?: boolean) {
   const token = useAuthStore((s) => s.token);
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["policy-rules", token, policyId],
+    queryKey: ["policy-rules", token, policyId, bundleId, defaultBundle],
     queryFn: () =>
-      api.getPolicyRules(token!, policyId).then((data) =>
+      api.getPolicyRules(token!, policyId, bundleId, defaultBundle).then((data) =>
         data.map(
           (r): PolicyRule => ({
             id: r.id,

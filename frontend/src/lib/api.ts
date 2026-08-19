@@ -1237,8 +1237,12 @@ export const api = {
       token,
     ),
 
-  getPolicyRules: (token: string, policyId?: string) => {
-    const query = policyId ? `?policy_id=${encodeURIComponent(policyId)}` : "";
+  getPolicyRules: (token: string, policyId?: string, bundleId?: string, defaultBundle?: boolean) => {
+    const params = new URLSearchParams();
+    if (policyId) params.set("policy_id", policyId);
+    if (bundleId) params.set("bundle_id", bundleId);
+    if (defaultBundle) params.set("default_bundle", "true");
+    const query = params.toString() ? `?${params.toString()}` : "";
     return apiFetch<ApiPolicyRule[]>(`/policies/rules${query}`, {}, token);
   },
 
@@ -2510,7 +2514,21 @@ export interface ApiPolicyRule {
 
 export interface ApiPolicyTestRequest {
   content: string;
-  rules: ApiPolicyRule[];
+  rules?: ApiPolicyRule[];
+  api_key_id?: string;
+  bundle_id?: string;
+}
+
+export interface ApiPolicyPolicyRuleEvaluationResult {
+  rule_id: string | null;
+  rule_name: string;
+  condition: string | null;
+  action: string;
+  severity: string | null;
+  enabled: boolean;
+  matched: boolean;
+  detail: string | null;
+  policy_name: string | null;
 }
 
 export interface ApiPolicyViolation {
@@ -2526,6 +2544,7 @@ export interface ApiPolicyTestResponse {
   violations: ApiPolicyViolation[];
   redacted_content: string | null;
   risk: string;
+  rule_results?: ApiPolicyPolicyRuleEvaluationResult[];
 }
 
 export interface ApiPolicyConditionHelpExample {
