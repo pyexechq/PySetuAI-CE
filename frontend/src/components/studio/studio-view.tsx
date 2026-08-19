@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { usePolicyRules } from "@/hooks/use-policies";
 import { useMcpServers } from "@/hooks/use-mcp-servers";
-import { api } from "@/lib/api";
+import { api, type ApiPolicyTestResponse } from "@/lib/api";
 import { gatewayTestPrompts } from "@/lib/test-prompts";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,23 @@ export function StudioView() {
   const [selectedMcp, setSelectedMcp] = useState<string>("");
   const [mcpTool, setMcpTool] = useState("query");
   const [mcpResult, setMcpResult] = useState<string | null>(null);
+  const [policyTestResult, setPolicyTestResult] = useState<ApiPolicyTestResponse | null>(null);
+
+  const policyTest = useMutation({
+    mutationFn: () =>
+      api.testPolicyRules(token!, {
+        content: policyInput,
+        rules: rules.map((r) => ({
+          id: r.id,
+          name: r.name,
+          condition: r.condition,
+          action: r.action,
+          severity: r.severity,
+          enabled: r.enabled,
+        })),
+      }),
+    onSuccess: (data) => setPolicyTestResult(data),
+  });
 
   function simulateMcpCall() {
     const server = mcpServers.find((s) => s.id === selectedMcp);
@@ -116,12 +133,76 @@ export function StudioView() {
                   </Button>
                 ))}
               </div>
-              <Button variant="secondary" className="gap-2" asChild>
-                <Link href="/monitoring?tab=security">
-                  <Radar className="h-4 w-4" />
-                  Evaluate in Monitoring
-                </Link>
-              </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  variant="secondary"
+                  className="gap-2"
+                  disabled={!token || !policyInput.trim() || policyTest.isPending}
+                  onClick={() => policyTest.mutate()}
+                >
+                  {policyTest.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Radar className="h-4 w-4" />
+                  )}
+                  Evaluate in sandbox
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                  <Link href="/monitoring?tab=security">
+                    Open Monitoring
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
+
+              {policyTest.isError && (
+                <p className="text-sm text-destructive">
+                  {policyTest.error instanceof Error ? policyTest.error.message : "Policy evaluation failed"}
+                </p>
+              )}
+
+              {policyTestResult && (
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={policyTestResult.allowed ? "success" : "destructive"}>
+                      {policyTestResult.allowed ? "Allowed" : "Blocked"}
+                    </Badge>
+                    <Badge variant="outline">Action: {policyTestResult.action}</Badge>
+                    <Badge variant={policyTestResult.risk.toLowerCase() === "high" ? "destructive" : "outline"}>
+                      Risk: {policyTestResult.risk}
+                    </Badge>
+                  </div>
+                  {policyTestResult.violations.length > 0 ? (
+                    <ul className="mt-3 space-y-2">
+                      {policyTestResult.violations.map((v, i) => (
+                        <li
+                          key={i}
+                          className="rounded-md border border-border/50 bg-background/40 px-2 py-1.5 text-xs"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium">{v.rule_name}</span>
+                            <Badge variant="outline">{v.action}</Badge>
+                            <Badge variant={v.severity.toLowerCase() === "critical" || v.severity.toLowerCase() === "high" ? "destructive" : "warning"}>
+                              {v.severity}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 text-muted-foreground">{v.detail}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 text-xs text-emerald-400">No policy rules matched.</p>
+                  )}
+                  {policyTestResult.redacted_content && (
+                    <div className="mt-3 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Redacted preview</p>
+                      <pre className="whitespace-pre-wrap rounded-md border border-border/60 bg-background/50 p-2 text-xs font-mono">
+                        {policyTestResult.redacted_content}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
