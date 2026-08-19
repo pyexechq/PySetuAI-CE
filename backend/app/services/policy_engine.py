@@ -80,10 +80,20 @@ def _condition_matches(
             return bool(re.search(r"ignore\s+(all\s+)?previous", lower)), None
         return needle in lower, None
 
-    matches_match = re.match(r"content\.matches\(/(.+)/\)", cond)
+    matches_match = re.match(r"content\.matches\(/(.+)/([imsx]*)\)", cond)
     if matches_match:
         try:
-            pattern = re.compile(matches_match.group(1))
+            flags = 0
+            for flag in matches_match.group(2):
+                if flag == "i":
+                    flags |= re.IGNORECASE
+                elif flag == "m":
+                    flags |= re.MULTILINE
+                elif flag == "s":
+                    flags |= re.DOTALL
+                elif flag == "x":
+                    flags |= re.VERBOSE
+            pattern = re.compile(matches_match.group(1), flags)
             return pattern.search(content) is not None, pattern
         except re.error:
             return False, None
