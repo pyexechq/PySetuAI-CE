@@ -7,7 +7,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "070_mcp_governance_depth"
-down_revision: str | None = "069_policy_bundle_file_governance"
+down_revision: str | None = "069_policy_file_governance"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

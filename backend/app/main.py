@@ -40,6 +40,7 @@ from app.core.rate_limit import AuthRateLimitMiddleware
 from app.core.security import get_jwt_secret, set_jwt_secret_override
 from app.core.telemetry import setup_telemetry
 from app.db.seed import seed_demo_data, seed_platform_admin
+from app.db.seed_agentic_control_plane import seed_agentic_control_plane_data
 from app.db.seed_genai_dlp import seed_genai_dlp_demo_events
 from app.db.seed_governance import seed_access_data, seed_governance_data, seed_uag_data
 from app.db.seed_prompt_templates import seed_prompt_templates_data
@@ -68,6 +69,9 @@ async def lifespan(app: FastAPI):
             prompt_seeded = await seed_prompt_templates_data()
             if prompt_seeded:
                 print(f"Prompt template seed: demo templates added for {prompt_seeded} tenant(s).")
+            control_seeded = await seed_agentic_control_plane_data()
+            if control_seeded:
+                print(f"Agentic control-plane seed: demo data added for {control_seeded} tenant(s).")
         except Exception as exc:
             print(f"Seed skipped (database may be unavailable): {exc}")
     yield
