@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     llm_rebalance_schedule_enabled: bool = True
     llm_rebalance_cron_hour: int = 2
     llm_rebalance_cron_minute: int = 0
+    guardian_loop_schedule_enabled: bool = True
+    guardian_loop_interval_seconds: int = 300
 
     otel_enabled: bool = True
     otel_service_name: str = "pysetu-api"

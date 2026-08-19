@@ -40,4 +40,10 @@ if settings.llm_rebalance_schedule_enabled:
         ),
     }
 
+if settings.guardian_loop_schedule_enabled:
+    beat_schedule["run-guardian-loop-all-tenants"] = {
+        "task": "app.worker.tasks.run_guardian_loop_all_tenants",
+        "schedule": settings.guardian_loop_interval_seconds,
+    }
+
 celery_app.conf.beat_schedule = beat_schedule

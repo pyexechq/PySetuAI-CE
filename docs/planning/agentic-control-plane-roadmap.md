@@ -47,7 +47,7 @@
 - Anomaly and behavior detection — done (volume, tool usage, data access, timing, chain risk)
 - Prompt-injection detection in files/repos/MCP resources — done (wraps existing `scan_content`)
 - Exfiltration detection — done (large read, rapid read, sensitive boundary exit)
-- Guardian policy enforcement loop — done (severity→action evaluation + on-demand run)
+- Guardian policy enforcement loop — done (severity→action evaluation + on-demand run + Celery beat schedule `run_guardian_loop_all_tenants`)
 - Automated remediation — done (block agent, revoke access, quarantine, alert)
 
 ## Compliance mapping

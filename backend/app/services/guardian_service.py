@@ -189,7 +189,7 @@ async def evaluate_agent_behavior(
                 trigger_id=event.id,
                 action_type=action_type,
                 severity=severity,
-                details=event.description,
+                details=f"Exfiltration ({event.exfil_type}) on {event.resource} via {event.tool}",
                 policy_name="guardian",
             )
         )

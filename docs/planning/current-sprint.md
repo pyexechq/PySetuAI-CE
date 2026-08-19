@@ -18,6 +18,7 @@
 | S23-06 | `agentic_security` API router (anomalies, injection, exfil, guardian) | Done |
 | S23-07 | Agentic Security UI (`/agentic-security`) + nav + api client | Done |
 | S23-08 | Unit tests (`test_agentic_security.py`) | Done |
+| S23-09 | Celery beat schedule for Guardian loop (`run_guardian_loop_all_tenants`) | Done |
 
 ## Exit criteria
 

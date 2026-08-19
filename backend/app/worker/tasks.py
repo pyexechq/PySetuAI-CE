@@ -102,3 +102,46 @@ def run_scheduled_report(self, report_id: str, tenant_id: str) -> dict:
     except Exception as exc:
         logger.exception("Scheduled report failed report_id=%s", report_id)
         raise self.retry(exc=exc, countdown=30) from exc
+
+
+@celery_app.task(name="app.worker.tasks.run_guardian_loop_all_tenants", bind=True, max_retries=2)
+def run_guardian_loop_all_tenants(self) -> dict:
+    """Run the Guardian enforcement loop for every active tenant."""
+    from sqlalchemy import select
+
+    from app.db import async_session_factory
+    from app.models.tenant import Tenant
+    from app.services.guardian_service import run_guardian_loop
+
+    async def _run():
+        async with async_session_factory() as db:
+            tenant_result = await db.execute(
+                select(Tenant).where(Tenant.is_active.is_(True))
+            )
+            tenants = tenant_result.scalars().all()
+            per_tenant = []
+            for tenant in tenants:
+                try:
+                    outcome = await run_guardian_loop(db, tenant.id)
+                    await db.commit()
+                    per_tenant.append(
+                        {
+                            "tenant_id": str(tenant.id),
+                            "evaluated": outcome["evaluated"],
+                            "executed": outcome["executed"],
+                            "failed": outcome["failed"],
+                        }
+                    )
+                except Exception as exc:
+                    await db.rollback()
+                    logger.exception("Guardian loop failed tenant_id=%s", tenant.id)
+                    per_tenant.append(
+                        {"tenant_id": str(tenant.id), "error": str(exc)}
+                    )
+            return {"tenants": len(tenants), "results": per_tenant}
+
+    try:
+        return _run_async(_run())
+    except Exception as exc:
+        logger.exception("Guardian loop all-tenants run failed")
+        raise self.retry(exc=exc, countdown=60) from exc
