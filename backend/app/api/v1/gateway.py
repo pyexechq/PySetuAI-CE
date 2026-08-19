@@ -310,7 +310,11 @@ async def _create_mcp_approval(
     """
     from app.schemas.agentic import SecurityEventIngestRequest
     from app.services.agentic_service import record_security_event
-    from app.services.mcp_tool_chain_service import compute_chain_risk_score, record_mcp_chain_event
+    from app.services.mcp_tool_chain_service import (
+        compute_chain_risk_score,
+        record_mcp_chain_event,
+        resolve_source_agent,
+    )
 
     risk_score = getattr(policy, "risk_score", 0) or 0
     policy_id = getattr(policy, "id", None)
@@ -342,11 +346,13 @@ async def _create_mcp_approval(
     approval_row = approval.scalar_one_or_none()
     approval_id = str(approval_row.id) if approval_row else ""
 
+    source_agent_id = await resolve_source_agent(db, ctx.tenant_id, ctx.actor)
     await record_mcp_chain_event(
         db,
         ctx.tenant_id,
         security_event_id=event.id,
         approval_request_id=approval_row.id if approval_row else None,
+        source_agent_id=source_agent_id,
         mcp_server_id=server.id,
         mcp_server_name=getattr(server, "name", ""),
         tool_name=tool_name,
@@ -550,13 +556,18 @@ async def _handle_mcp_multiplex(
                     latency_ms=latency_ms,
                 )
                 from app.services.mcp_audit_service import log_mcp_chain_event
-                from app.services.mcp_tool_chain_service import compute_chain_risk_score
+                from app.services.mcp_tool_chain_service import (
+                    compute_chain_risk_score,
+                    resolve_source_agent,
+                )
                 from app.services.mcp_tool_risk_service import classify_tool_risk
 
                 tool_risk = classify_tool_risk(str(tool_name))
+                source_agent_id = await resolve_source_agent(db, ctx.tenant_id, ctx.actor)
                 await log_mcp_chain_event(
                     db,
                     ctx,
+                    source_agent_id=source_agent_id,
                     server_name=matched.name,
                     server_id=matched.id,
                     tool_name=str(tool_name),

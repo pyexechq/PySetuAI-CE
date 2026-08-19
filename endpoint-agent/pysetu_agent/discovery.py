@@ -1,15 +1,17 @@
 """AI tool discovery for the endpoint agent.
 
 Detection is filesystem-based and intentionally lightweight: binaries on PATH,
-well-known configuration directories, and installed VS Code extensions. This
-keeps the agent dependency-free and unit-testable without a live machine.
+well-known configuration directories, installed VS Code extensions, and MCP
+server configs. This keeps the agent dependency-free and unit-testable without
+a live machine.
 """
 
 from __future__ import annotations
 
 import glob
+import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -107,4 +109,98 @@ def discover_tools(
                     source=source,
                 )
             )
+    return found
+
+
+@dataclass(frozen=True)
+class DiscoveredMcpServer:
+    name: str
+    source: str
+    command: str = ""
+    url: str = ""
+    transport: str = "stdio"
+    tools: tuple[str, ...] = field(default_factory=tuple)
+
+
+def _mcp_server_name(server_id: str, server: dict) -> str:
+    return str(server.get("name") or server_id)
+
+
+def _mcp_server_command(server: dict) -> str:
+    command = server.get("command")
+    if isinstance(command, str):
+        return command
+    if isinstance(command, list) and command:
+        return str(command[0])
+    return ""
+
+
+def _mcp_server_url(server: dict) -> str:
+    url = server.get("url")
+    return str(url) if isinstance(url, str) else ""
+
+
+def _mcp_server_tools(server: dict) -> tuple[str, ...]:
+    tools = server.get("tools")
+    if isinstance(tools, list):
+        return tuple(str(tool) for tool in tools if isinstance(tool, str))
+    return ()
+
+
+def _parse_mcp_servers(servers: dict, source: str) -> list[DiscoveredMcpServer]:
+    found: list[DiscoveredMcpServer] = []
+    for server_id, server in servers.items():
+        if not isinstance(server, dict):
+            continue
+        command = _mcp_server_command(server)
+        url = _mcp_server_url(server)
+        found.append(
+            DiscoveredMcpServer(
+                name=_mcp_server_name(server_id, server),
+                source=source,
+                command=command,
+                url=url,
+                transport="http" if url else "stdio",
+                tools=_mcp_server_tools(server),
+            )
+        )
+    return found
+
+
+def _mcp_servers_from_file(path: str) -> list[DiscoveredMcpServer]:
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    servers = data.get("mcpServers")
+    if isinstance(servers, dict):
+        return _parse_mcp_servers(servers, path)
+    return []
+
+
+def discover_mcp_servers(*, home: str | None = None) -> list[DiscoveredMcpServer]:
+    """Discover MCP server configs from well-known locations.
+
+    Scans project-level ``.mcp.json``, Cursor's ``.cursor/mcp.json``, and the
+    Claude Desktop config. All inputs are injectable so the function is testable
+    without touching the real host environment.
+    """
+    home = home if home is not None else os.path.expanduser("~")
+    candidates: list[str] = [
+        os.path.join(home, ".mcp.json"),
+        os.path.join(home, ".cursor", "mcp.json"),
+        os.path.join(home, ".config", "claude", "claude_desktop_config.json"),
+        os.path.join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json"),
+    ]
+    found: list[DiscoveredMcpServer] = []
+    seen: set[str] = set()
+    for path in candidates:
+        for server in _mcp_servers_from_file(path):
+            if server.name in seen:
+                continue
+            seen.add(server.name)
+            found.append(server)
     return found

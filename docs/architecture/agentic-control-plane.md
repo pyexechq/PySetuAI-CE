@@ -184,7 +184,12 @@ python -m pysetu_agent --scan-dir . --policy-file policy.json
   creates a `pending` `ApprovalRequest` via the unified security-event
   pipeline and returns JSON-RPC error `-32005` with `approval_request_id`.
 - Allowed invocations emit a `MCPToolChainEvent` via `log_mcp_chain_event`
-  (best-effort, never blocks the hot path).
+  (best-effort, never blocks the hot path). The source agent is resolved from
+  the gateway actor (`client-key:{name}` or user email) against the agent
+  inventory so chain events carry agent-to-agent attribution.
+- The endpoint agent discovers MCP server configs from `.mcp.json`,
+  `.cursor/mcp.json`, and the Claude Desktop config, reports them in the agent
+  upsert (`mcp_servers`), and emits an `mcp_discovery` security event.
 - API surface: `GET/PUT/DELETE /mcp/tool-policies`, `GET /mcp/tool-chains`,
   `GET /mcp/tool-chains/summary`, `GET /mcp/tool-chains/graph`.
 - The MCP Tool Chains UI at `/mcp-tool-chains` shows summary cards, the

@@ -8,7 +8,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.agentic import MCPToolChainEvent
+from app.models.agentic import AgentInventory, MCPToolChainEvent
 from app.services.agentic_service import SENSITIVE_DATA_KEYWORDS, risk_band
 
 # Base risk contribution per tool risk class (0-100 scale).
@@ -66,6 +66,38 @@ def compute_chain_risk_score(
     score += max(0, min(10, int(mcp_server_risk)))
 
     return max(0, min(100, score))
+
+
+async def resolve_source_agent(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    actor: str,
+) -> uuid.UUID | None:
+    """Resolve the source agent id from a gateway actor string.
+
+    The gateway actor is either ``client-key:{name}`` or a user email. We match
+    the client-key name (and fall back to the raw actor) against the agent
+    inventory so chain events carry agent-to-agent attribution when available.
+    """
+    if not actor:
+        return None
+    candidate = actor
+    if actor.startswith("client-key:"):
+        candidate = actor[len("client-key:") :]
+    result = await db.execute(
+        select(AgentInventory.id)
+        .where(AgentInventory.tenant_id == tenant_id, AgentInventory.name == candidate)
+        .limit(1)
+    )
+    agent_id = result.scalar_one_or_none()
+    if agent_id is not None:
+        return agent_id
+    result = await db.execute(
+        select(AgentInventory.id)
+        .where(AgentInventory.tenant_id == tenant_id, AgentInventory.name == actor)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
 
 
 async def record_mcp_chain_event(

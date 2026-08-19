@@ -18,6 +18,8 @@
 | S21-06 | Chain-event emission on allowed invocations (`log_mcp_chain_event`) | Done |
 | S21-07 | MCP Tool Chains UI (`/mcp-tool-chains`) + nav + api client | Done |
 | S21-08 | Unit tests (`test_mcp_governance.py`) | Done |
+| S21-09 | MCP discovery from endpoint configs (`.mcp.json`, `.cursor/mcp.json`, Claude Desktop) | Done |
+| S21-10 | Agent-to-agent attribution (source agent resolved from gateway actor) | Done |
 
 ## Exit criteria
 

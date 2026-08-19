@@ -99,6 +99,8 @@ async def log_mcp_chain_event(
     db: AsyncSession,
     ctx: GatewayContext,
     *,
+    source_agent_id: uuid.UUID | None = None,
+    target_agent_id: uuid.UUID | None = None,
     server_name: str,
     server_id: uuid.UUID,
     tool_name: str,
@@ -122,6 +124,8 @@ async def log_mcp_chain_event(
         event = await record_mcp_chain_event(
             db,
             ctx.tenant_id,
+            source_agent_id=source_agent_id,
+            target_agent_id=target_agent_id,
             mcp_server_id=server_id,
             mcp_server_name=server_name,
             tool_name=tool_name,

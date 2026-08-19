@@ -18,7 +18,7 @@ from typing import Any
 from . import __version__
 from .client import ControlPlaneClient, ControlPlaneError
 from .config import AgentConfig, missing_fields
-from .discovery import DiscoveredTool, discover_tools
+from .discovery import DiscoveredMcpServer, DiscoveredTool, discover_mcp_servers, discover_tools
 from .policy import LocalPolicy, PolicyCache, policy_from_payload
 from .scan import FileScanEvent, scan_directory
 from .watcher import watch_directory
@@ -33,7 +33,11 @@ def system_info() -> dict[str, str]:
     }
 
 
-def agent_payload(endpoint_id: str, tool: DiscoveredTool) -> dict[str, Any]:
+def agent_payload(
+    endpoint_id: str,
+    tool: DiscoveredTool,
+    mcp_servers: list[DiscoveredMcpServer] | None = None,
+) -> dict[str, Any]:
     return {
         "endpoint_id": endpoint_id,
         "name": tool.name,
@@ -44,7 +48,7 @@ def agent_payload(endpoint_id: str, tool: DiscoveredTool) -> dict[str, Any]:
         "status": "active",
         "data_sources": [],
         "tools": [],
-        "mcp_servers": [],
+        "mcp_servers": [server.name for server in (mcp_servers or [])],
         "permissions": [],
     }
 
@@ -77,6 +81,32 @@ def queue_telemetry(config: AgentConfig, event: dict[str, Any]) -> None:
         pass
 
 
+def mcp_discovery_event_payload(endpoint_id: str, servers: list[DiscoveredMcpServer]) -> dict[str, Any]:
+    return {
+        "endpoint_id": endpoint_id,
+        "source": "endpoint",
+        "event_type": "mcp_discovery",
+        "action": "mcp.discover",
+        "resource": ",".join(sorted({server.name for server in servers})) or "-",
+        "classification": ["mcp"],
+        "decision": "log",
+        "risk_score": 0,
+        "metadata": {
+            "discovered": [
+                {
+                    "name": server.name,
+                    "source": server.source,
+                    "command": server.command,
+                    "url": server.url,
+                    "transport": server.transport,
+                    "tools": list(server.tools),
+                }
+                for server in servers
+            ]
+        },
+    }
+
+
 def run_once(config: AgentConfig) -> dict[str, Any]:
     client = ControlPlaneClient(config.backend_url, config.api_key)
 
@@ -93,13 +123,20 @@ def run_once(config: AgentConfig) -> dict[str, Any]:
     endpoint_id = str(endpoint["id"])
 
     tools = discover_tools()
+    mcp_servers = discover_mcp_servers()
     for tool in tools:
-        client.upsert_agent(agent_payload(endpoint_id, tool))
+        client.upsert_agent(agent_payload(endpoint_id, tool, mcp_servers))
 
     client.ingest_event(discovery_event_payload(endpoint_id, tools))
+    if mcp_servers:
+        client.ingest_event(mcp_discovery_event_payload(endpoint_id, mcp_servers))
     client.heartbeat(endpoint_id, {"status": "online"})
 
-    return {"endpoint_id": endpoint_id, "discovered_tools": [tool.name for tool in tools]}
+    return {
+        "endpoint_id": endpoint_id,
+        "discovered_tools": [tool.name for tool in tools],
+        "discovered_mcp_servers": [server.name for server in mcp_servers],
+    }
 
 
 def risk_for_decision(decision: str) -> int:
