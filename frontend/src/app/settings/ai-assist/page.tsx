@@ -1,11 +1,5 @@
-import { AiAssistSettings } from "@/components/settings/ai-assist-settings";
-import { TenantLlmProviderSettings } from "@/components/settings/tenant-llm-provider-settings";
+import { AiAssistSettingsView } from "@/components/settings/ai-assist-settings-view";
 
 export default function AiAssistSettingsPage() {
-  return (
-    <div className="space-y-6">
-      <AiAssistSettings />
-      <TenantLlmProviderSettings />
-    </div>
-  );
+  return <AiAssistSettingsView />;
 }

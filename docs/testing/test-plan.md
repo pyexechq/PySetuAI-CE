@@ -86,6 +86,8 @@ Validate all PySetu AI modules against documented requirements in `docs/architec
 | RAG-007 | Compliance Center evidence list/export | Manual | P1 | **Pass** (UI + API) |
 | RAG-008 | IaC static scanner | Unit | P1 | **Pass** (`test_iac_evidence_service.py`) |
 | RAG-009 | Demo seed events (debug) | Unit | P2 | **Pass** (`test_seed_genai_dlp.py`) |
+| RAG-010 | Tenant IaC config API + modal | Manual | P1 | **Pass** — `059` migration, `/compliance/iac-evidence/config` |
+| RAG-011 | Tenant data-movement policy API + modal | Unit/Manual | P1 | **Pass** — `test_data_movement_policy_service.py`, `/compliance/data-movement-policy` |
 
 ### Audit Explorer
 
@@ -101,6 +103,7 @@ Validate all PySetu AI modules against documented requirements in `docs/architec
 | AUD-008 | Live refresh (3s polling) | Manual | P2 | **Not tested** |
 | AUD-009 | External audit ingest | API | P1 | **Pass** (endpoint exists) |
 | AUD-010 | Complete lifecycle visibility | Manual | P0 | **Partial** (MCP invoke audited on multiplex path; RAG governance in Audit Explorer filter) |
+| AUD-011 | LLM Router rule on audit rows | Unit/Manual | P1 | **Pass** — `matched_routing_rule` in usage metadata + Audit Explorer column |
 
 ### Studio
 
@@ -123,7 +126,21 @@ Validate all PySetu AI modules against documented requirements in `docs/architec
 | COMP-004 | ISO 27001 controls display | Manual | P1 | **Pass** (UI + API) |
 | COMP-005 | Compliance score calculation | API | P0 | **Partial** (heuristic, not certified) |
 | COMP-006 | Snapshot create/export | API | P1 | **Pass** (endpoint exists) |
-| COMP-007 | Evidence accuracy vs actual config | Manual | P0 | **Not tested** |
+| COMP-007 | Evidence accuracy vs actual config | Manual | P0 | **Partial** (IaC + data-movement tenant config shipped Aug 15) |
+| COMP-008 | Compliance Center tabbed UX | Manual | P1 | **Pass** — Frameworks / Evidence / Break-glass |
+| COMP-009 | IaC configure modal (scan paths) | Manual | P1 | **Pass** |
+| COMP-010 | Data-movement policy modal | Manual | P1 | **Pass** |
+
+### Help & Reports (Aug 15)
+
+| ID | Test Case | Method | Priority | Status |
+|----|-----------|--------|----------|--------|
+| HELP-001 | Guide slug resolution (no 404) | Unit/Manual | P1 | **Pass** — alias map + backend catalog |
+| HELP-002 | Help chat context per page | Manual | P2 | **Pass** |
+| RPT-001 | Report preview modal | Manual | P1 | **Pass** — `POST /reports/{id}/preview` |
+| RPT-002 | Catalog sparkline + recent strip | Manual | P2 | **Pass** |
+| INS-001 | Metric insight sparkle (Dashboard) | Manual | P2 | **Pass** |
+| INS-002 | Metric insight on Monitoring/Reports | Manual | P2 | **Pass** |
 
 ### Security Center
 

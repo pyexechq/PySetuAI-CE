@@ -1,18 +1,29 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, FileJson, Loader2, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react";
+import { Download, FileJson, Loader2, Lock, Route, Settings2, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { QuickLinkPills } from "@/components/shared/section-chrome";
+import { DataMovementPolicyModal } from "@/components/compliance/data-movement-policy-modal";
 import { type ApiGenaiEvidenceSummary } from "@/lib/api";
 import { api } from "@/lib/api";
-import { useAuthStore } from "@/stores/auth-store";
+import { useAuthStore, type UserRole } from "@/stores/auth-store";
 import { usePreferencesStore } from "@/stores/preferences-store";
 import { formatDateTime } from "@/lib/date-utils";
 import { toast } from "react-hot-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
+const POLICY_EDIT_ROLES: UserRole[] = ["tenant_admin", "security_admin", "platform_admin"];
+
+const CONFIG_LINKS = [
+  { href: "/ai-gateway?tab=rag", label: "Governed RAG", icon: Route },
+  { href: "/data-protection", label: "DLP & classification", icon: Lock },
+  { href: "/settings/integrations", label: "Vector store", icon: Settings2 },
+  { href: "/compliance?tab=exemptions", label: "Break-glass", icon: ShieldAlert },
+] as const;
 
 function downloadGenaiEvidence(token: string, bundleId: string, createdAt: string) {
   const stamp = createdAt.slice(0, 10).replace(/-/g, "");
@@ -56,7 +67,9 @@ export function GenaiEvidencePanel() {
   const user = useAuthStore((s) => s.user);
   const timezone = usePreferencesStore((s) => s.timezone);
   const queryClient = useQueryClient();
+  const canEditPolicy = Boolean(user?.role && POLICY_EDIT_ROLES.includes(user.role));
   const canSeed = user?.role === "tenant_admin" || user?.role === "security_admin";
+  const [policyOpen, setPolicyOpen] = useState(false);
 
   const { data: bundles = [], isLoading } = useQuery({
     queryKey: ["genai-evidence", token],
@@ -75,69 +88,89 @@ export function GenaiEvidencePanel() {
   });
 
   return (
-    <Card className="border-border/60 bg-card/50">
-      <CardHeader>
-        <CardTitle>GenAI DLP Evidence</CardTitle>
-        <CardDescription>
-          Governed RAG and data-movement decisions with classification, OPA policy outcomes, and control mappings for auditors.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {canSeed && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            disabled={!token || seedMutation.isPending}
-            onClick={() => seedMutation.mutate()}
-          >
-            {seedMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            Load demo RAG events
-          </Button>
-        )}
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading GenAI evidence bundles…</p>
-        ) : bundles.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
-            No GenAI evidence yet. Use &quot;Load demo RAG events&quot; or run a governed ingest from AI Gateway → Governed RAG.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {bundles.map((bundle) => (
-              <div
-                key={bundle.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 p-3"
-              >
-                <div className="min-w-0 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium">{formatDateTime(bundle.created_at, timezone)}</p>
-                    {statusBadge(bundle)}
-                    <Badge variant="outline">{bundle.bundle_type.replace(/_/g, " ")}</Badge>
-                    {bundle.highest_sensitivity && (
-                      <Badge variant="outline">{bundle.highest_sensitivity}</Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    By {bundle.actor || "—"}
-                    {bundle.destination ? ` · destination: ${bundle.destination}` : ""}
-                    {bundle.blocked_hop ? ` · blocked at ${bundle.blocked_hop}` : ""}
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                  onClick={() => token && downloadGenaiEvidence(token, bundle.id, bundle.created_at)}
-                >
-                  <FileJson className="h-3.5 w-3.5" />
-                  JSON
-                  <Download className="h-3.5 w-3.5 opacity-60" />
-                </Button>
-              </div>
-            ))}
+    <>
+      <Card className="border-border/60 bg-card/50">
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <CardTitle>GenAI DLP Evidence</CardTitle>
+              <CardDescription>
+                Governed RAG and data-movement decisions with classification, OPA policy outcomes, and control mappings for auditors.
+                Evidence bundles are generated automatically when governed ingest runs.
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setPolicyOpen(true)}>
+              <Settings2 className="h-4 w-4" />
+              {canEditPolicy ? "Data-movement policy" : "View policy"}
+            </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <QuickLinkPills links={CONFIG_LINKS} />
+          {canSeed && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={!token || seedMutation.isPending}
+              onClick={() => seedMutation.mutate()}
+            >
+              {seedMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              Load demo RAG events
+            </Button>
+          )}
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading GenAI evidence bundles…</p>
+          ) : bundles.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+              No GenAI evidence yet. Use &quot;Load demo RAG events&quot; or run a governed ingest from AI Gateway → Governed RAG.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {bundles.map((bundle) => (
+                <div
+                  key={bundle.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 p-3"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium">{formatDateTime(bundle.created_at, timezone)}</p>
+                      {statusBadge(bundle)}
+                      <Badge variant="outline">{bundle.bundle_type.replace(/_/g, " ")}</Badge>
+                      {bundle.highest_sensitivity && (
+                        <Badge variant="outline">{bundle.highest_sensitivity}</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      By {bundle.actor || "—"}
+                      {bundle.destination ? ` · destination: ${bundle.destination}` : ""}
+                      {bundle.blocked_hop ? ` · blocked at ${bundle.blocked_hop}` : ""}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => token && downloadGenaiEvidence(token, bundle.id, bundle.created_at)}
+                  >
+                    <FileJson className="h-3.5 w-3.5" />
+                    JSON
+                    <Download className="h-3.5 w-3.5 opacity-60" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <DataMovementPolicyModal
+        open={policyOpen}
+        token={token}
+        canEdit={canEditPolicy}
+        onClose={() => setPolicyOpen(false)}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ["genai-evidence"] })}
+      />
+    </>
   );
 }

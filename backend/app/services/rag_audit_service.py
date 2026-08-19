@@ -41,4 +41,17 @@ async def write_rag_audit(
     )
     db.add(log)
     await db.flush()
+
+    if status == "blocked":
+        try:
+            from app.services.incident_dispatch_service import dispatch_security_incident_from_audit
+
+            refreshed = await db.get(AuditLog, log_id)
+            if refreshed:
+                await dispatch_security_incident_from_audit(db, refreshed)
+        except Exception as exc:
+            import logging
+
+            logging.getLogger(__name__).warning("RAG incident dispatch failed: %s", exc)
+
     return log_id

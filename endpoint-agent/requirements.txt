@@ -1,0 +1,1 @@
+# No third-party runtime dependencies; the endpoint agent is standard-library only.

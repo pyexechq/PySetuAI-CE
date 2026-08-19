@@ -157,8 +157,8 @@ config:
   smtpPort: "587"
   smtpFrom: pysetu@example.com
   smtpUseTls: "true"
-  vaultEnabled: "false"
-  vaultAddr: ""
+  vaultEnabled: "true"
+  vaultAddr: "http://vault:8200"
   llmRebalanceScheduleEnabled: "true"
   llmRebalanceCronHour: "2"
   llmRebalanceCronMinute: "0"
@@ -171,7 +171,7 @@ secrets:
   jwtSecretKey: dev-secret-change-in-production
   openaiApiKey: ""
   geminiApiKey: ""
-  vaultToken: ""
+  vaultToken: "dev-root-token"
 
 seed:
   enabled: true

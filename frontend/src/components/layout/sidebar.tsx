@@ -11,19 +11,32 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mainNavGroups } from "@/config/navigation";
-import { settingsNavItems } from "@/config/settings-navigation";
+import {
+  SETTINGS_GROUP_LABELS,
+  settingsItemsForGroup,
+  type SettingsGroup,
+} from "@/config/settings-navigation";
 import { BrandingLogo } from "@/components/branding/branding-logo";
 import { TenantBrandingSync } from "@/components/branding/tenant-branding-sync";
 import { tenantBrandName, tenantBrandTagline, useTenantStore } from "@/stores/tenant-store";
 import { useAuthStore, canAccessRoute, canAccessTenantModule } from "@/stores/auth-store";
+import { useUiStore } from "@/stores/ui-store";
 const SETTINGS_ROOT = "/settings";
 
-export function Sidebar() {
+const SETTINGS_GROUPS: SettingsGroup[] = ["general", "platform", "access"];
+
+interface SidebarProps {
+  className?: string;
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ className, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { currentTenant } = useTenantStore();
   const { user } = useAuthStore();
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const setCollapsed = useUiStore((s) => s.setSidebarCollapsed);
   const [settingsOpen, setSettingsOpen] = useState(pathname.startsWith(SETTINGS_ROOT));
 
   useEffect(() => {
@@ -52,9 +65,11 @@ export function Sidebar() {
     <>
       <TenantBrandingSync />
       <aside
+      data-help-id="nav-sidebar"
       className={cn(
-        "flex h-screen flex-col border-r border-border bg-sidebar transition-all duration-300",
-        collapsed ? "w-[72px]" : "w-64"
+        "flex h-full flex-col border-r border-border bg-sidebar transition-all duration-300",
+        collapsed ? "w-[72px]" : "w-64",
+        className
       )}
     >
       <div className="flex h-16 items-center gap-3 border-b border-border px-4">
@@ -103,6 +118,7 @@ export function Sidebar() {
                       <Link
                         href="/settings/organization"
                         title={collapsed ? item.title : undefined}
+                        onClick={onNavigate}
                         className={cn(
                           "flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                           settingsActive
@@ -128,28 +144,38 @@ export function Sidebar() {
                       )}
                     </div>
                     {!collapsed && settingsOpen && (
-                      <ul className="ml-4 space-y-0.5 border-l border-border/60 pl-2">
-                        {settingsNavItems.map((sub) => {
-                          const subActive =
-                            pathname === sub.href || pathname.startsWith(`${sub.href}/`);
-                          const SubIcon = sub.icon;
-                          return (
-                            <li key={sub.href}>
-                              <Link
-                                href={sub.href}
-                                className={cn(
-                                  "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
-                                  subActive
-                                    ? "bg-primary/10 text-primary"
-                                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                                )}
-                              >
-                                <SubIcon className="h-3.5 w-3.5 shrink-0" />
-                                {sub.label}
-                              </Link>
-                            </li>
-                          );
-                        })}
+                      <ul className="ml-4 space-y-2 border-l border-border/60 pl-2">
+                        {SETTINGS_GROUPS.map((group) => (
+                          <li key={group} className="space-y-0.5">
+                            <p className="px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                              {SETTINGS_GROUP_LABELS[group]}
+                            </p>
+                            <ul className="space-y-0.5">
+                              {settingsItemsForGroup(group).map((sub) => {
+                                const subActive =
+                                  pathname === sub.href || pathname.startsWith(`${sub.href}/`);
+                                const SubIcon = sub.icon;
+                                return (
+                                  <li key={sub.href}>
+                                    <Link
+                                      href={sub.href}
+                                      onClick={onNavigate}
+                                      className={cn(
+                                        "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                                        subActive
+                                          ? "bg-primary/10 text-primary"
+                                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                      )}
+                                    >
+                                      <SubIcon className="h-3.5 w-3.5 shrink-0" />
+                                      {sub.label}
+                                    </Link>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </li>
+                        ))}
                       </ul>
                     )}
                   </div>
@@ -161,6 +187,7 @@ export function Sidebar() {
                   key={item.href}
                   href={item.href}
                   title={collapsed ? item.title : undefined}
+                  onClick={onNavigate}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     isActive
@@ -177,7 +204,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-border p-3">
+      <div className="hidden shrink-0 border-t border-border p-3 md:block">
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex w-full items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"

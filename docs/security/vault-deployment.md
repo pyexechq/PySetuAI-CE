@@ -1,18 +1,21 @@
 # Hashicorp Vault Deployment Guide
 
-PySetu AI stores tenant API keys through a secrets abstraction (`secrets_service.py`). By default keys live in PostgreSQL; production deployments should enable Vault.
+PySetu AI stores tenant API keys through a secrets abstraction (`secrets_service.py`). **Vault is enabled by default** in Docker Compose and the backend config (`VAULT_ENABLED=true`). Tenant keys are written to Vault KV paths; PostgreSQL columns are cleared on save.
+
+Set `VAULT_ENABLED=false` only for local experiments without a Vault server (keys fall back to the database).
 
 ## Local development (Docker Compose)
 
-The stack includes a Vault dev server:
+The stack includes a Vault dev server and enables it for the backend automatically:
 
-| Setting | Value |
-|---------|-------|
+| Setting | Default (Compose) |
+|---------|-------------------|
 | UI / API | http://localhost:8200 |
 | Root token | `dev-root-token` |
 | KV mount | `secret` (v2, enabled in dev mode) |
+| Backend | `VAULT_ENABLED=true`, `VAULT_ADDR=http://vault:8200` |
 
-Enable Vault-backed storage:
+Override in `.env.docker` if needed:
 
 ```env
 VAULT_ENABLED=true
@@ -33,7 +36,7 @@ VAULT_ADDR=http://vault:8200
 VAULT_MOUNT_PATH=secret
 ```
 
-Restart the backend after changing these variables. Settings → Integrations will show **Secrets backend: vault** and the auth method (`token` or `approle`).
+Restart the backend after changing these variables. **Settings → Integrations → Secrets & Vault** shows **Secrets backend: vault** and the auth method (`token` or `approle`).
 
 ### Secret paths
 
@@ -52,7 +55,7 @@ Each secret is stored as KV v2 data: `{ "value": "<key>" }`.
 3. **Scope policies per tenant** — restrict read/write to `pysetu/tenants/{tenant_id}/*` paths.
 4. **Enable audit logging** on the Vault cluster and ship logs to your SIEM.
 5. **Rotate keys** through Vault versions; PySetu reads the latest version on each gateway request.
-6. **Disable DB fallback** — with `VAULT_ENABLED=true`, plaintext keys are cleared from Postgres on write.
+6. **Keep Vault enabled** — with `VAULT_ENABLED=true`, plaintext keys are cleared from Postgres on write.
 
 ### Example policy (single tenant)
 
@@ -88,7 +91,8 @@ Configure the backend with `VAULT_AUTH_METHOD=approle`, `VAULT_ROLE_ID`, and `VA
 | `Vault authentication failed` | Verify token/AppRole credentials and `VAULT_ADDR` reachability from backend container |
 | `hvac is not installed` | Rebuild backend image after pulling latest `requirements.txt` |
 | Keys still in Postgres | Confirm `VAULT_ENABLED=true` and save keys again from Settings or LLM Router |
-| Settings shows `database` backend | Vault env vars not loaded — check `.env.docker` or compose environment |
+| Settings shows `database` backend | Set `VAULT_ENABLED=true` and restart backend — check `.env.docker` or compose environment |
+| No Vault in local stack | Run `docker compose up -d vault` or set `VAULT_ENABLED=false` to use DB fallback |
 
 ## Related
 

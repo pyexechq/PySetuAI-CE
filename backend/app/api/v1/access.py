@@ -16,6 +16,8 @@ from app.models.tenant import User
 from app.schemas.access import (
     ClientApiKeyCreateRequest,
     ClientApiKeyCreateResponse,
+    ClientApiKeyMirroredCreateRequest,
+    ClientApiKeyRevealResponse,
     ClientApiKeyResponse,
     ClientApiKeyUpdateRequest,
     McpScopeConfig,
@@ -23,12 +25,17 @@ from app.schemas.access import (
     PolicyBundleResponse,
     PolicyBundleUpdateRequest,
 )
+from app.config import settings
 from app.services.client_api_key_service import (
     client_key_response,
+    decrypt_client_key,
+    encrypt_client_key,
     generate_client_key,
     get_client_api_key,
     normalize_api_key_client_protocol,
     normalize_token_saving_mode,
+    register_mirrored_client_key,
+    validate_api_origins,
     validate_bundle_for_tenant,
 )
 from app.services.policy_bundle_service import clear_other_defaults, get_policy_bundle
@@ -36,6 +43,13 @@ from app.services.policy_bundle_service import clear_other_defaults, get_policy_
 router = APIRouter()
 
 _require_policy_admin = require_permission(MANAGE_POLICIES)
+
+
+def _parse_allowed_api_origins(origins: list[str] | None) -> list[str] | None:
+    try:
+        return validate_api_origins(origins)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 def _bundle_response(bundle: PolicyBundle, policy_names: dict[str, str] | None = None) -> PolicyBundleResponse:
@@ -55,6 +69,7 @@ def _bundle_response(bundle: PolicyBundle, policy_names: dict[str, str] | None =
         custom_intent_ids=[str(i) for i in c_ids],
         policy_names=names,
         mcp_scope=mcp_scope,
+        target_domains=list(bundle.target_domains) if isinstance(bundle.target_domains, list) else [],
         created_at=bundle.created_at.isoformat() if bundle.created_at else "",
     )
 
@@ -190,6 +205,7 @@ async def create_policy_bundle(
         policy_ids=policy_ids,
         custom_intent_ids=custom_intent_ids,
         mcp_scope=await _validate_mcp_scope(db, current_user.tenant_id, payload.mcp_scope),
+        target_domains=payload.target_domains,
     )
     db.add(bundle)
     await db.commit()
@@ -223,6 +239,8 @@ async def update_policy_bundle(
         bundle.custom_intent_ids = await _validate_custom_intent_ids(db, current_user.tenant_id, payload.custom_intent_ids)
     if payload.mcp_scope is not None:
         bundle.mcp_scope = await _validate_mcp_scope(db, current_user.tenant_id, payload.mcp_scope)
+    if payload.target_domains is not None:
+        bundle.target_domains = [domain.strip().lower() for domain in payload.target_domains if domain.strip()]
     if payload.is_default is not None:
         if payload.is_default:
             await clear_other_defaults(db, current_user.tenant_id, except_id=bundle.id)
@@ -285,6 +303,7 @@ async def create_client_api_key(
         description=(payload.description or "").strip(),
         key_prefix=key_prefix,
         key_hash=key_hash,
+        key_encrypted=encrypt_client_key(full_key),
         bundle_id=bundle_uuid,
         client_response_protocol=normalize_api_key_client_protocol(payload.client_response_protocol),
         ai_rate_limit_rpm=payload.ai_rate_limit_rpm,
@@ -295,6 +314,9 @@ async def create_client_api_key(
         ai_token_limit_tpd=payload.ai_token_limit_tpd,
         token_saving_enabled=payload.token_saving_enabled,
         token_saving_mode=normalize_token_saving_mode(payload.token_saving_mode),
+        allowed_api_origins=_parse_allowed_api_origins(payload.allowed_api_origins),
+        key_source="pysetu",
+        upstream_pass_through=False,
         is_active=True,
     )
     db.add(record)
@@ -306,6 +328,71 @@ async def create_client_api_key(
         bundle_name = bundle.name
     base = client_key_response(record, bundle_name=bundle_name)
     return ClientApiKeyCreateResponse(**base, api_key=full_key)
+
+
+@router.get("/client-api-keys/{key_id}/reveal", response_model=ClientApiKeyRevealResponse)
+async def reveal_client_api_key(
+    key_id: str,
+    current_user: Annotated[User, Depends(_require_policy_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ClientApiKeyRevealResponse:
+    record = await get_client_api_key(db, current_user.tenant_id, key_id)
+    if not record.key_encrypted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This key was created before reveal support and cannot be recovered",
+        )
+    try:
+        api_key = decrypt_client_key(record.key_encrypted)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+    return ClientApiKeyRevealResponse(id=str(record.id), name=record.name, api_key=api_key)
+
+
+@router.post("/client-api-keys/mirrored", response_model=ClientApiKeyResponse, status_code=status.HTTP_201_CREATED)
+async def create_mirrored_client_api_key(
+    payload: ClientApiKeyMirroredCreateRequest,
+    current_user: Annotated[User, Depends(_require_policy_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ClientApiKeyResponse:
+    if not settings.byok_ingress_enabled:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="BYOK ingress is disabled on this deployment")
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Key name is required")
+
+    mirrored_key = payload.mirrored_api_key.strip()
+    if not mirrored_key:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mirrored API key is required")
+
+    bundle_uuid = await validate_bundle_for_tenant(db, current_user.tenant_id, payload.bundle_id)
+    record = await register_mirrored_client_key(
+        db,
+        current_user.tenant_id,
+        name=name,
+        raw_key=mirrored_key,
+        description=(payload.description or "").strip(),
+        bundle_id=bundle_uuid,
+        client_response_protocol=normalize_api_key_client_protocol(payload.client_response_protocol),
+        upstream_pass_through=payload.upstream_pass_through,
+        allowed_api_origins=_parse_allowed_api_origins(payload.allowed_api_origins),
+        ai_rate_limit_rpm=payload.ai_rate_limit_rpm,
+        ai_rate_limit_rph=payload.ai_rate_limit_rph,
+        ai_rate_limit_rpd=payload.ai_rate_limit_rpd,
+        ai_token_limit_tpm=payload.ai_token_limit_tpm,
+        ai_token_limit_tph=payload.ai_token_limit_tph,
+        ai_token_limit_tpd=payload.ai_token_limit_tpd,
+        token_saving_enabled=payload.token_saving_enabled,
+        token_saving_mode=normalize_token_saving_mode(payload.token_saving_mode),
+    )
+    await db.commit()
+    await db.refresh(record)
+    bundle_name = None
+    if record.bundle_id:
+        bundle = await get_policy_bundle(db, current_user.tenant_id, str(record.bundle_id))
+        bundle_name = bundle.name
+    return ClientApiKeyResponse(**client_key_response(record, bundle_name=bundle_name))
 
 
 @router.put("/client-api-keys/{key_id}", response_model=ClientApiKeyResponse)
@@ -344,6 +431,15 @@ async def update_client_api_key(
         record.token_saving_enabled = payload.token_saving_enabled
     if payload.token_saving_mode is not None:
         record.token_saving_mode = normalize_token_saving_mode(payload.token_saving_mode)
+    if payload.allowed_api_origins is not None:
+        record.allowed_api_origins = _parse_allowed_api_origins(payload.allowed_api_origins)
+    if payload.upstream_pass_through is not None:
+        if record.key_source != "mirrored":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Upstream pass-through applies only to mirrored keys",
+            )
+        record.upstream_pass_through = payload.upstream_pass_through
 
     if payload.is_active is not None:
         record.is_active = payload.is_active

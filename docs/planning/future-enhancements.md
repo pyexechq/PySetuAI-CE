@@ -41,7 +41,7 @@ Full triage: [quality-audit-sprint.md](./quality-audit-sprint.md). Sprint 17 cov
 - Policy simulation against historical audit data
 - Cost allocation by business unit/department
 - Model fine-tuning governance and approval
-- RAG source governance — **v1 shipped** (governed RAG gateway, conditional ingest, evidence bundles); extend with Weaviate/Qdrant adapters and source-level ACLs
+- RAG source governance — **v1 shipped** (governed RAG gateway, conditional ingest, evidence bundles, **tenant data-movement policy UI**); extend with Weaviate/Qdrant adapters and source-level ACLs
 
 ## Deployment
 

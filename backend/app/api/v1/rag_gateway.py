@@ -34,7 +34,6 @@ from app.services.evidence_bundle_service import (
     list_evidence_bundles,
     save_evidence_bundle,
 )
-from app.services.iac_evidence_service import run_iac_evidence_scan
 from app.services.integration_service import get_or_create_integration, mask_secret, resolve_gateway_config
 from app.services.pinecone_adapter import resolve_vector_store_config, upsert_vector
 from app.services.policy_exemption_service import (
@@ -518,9 +517,12 @@ async def export_genai_evidence(
 
 @router.get("/rag-gateway/iac-evidence")
 async def scan_iac_evidence(
-    _current_user: Annotated[User, Depends(_require_rag_gateway)],
+    current_user: Annotated[User, Depends(_require_rag_gateway)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    return run_iac_evidence_scan()
+    from app.services.iac_evidence_config_service import run_tenant_iac_scan
+
+    return await run_tenant_iac_scan(db, current_user.tenant_id)
 
 
 @router.post("/rag-gateway/demo-events")

@@ -170,6 +170,18 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 - [x] IaC evidence static scanner (BL-114)
 - [x] Break-glass policy exemptions (BL-115)
 
+## Phase 15 — Compliance UX & config surfaces (complete — Aug 15)
+
+> Detail: [aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md)
+
+- [x] Compliance Center tabbed hub + framework overview (BL-116)
+- [x] Tenant IaC evidence scanner config UI + API (BL-117)
+- [x] Tenant OPA data-movement policy UI + API (BL-118)
+- [x] Reports catalog preview + activity UX (BL-119)
+- [x] AI metric insights on Dashboard / Monitoring / Reports / Compatibility (BL-120)
+- [x] Help guide slug fixes + in-app help chat (BL-121)
+- [x] Vault enabled by default in Docker Compose (BL-122)
+
 ## Phase 13 — MCP compliance pipeline (Sprint 18–20)
 
 > Design: [mcp-policy-pipeline-design.md](./mcp-policy-pipeline-design.md)
@@ -188,11 +200,47 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 - [ ] JWT purpose / lawful_basis on audit rows (BL-104)
 - [ ] MCP tool response redaction (BL-105)
 
-### Layer 3 — Framework packs (Sprint 20+)
+### Layer 3 — Framework packs (Sprint 21+)
 
 - [ ] Framework rule packs (BL-106)
 - [ ] Retention + erasure workflows (BL-107)
 - [ ] Optional WORM audit ledger (BL-108)
+
+## Phase 16 — Unified AI Agent Control Plane (in progress)
+
+> Architecture: [agentic-control-plane.md](../architecture/agentic-control-plane.md)  
+> Roadmap: [agentic-control-plane-roadmap.md](./agentic-control-plane-roadmap.md)  
+> Extends the previously optional BL-079 endpoint-agent track into a full control-plane product line.
+
+### Phase 16a — Foundation (complete)
+
+- [x] Endpoint + agent + security-event data model and migration
+- [x] Endpoint registration and heartbeat APIs
+- [x] Agent inventory and capability APIs
+- [x] Unified security-event ingestion with Audit Explorer linkage
+- [x] Risk scoring service (reuses DLP + tool risk conventions)
+- [x] Agent Inventory and Endpoint Security pages
+- [x] Endpoint daemon — discovery + telemetry skeleton (`endpoint-agent/`)
+
+### Phase 16b — Endpoint Enforcement (in progress)
+
+- [x] Local secret + PII detection (`endpoint-agent/pysetu_agent/detection.py`)
+- [x] Local policy engine + integrity-checked offline cache (`policy.py`)
+- [x] Directory scanner with policy decisions (`scan.py`) + daemon `--scan-dir`
+- [x] Approval workflow — model, migration `068`, and `/approvals` API
+- [x] Policy sync endpoint — `GET /agentic/policy` + bundle `file_governance_rules` (migration `069`)
+- [x] Shell command governance (heuristic pre-filter in `endpoint-agent`)
+- [x] File governance watcher (polling; native FSEvents/inotify later)
+- [x] Approval Center UI
+- [x] `--watch` mode + background service packaging (launchd/systemd)
+
+### Later control-plane layers
+
+- [ ] Agentic attack surface graph
+- [ ] Microsoft Copilot inventory + Graph/Audit sync
+- [ ] MCP tool-chain governance
+- [ ] Prompt-injection + exfiltration detections
+- [ ] Guardian policy enforcement loop
 
 ## Milestones
 
@@ -213,3 +261,4 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 | M13: Quality & shared UI primitives | Sprint 17 | ✅ Complete Aug 14 — BL-092–BL-097 ([quality-audit-sprint.md](./quality-audit-sprint.md)) |
 | M14: MCP compliance pipeline | Sprint 18–20 | 🔄 In progress — BL-098–BL-108 ([mcp-policy-pipeline-design.md](./mcp-policy-pipeline-design.md)) |
 | M15: GenAI DLP Gateway | Aug 14, 2026 | ✅ Complete — BL-109–BL-115 ([genai-dlp-gateway-roadmap.md](./genai-dlp-gateway-roadmap.md)) |
+| M16: Compliance UX & config | Aug 15, 2026 | ✅ Complete — BL-116–BL-122 ([aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md)) |

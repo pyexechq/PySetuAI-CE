@@ -75,6 +75,7 @@ When `AIR_GAP_MODE=true`:
 - Cloud LLM keys (OpenAI/Gemini) are **ignored** — gateway uses Ollama only
 - OTLP telemetry export disabled (console only)
 - SMTP disabled by default
+- Vault disabled (`VAULT_ENABLED=false`) — no Vault container in the air-gap bundle; tenant keys use PostgreSQL
 - OPA fail-closed (`OPA_FAIL_OPEN=false`)
 
 Health check reports air-gap status: `GET /health` → `"air_gap_mode": "true"`
@@ -84,7 +85,7 @@ Health check reports air-gap status: `GET /health` → `"air_gap_mode": "true"`
 - [ ] Change `JWT_SECRET_KEY` and `POSTGRES_PASSWORD` in `.env.airgap`
 - [ ] Bundle Ollama models with `-OllamaModels` or `export-ollama-models.*` (recommended for fully offline inference)
 - [ ] Use Helm + `values-airgap.yaml` for Kubernetes deployments
-- [ ] Replace Vault dev mode with production Vault (optional)
+- [ ] Replace Vault dev mode with production Vault when enabling `VAULT_ENABLED=true` (air-gap Compose sets `VAULT_ENABLED=false` — keys use PostgreSQL until Vault is deployed)
 
 ## Kubernetes
 

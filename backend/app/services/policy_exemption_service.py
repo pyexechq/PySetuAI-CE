@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.governance import PolicyExemption
-from app.services.dlp_classification import NEVER_EXEMPT_VECTOR_LABELS
+from app.services.data_movement_policy_service import DEFAULT_DATA_MOVEMENT_POLICY, exemption_blocks_override
 
 DEFAULT_ALLOWED_DESTINATIONS = ["embedding", "llm"]
 VECTOR_DESTINATIONS = {"pinecone", "vector_store", "embedding"}
@@ -35,15 +35,15 @@ class ExemptionValidation:
 def exemption_blocks_local_override(
     sensitivity_labels: list[str],
     destination: str,
+    *,
+    movement_policy: dict[str, list[str]] | None = None,
 ) -> bool:
     """Return True when break-glass cannot override the local guard."""
-    if destination not in VECTOR_DESTINATIONS:
-        return False
-    if any(label in NEVER_EXEMPT_VECTOR_LABELS for label in sensitivity_labels):
-        return True
-    if "RESTRICTED_PII" in sensitivity_labels and destination in {"pinecone", "vector_store"}:
-        return True
-    return False
+    return exemption_blocks_override(
+        movement_policy or DEFAULT_DATA_MOVEMENT_POLICY,
+        sensitivity_labels=sensitivity_labels,
+        destination=destination,
+    )
 
 
 def exemption_allows_movement(
@@ -51,13 +51,18 @@ def exemption_allows_movement(
     *,
     destination: str,
     sensitivity_labels: list[str],
+    movement_policy: dict[str, list[str]] | None = None,
 ) -> ExemptionValidation:
     if destination not in context.allowed_destinations:
         return ExemptionValidation(
             valid=False,
             error=f"Exemption does not cover destination '{destination}'",
         )
-    if exemption_blocks_local_override(sensitivity_labels, destination):
+    if exemption_blocks_local_override(
+        sensitivity_labels,
+        destination,
+        movement_policy=movement_policy,
+    ):
         return ExemptionValidation(
             valid=False,
             error="PHI/PCI cannot be exempted; restricted PII cannot be exempted to vector store upsert",
@@ -120,6 +125,7 @@ async def validate_policy_exemption(
     exemption_id: str | None,
     destination: str,
     sensitivity_labels: list[str],
+    movement_policy: dict[str, list[str]] | None = None,
 ) -> ExemptionValidation:
     if not exemption_id:
         return ExemptionValidation(valid=False)
@@ -142,7 +148,12 @@ async def validate_policy_exemption(
         allowed_destinations=list(row.allowed_destinations or []),
         expires_at=row.expires_at,
     )
-    return exemption_allows_movement(context, destination=destination, sensitivity_labels=sensitivity_labels)
+    return exemption_allows_movement(
+        context,
+        destination=destination,
+        sensitivity_labels=sensitivity_labels,
+        movement_policy=movement_policy,
+    )
 
 
 async def consume_policy_exemption(db: AsyncSession, row: PolicyExemption) -> None:

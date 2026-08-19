@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import httpx
@@ -104,6 +104,9 @@ class PreparedChat:
     dynamic_tools_compressed_tokens: int = 0
     dynamic_tools_pct: float = 0.0
     dynamic_tools_payload: list | None = None
+    ingress_bearer_token: str | None = None
+    mcp_servers: list = field(default_factory=list)
+    mcp_tool_calls: int = 0
 
 
 def _estimate_tokens(text: str) -> int:
@@ -403,10 +406,12 @@ def coerce_upstream(
     config: GatewayConfig,
     model: str,
     routed_model: str,
+    *,
+    ingress_bearer_token: str | None = None,
 ) -> str:
     """Use the requested upstream only when credentials are available; otherwise fall back."""
     effective_model = model if model != "auto" else routed_model
-    if upstream == "openai" and config.openai_api_key:
+    if upstream == "openai" and (config.openai_api_key or ingress_bearer_token):
         return "openai"
     if upstream == "gemini" and config.gemini_api_key:
         return "gemini"
@@ -415,6 +420,12 @@ def coerce_upstream(
     if upstream in ("bedrock", "vertex"):
         return upstream
     return config.resolve_upstream(effective_model)
+
+
+def resolve_openai_api_key(prepared: PreparedChat) -> str | None:
+    if prepared.ingress_bearer_token:
+        return prepared.ingress_bearer_token
+    return prepared.config.openai_api_key
 
 
 async def prepare_chat_request(
@@ -531,6 +542,14 @@ async def prepare_chat_request(
             "blocked",
             "high",
             prompt_warn or "Ad-hoc system prompt blocked by tenant policy",
+        )
+        await _dispatch_gateway_block_alert(
+            db,
+            ctx,
+            audit_action="Policy Inspection",
+            resource=f"{effective_request.model} /chat",
+            risk="high",
+            details=prompt_warn or "Ad-hoc system prompts are blocked by tenant policy",
         )
         await db.commit()
         return None, ingress, prompt_warn or "Ad-hoc system prompts are blocked by tenant policy."
@@ -666,6 +685,7 @@ async def prepare_chat_request(
         config,
         effective_request.model,
         routed_model,
+        ingress_bearer_token=ctx.ingress_bearer_token,
     )
 
     if uag_trace and canonical:
@@ -726,6 +746,8 @@ async def prepare_chat_request(
         dynamic_tools_compressed_tokens=dynamic_tools.compressed_tokens,
         dynamic_tools_pct=dynamic_tools.savings_pct,
         dynamic_tools_payload=dynamic_tools_payload,
+        ingress_bearer_token=ctx.ingress_bearer_token,
+        mcp_servers=mcp_servers,
     )
 
     if upstream == "ollama":
@@ -787,7 +809,7 @@ async def _call_openai(
 ):
     payload = {
         "model": model,
-        "messages": [m.model_dump() for m in messages],
+        "messages": [m.model_dump(exclude_none=True) for m in messages],
         "temperature": temperature or 0.7,
         "stream": stream,
     }
@@ -802,7 +824,7 @@ async def _call_ollama_payload(
 ):
     payload = {
         "model": model,
-        "messages": [m.model_dump() for m in messages],
+        "messages": [m.model_dump(exclude_none=True) for m in messages],
         "temperature": temperature or 0.7,
         "stream": stream,
     }
@@ -811,13 +833,18 @@ async def _call_ollama_payload(
     return payload, f"{base_url.rstrip('/')}/v1/chat/completions", {}
 
 
-async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionRequest) -> ChatCompletionResponse:
-    if prepared.upstream == "openai" and prepared.config.openai_api_key:
+MAX_MCP_TOOL_ITERATIONS = 5
+
+
+async def _call_upstream_raw(prepared: PreparedChat, request: ChatCompletionRequest) -> tuple[dict, str]:
+    """Perform a single upstream call and return (raw_data, model_name)."""
+    openai_api_key = resolve_openai_api_key(prepared)
+    if prepared.upstream == "openai" and openai_api_key:
         payload, url, headers = await _call_openai(
             prepared.routed_model,
             prepared.messages,
             request.temperature,
-            prepared.config.openai_api_key,
+            openai_api_key,
             api_base=prepared.config.openai_api_base,
             tools=prepared.dynamic_tools_payload,
         )
@@ -825,47 +852,7 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
         response = await client.post(url, headers=headers, json=payload, timeout=120.0)
         response.raise_for_status()
         data = response.json()
-        choice = data["choices"][0]
-        usage = data.get("usage", {})
-        return ChatCompletionResponse(
-            id=data.get("id", f"chatcmpl-{uuid.uuid4().hex[:24]}"),
-            created=data.get("created", int(time.time())),
-            model=data.get("model", prepared.routed_model),
-            choices=[
-                ChatCompletionChoice(
-                    message=ChatMessage(role=choice["message"]["role"], content=choice["message"]["content"]),
-                    finish_reason=choice.get("finish_reason", "stop"),
-                )
-            ],
-            usage=ChatCompletionUsage(
-                prompt_tokens=usage.get("prompt_tokens", 0),
-                completion_tokens=usage.get("completion_tokens", 0),
-                total_tokens=usage.get("total_tokens", 0),
-            ),
-            pysetu=_pysetu_meta(prepared),
-        )
-
-    if prepared.upstream == "gemini" and prepared.config.gemini_api_key and prepared.gemini_model:
-        text, gemini_model = await call_gemini(
-            prepared.gemini_model,
-            prepared.messages,
-            prepared.config.gemini_api_key,
-            request.temperature,
-        )
-        prompt_tokens = _estimate_tokens(" ".join(m.content for m in prepared.messages))
-        completion_tokens = _estimate_tokens(text)
-        return ChatCompletionResponse(
-            id=f"chatcmpl-{uuid.uuid4().hex[:24]}",
-            created=int(time.time()),
-            model=gemini_model,
-            choices=[ChatCompletionChoice(message=ChatMessage(role="assistant", content=text))],
-            usage=ChatCompletionUsage(
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                total_tokens=prompt_tokens + completion_tokens,
-            ),
-            pysetu=_pysetu_meta(prepared, gemini_model=gemini_model),
-        )
+        return data, data.get("model", prepared.routed_model)
 
     if prepared.upstream == "ollama" and prepared.ollama_model:
         payload, url, _ = await _call_ollama_payload(
@@ -876,25 +863,16 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
         response = await client.post(url, json=payload, timeout=180.0)
         response.raise_for_status()
         data = response.json()
-        choice = data["choices"][0]
-        usage = data.get("usage", {})
-        return ChatCompletionResponse(
-            id=data.get("id", f"chatcmpl-{uuid.uuid4().hex[:24]}"),
-            created=data.get("created", int(time.time())),
-            model=data.get("model", prepared.ollama_model),
-            choices=[
-                ChatCompletionChoice(
-                    message=ChatMessage(role=choice["message"]["role"], content=choice["message"]["content"]),
-                    finish_reason=choice.get("finish_reason", "stop"),
-                )
-            ],
-            usage=ChatCompletionUsage(
-                prompt_tokens=usage.get("prompt_tokens", _estimate_tokens(prepared.combined)),
-                completion_tokens=usage.get("completion_tokens", _estimate_tokens(choice["message"]["content"])),
-                total_tokens=usage.get("total_tokens", 0),
-            ),
-            pysetu=_pysetu_meta(prepared, ollama_model=prepared.ollama_model),
+        return data, data.get("model", prepared.ollama_model)
+
+    if prepared.upstream == "gemini" and prepared.config.gemini_api_key and prepared.gemini_model:
+        text, gemini_model = await call_gemini(
+            prepared.gemini_model,
+            prepared.messages,
+            prepared.config.gemini_api_key,
+            request.temperature,
         )
+        return {"choices": [{"message": {"role": "assistant", "content": text}, "finish_reason": "stop"}]}, gemini_model
 
     if prepared.upstream == "bedrock":
         text, bedrock_model, region = await call_bedrock_regional(
@@ -903,20 +881,7 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
             model_id=prepared.routed_model,
             temperature=request.temperature,
         )
-        prompt_tokens = _estimate_tokens(" ".join(m.content for m in prepared.messages))
-        completion_tokens = _estimate_tokens(text)
-        return ChatCompletionResponse(
-            id=f"chatcmpl-{uuid.uuid4().hex[:24]}",
-            created=int(time.time()),
-            model=bedrock_model,
-            choices=[ChatCompletionChoice(message=ChatMessage(role="assistant", content=text))],
-            usage=ChatCompletionUsage(
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                total_tokens=prompt_tokens + completion_tokens,
-            ),
-            pysetu=_pysetu_meta(prepared),
-        )
+        return {"choices": [{"message": {"role": "assistant", "content": text}, "finish_reason": "stop"}]}, bedrock_model
 
     if prepared.upstream == "vertex":
         text, vertex_model, region = await call_vertex_regional(
@@ -925,25 +890,92 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
             model_id=prepared.routed_model,
             temperature=request.temperature,
         )
-        prompt_tokens = _estimate_tokens(" ".join(m.content for m in prepared.messages))
-        completion_tokens = _estimate_tokens(text)
-        return ChatCompletionResponse(
-            id=f"chatcmpl-{uuid.uuid4().hex[:24]}",
-            created=int(time.time()),
-            model=vertex_model,
-            choices=[ChatCompletionChoice(message=ChatMessage(role="assistant", content=text))],
-            usage=ChatCompletionUsage(
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                total_tokens=prompt_tokens + completion_tokens,
-            ),
-            pysetu=_pysetu_meta(prepared),
-        )
+        return {"choices": [{"message": {"role": "assistant", "content": text}, "finish_reason": "stop"}]}, vertex_model
 
     mock = _build_mock_response(prepared.routed_model, prepared.combined, prepared.ingress)
-    mock.pysetu = _pysetu_meta(prepared)
-    mock.pysetu["routed_model"] = prepared.routed_model
-    return mock
+    return {
+        "choices": [
+            {
+                "message": {"role": "assistant", "content": mock.choices[0].message.content},
+                "finish_reason": "stop",
+            }
+        ]
+    }, prepared.routed_model
+
+
+async def _execute_mcp_tool_call(prepared: PreparedChat, tool_name: str, arguments: dict) -> str:
+    """Resolve and invoke an MCP tool for the server-side tool loop. Returns JSON string."""
+    from app.services.mcp_client_service import invoke_mcp_tool
+    from app.services.mcp_multiplex_service import resolve_tool_target
+
+    target = resolve_tool_target(prepared.mcp_servers, tool_name)
+    if target is None:
+        return json.dumps({"error": f"Unknown MCP tool: {tool_name}"})
+    server, original = target
+    result = await invoke_mcp_tool(server, original, arguments, access_token=prepared.ingress_bearer_token)
+    if result.ok:
+        return json.dumps(result.result) if result.result is not None else result.message
+    return json.dumps({"error": result.message})
+
+
+async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionRequest) -> ChatCompletionResponse:
+    data, model_name = await _call_upstream_raw(prepared, request)
+    choice = data["choices"][0]
+    message = choice.get("message", {})
+    finish_reason = choice.get("finish_reason", "stop")
+    tool_calls = message.get("tool_calls")
+    usage = data.get("usage", {})
+
+    iterations = 0
+    while finish_reason == "tool_calls" and tool_calls and iterations < MAX_MCP_TOOL_ITERATIONS:
+        iterations += 1
+        prepared.mcp_tool_calls += len(tool_calls)
+        prepared.messages.append(
+            ChatMessage(role="assistant", content=message.get("content") or "", tool_calls=tool_calls)
+        )
+        for tc in tool_calls:
+            fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+            name = str(fn.get("name") or "")
+            try:
+                args = json.loads(fn.get("arguments") or "{}")
+            except (ValueError, TypeError):
+                args = {}
+            result_text = await _execute_mcp_tool_call(prepared, name, args)
+            prepared.messages.append(
+                ChatMessage(
+                    role="tool",
+                    content=result_text,
+                    tool_call_id=str(tc.get("id") or ""),
+                    name=name,
+                )
+            )
+        data, model_name = await _call_upstream_raw(prepared, request)
+        choice = data["choices"][0]
+        message = choice.get("message", {})
+        finish_reason = choice.get("finish_reason", "stop")
+        tool_calls = message.get("tool_calls")
+        usage = data.get("usage", {})
+
+    extra: dict = {}
+    if prepared.mcp_tool_calls:
+        extra["mcp_tool_calls"] = prepared.mcp_tool_calls
+    return ChatCompletionResponse(
+        id=data.get("id", f"chatcmpl-{uuid.uuid4().hex[:24]}"),
+        created=data.get("created", int(time.time())),
+        model=model_name,
+        choices=[
+            ChatCompletionChoice(
+                message=ChatMessage(role=message.get("role", "assistant"), content=message.get("content") or ""),
+                finish_reason=finish_reason,
+            )
+        ],
+        usage=ChatCompletionUsage(
+            prompt_tokens=usage.get("prompt_tokens", _estimate_tokens(prepared.combined)),
+            completion_tokens=usage.get("completion_tokens", _estimate_tokens(message.get("content") or "")),
+            total_tokens=usage.get("total_tokens", 0),
+        ),
+        pysetu=_pysetu_meta(prepared, **extra),
+    )
 
 
 def _chunk_payload(
@@ -984,12 +1016,13 @@ async def stream_chat_completion(
     yield _chunk_payload(completion_id, model_name, None, role="assistant")
 
     try:
-        if prepared.upstream == "openai" and prepared.config.openai_api_key:
+        openai_api_key = resolve_openai_api_key(prepared)
+        if prepared.upstream == "openai" and openai_api_key:
             payload, url, headers = await _call_openai(
                 prepared.routed_model,
                 prepared.messages,
                 request.temperature,
-                prepared.config.openai_api_key,
+                openai_api_key,
                 stream=True,
                 api_base=prepared.config.openai_api_base,
                 tools=prepared.dynamic_tools_payload,
@@ -1212,6 +1245,7 @@ async def process_chat_completion(
                 prepared.config,
                 candidate_model,
                 candidate_model,
+                ingress_bearer_token=prepared.ingress_bearer_token,
             )
             if prepared.upstream == "ollama":
                 try:

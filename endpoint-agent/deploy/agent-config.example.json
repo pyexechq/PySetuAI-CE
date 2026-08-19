@@ -1,0 +1,7 @@
+{
+  "backend_url": "http://localhost:8001",
+  "api_key": "hg_...",
+  "hostname": "my-workstation",
+  "poll_interval_seconds": 60,
+  "telemetry_file": "/tmp/pysetu-agent-telemetry.jsonl"
+}

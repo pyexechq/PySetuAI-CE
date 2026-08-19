@@ -17,6 +17,7 @@
 | M13 | Quality & shared primitives | Radix Dialog, date_range, error UI, query states | Sprint 17 | Complete (BL-092–BL-097; Aug 14) |
 | M14 | MCP compliance pipeline | Policy bundle MCP scope, gated audit path, framework packs | Sprint 18–20 | In progress — [mcp-policy-pipeline-design.md](../planning/mcp-policy-pipeline-design.md) |
 | M15 | GenAI DLP Gateway | Sensitivity labels, OPA data-movement, governed RAG, evidence bundles, exemptions | Aug 14, 2026 | Complete — [genai-dlp-gateway-roadmap.md](../planning/genai-dlp-gateway-roadmap.md) |
+| M16 | Compliance UX & config | Tabbed Compliance Center, IaC/data-movement config UI, Reports preview, Help fixes, Vault default-on | Aug 15, 2026 | Complete — [aug-15-compliance-ux-update.md](./aug-15-compliance-ux-update.md) |
 
 > Parity detail: [gateway-parity-roadmap.md](../planning/gateway-parity-roadmap.md)
 

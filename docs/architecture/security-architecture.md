@@ -33,7 +33,7 @@ Planned extensions:
 - All API communication over TLS in production
 - Tenant data isolation at database query level
 - PII detection and redaction pipeline (Phase 2)
-- Secrets stored in Hashicorp Vault (Phase 5), not in code
+- Secrets stored in Hashicorp Vault by default (`VAULT_ENABLED=true`); set `VAULT_ENABLED=false` only for DB fallback without Vault
 
 ## Threat Model
 

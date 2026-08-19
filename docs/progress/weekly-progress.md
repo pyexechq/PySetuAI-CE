@@ -1,38 +1,32 @@
-# Weekly Progress — Week of Aug 10, 2026
+# Weekly Progress — Week of Aug 15, 2026
 
 ## Summary
 
-Phase 1 foundation sprint is nearly complete. All 9 mockup module UIs are implemented, login/auth flow is wired, and the dashboard connects to the backend API via TanStack Query.
+Post–GenAI DLP (M15) polish: Compliance Center UX hierarchy, tenant-configurable IaC and data-movement policies, Reports catalog improvements, shared AI metric insights, Help guide reliability, and Vault enabled by default in Docker Compose.
 
 ## Completed
 
-- Full project scaffolding (frontend + backend + Docker)
-- Executive Dashboard refined to 9-panel mockup (12.6M requests, top policies/agents)
-- Rich UI for Policy Studio, Governance Graph, LLM Router, MCP Governance, Audit Explorer, Data Protection, Compliance Center, Security Analytics
-- Login page at `/login` with AuthGuard and RBAC route checks
-- TanStack Query + `lib/api.ts` for dashboard metrics
-- Settings module basics
-- Production build verified (18 routes)
+- Compliance Center tabbed hub + framework overview (BL-116)
+- IaC evidence tenant config API + modal; Docker `./deploy` mount fix (BL-117)
+- OPA data-movement policy tenant config API + modal (BL-118)
+- Reports preview modal + catalog activity UX (BL-119)
+- AI metric insight hook on Dashboard, Monitoring, Reports, Compatibility (BL-120)
+- Help chat layer + guide slug alias fixes (BL-121)
+- Vault `VAULT_ENABLED=true` by default in Compose (BL-122)
+
+## Documentation
+
+- [aug-15-compliance-ux-update.md](./aug-15-compliance-ux-update.md) — canonical reference
+- Updated: product-roadmap, backlog, genai-dlp-gateway-roadmap, test-plan, milestones, API README, handoffs, vault-deployment
 
 ## Metrics
 
-| Metric | Value |
-|--------|-------|
-| Frontend routes | 18 |
-| Module UIs (mock data) | 9 |
-| Backend endpoints | 5 |
-| Documentation files | 20+ |
-| Phase 1 completion | ~90% |
+| Milestone | Status |
+|-----------|--------|
+| M15 GenAI DLP Gateway | Complete (Aug 14) |
+| M16 Compliance UX & config | Complete (Aug 15) |
 
-## Risks
+## Next
 
-- Module pages use mock data until Phase 2 backend APIs land
-- Auth is client-side only (no Next.js middleware yet)
-- Database migrations not yet applied
-
-## Next Week Goals
-
-- Alembic migrations and seed data
-- Server-side JWT middleware
-- Backend APIs for policy, audit, and MCP modules
-- Interactive Governance Graph (React Flow)
+- Sprint 18 remaining: Bundle MCP scope UI (BL-103)
+- Run migrations `059` + `060` on all environments after deploy

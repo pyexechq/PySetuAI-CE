@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { AuditLogEntry } from "@/lib/types/domain";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
+import { usePreferencesStore } from "@/stores/preferences-store";
+import { formatDateTime } from "@/lib/date-utils";
 
 interface RequestLogPanelProps {
   entry: AuditLogEntry | null;
@@ -26,6 +28,7 @@ function JsonBlock({ label, value }: { label: string; value: unknown }) {
 
 export function RequestLogPanel({ entry }: RequestLogPanelProps) {
   const token = useAuthStore((s) => s.token);
+  const timezone = usePreferencesStore((s) => s.timezone);
   const auditId = entry?.id;
   const { data, isLoading, isError } = useQuery({
     queryKey: ["audit-log-body", token, auditId],
@@ -92,7 +95,7 @@ export function RequestLogPanel({ entry }: RequestLogPanelProps) {
             Request / response log
           </CardTitle>
           <CardDescription>
-            {entry.actor} · {entry.action} · retained {data.created_at ?? "recently"}
+            {entry.actor} · {entry.action} · retained {data.created_at ? formatDateTime(data.created_at, timezone) : "recently"}
           </CardDescription>
         </div>
         {ingressBlocked && (

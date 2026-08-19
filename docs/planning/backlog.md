@@ -183,7 +183,7 @@
 | BL-104 | JWT `purpose` / `lawful_basis` claims → `compliance_metadata` on audit | Auth / Audit | 13 | Optional on client keys |
 | BL-105 | MCP tool response redaction (DLP on tool results) | MCP Gateway | 13 | Beyond chat egress |
 
-### Layer 3 — Framework packs (Sprint 20+)
+### Layer 3 — Framework packs (Sprint 21+)
 
 | ID | Item | Module | Phase | Notes |
 |----|------|--------|-------|-------|
@@ -268,3 +268,17 @@
 | BL-113 | GenAI evidence bundle export UI | Compliance | 14.5 | Done |
 | BL-114 | IaC evidence (Checkov) | Compliance | 14.6 | Done (static scanner v1) |
 | BL-115 | Break-glass policy exemptions (time-bound, audited) | RAG Gateway / OPA | 14.7 | Done |
+
+## Phase 15 — Compliance UX & config (complete — Aug 15)
+
+> Detail: [aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md)
+
+| ID | Item | Module | Status |
+|----|------|--------|--------|
+| BL-116 | Compliance Center tabbed UX + framework overview | Compliance | Done |
+| BL-117 | Tenant IaC evidence config UI + API | Compliance | Done |
+| BL-118 | Tenant data-movement policy UI + API | Compliance / RAG | Done |
+| BL-119 | Reports catalog preview + activity strip | Reports | Done |
+| BL-120 | AI metric insights (shared hook) | Dashboard / Monitoring | Done |
+| BL-121 | Help guide fixes + help chat layer | Help | Done |
+| BL-122 | Vault enabled by default (Compose) | Security / DevOps | Done |

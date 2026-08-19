@@ -14,7 +14,7 @@
 ## Resolution Plan
 
 - KI-003: Address in Sprint 1 remaining task (Alembic)
-- KI-005: Vault integration planned for Phase 5 — **Mitigated** (S6-01 + S6-06 rotation runbook)
+- KI-005: Vault enabled by default in Docker Compose; rotate JWT and use AppRole before production — **Mitigated** (S6-01 + S6-06 rotation runbook)
 - KI-002: Next.js middleware planned for Phase 1 completion
 - KI-008: React Flow integration planned for Phase 2
 

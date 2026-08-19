@@ -19,6 +19,7 @@ AI_ASSIST_FEATURES = (
     "Policy Studio AI Helper",
     "Compliance Center AI assist",
     "Dashboard metric insights",
+    "Context-aware help chat",
 )
 
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"

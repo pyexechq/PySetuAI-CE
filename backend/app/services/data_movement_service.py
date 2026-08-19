@@ -8,13 +8,18 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.dlp_classification import VECTOR_BLOCKED_LABELS
 from app.services.dlp_service import DlpScanResult, scan_content
+from app.services.data_movement_policy_service import (
+    DEFAULT_DATA_MOVEMENT_POLICY,
+    exemption_blocks_override,
+    get_tenant_data_movement_policy,
+    policy_blocks_movement,
+    policy_to_opa_payload,
+)
 from app.services.opa_service import OpaDecision, build_data_movement_opa_input, evaluate_gateway_opa
 from app.services.policy_exemption_service import (
     ExemptionContext,
     consume_policy_exemption,
-    exemption_blocks_local_override,
     exemption_to_opa_payload,
     get_policy_exemption,
     validate_policy_exemption,
@@ -36,12 +41,27 @@ class DataMovementResult:
     exemption_error: str | None = None
 
 
-def _local_vector_block(dlp: DlpScanResult, destination: str, *, exemption_valid: bool) -> bool:
-    if destination not in {"pinecone", "vector_store", "embedding"}:
+def _local_vector_block(
+    dlp: DlpScanResult,
+    destination: str,
+    *,
+    exemption_valid: bool,
+    policy: dict[str, list[str]] | None = None,
+) -> bool:
+    active_policy = policy or DEFAULT_DATA_MOVEMENT_POLICY
+    if destination not in set(active_policy["vector_destinations"]):
         return False
-    if exemption_valid and not exemption_blocks_local_override(dlp.sensitivity_labels, destination):
+    if exemption_valid and not exemption_blocks_override(
+        active_policy,
+        sensitivity_labels=dlp.sensitivity_labels,
+        destination=destination,
+    ):
         return False
-    return any(label in VECTOR_BLOCKED_LABELS for label in dlp.sensitivity_labels)
+    return policy_blocks_movement(
+        active_policy,
+        sensitivity_labels=dlp.sensitivity_labels,
+        destination=destination,
+    )
 
 
 async def evaluate_content_movement(
@@ -64,6 +84,13 @@ async def evaluate_content_movement(
     dlp = scan_content(content, region=region)
     movement = {"from": movement_from, "to": destination, "operation": operation}
 
+    movement_policy = DEFAULT_DATA_MOVEMENT_POLICY
+    movement_policy_customized = False
+    if db and tenant_uuid:
+        tenant_policy = await get_tenant_data_movement_policy(db, tenant_uuid)
+        movement_policy = tenant_policy["policy"]
+        movement_policy_customized = tenant_policy["is_customized"]
+
     exemption_valid = False
     exemption_context: ExemptionContext | None = None
     exemption_error: str | None = None
@@ -74,13 +101,14 @@ async def evaluate_content_movement(
             exemption_id=exemption_id,
             destination=destination,
             sensitivity_labels=dlp.sensitivity_labels,
+            movement_policy=movement_policy,
         )
         exemption_valid = exemption_validation.valid
         exemption_context = exemption_validation.context
         if not exemption_valid:
             exemption_error = exemption_validation.error
 
-    if _local_vector_block(dlp, destination, exemption_valid=exemption_valid):
+    if _local_vector_block(dlp, destination, exemption_valid=exemption_valid, policy=movement_policy):
         return DataMovementResult(
             allowed=False,
             dlp=dlp,
@@ -111,6 +139,7 @@ async def evaluate_content_movement(
         role=role,
         auth_type=auth_type,
         exemption=exemption_to_opa_payload(exemption_context, valid=exemption_valid),
+        tenant_policy=policy_to_opa_payload(movement_policy, customized=movement_policy_customized),
     )
     opa = await evaluate_gateway_opa(payload)
     allowed = opa.allow

@@ -21,6 +21,8 @@ USE_MCP = "use_mcp"
 USE_STUDIO = "use_studio"
 VIEW_COMPLIANCE = "view_compliance"
 MANAGE_LLM_PROVIDERS = "manage_llm_providers"
+MANAGE_AGENTS = "manage_agents"
+VIEW_AGENTS = "view_agents"
 
 ALL_PERMISSIONS: tuple[str, ...] = (
     MANAGE_TENANTS,
@@ -33,6 +35,8 @@ ALL_PERMISSIONS: tuple[str, ...] = (
     USE_STUDIO,
     VIEW_COMPLIANCE,
     MANAGE_LLM_PROVIDERS,
+    MANAGE_AGENTS,
+    VIEW_AGENTS,
 )
 
 VALID_ROLES: tuple[str, ...] = (
@@ -56,10 +60,12 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             USE_MCP,
             USE_STUDIO,
             MANAGE_LLM_PROVIDERS,
+            MANAGE_AGENTS,
+            VIEW_AGENTS,
         }
     ),
-    "compliance_officer": frozenset({VIEW_AUDIT_LOGS, VIEW_COMPLIANCE}),
-    "auditor": frozenset({VIEW_AUDIT_LOGS, VIEW_COMPLIANCE}),
+    "compliance_officer": frozenset({VIEW_AUDIT_LOGS, VIEW_COMPLIANCE, VIEW_AGENTS}),
+    "auditor": frozenset({VIEW_AUDIT_LOGS, VIEW_COMPLIANCE, VIEW_AGENTS}),
     "developer": frozenset({USE_STUDIO, USE_MCP}),
 }
 
@@ -74,6 +80,8 @@ PERMISSION_LABELS: dict[str, str] = {
     USE_STUDIO: "Use Governance Sandbox",
     VIEW_COMPLIANCE: "View compliance",
     MANAGE_LLM_PROVIDERS: "Manage LLM providers",
+    MANAGE_AGENTS: "Manage agents & endpoints",
+    VIEW_AGENTS: "View agents & endpoints",
 }
 
 

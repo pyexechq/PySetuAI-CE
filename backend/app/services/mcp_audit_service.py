@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -11,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.governance import AuditLog
 from app.services.gateway_context import GatewayContext
 from app.core.telemetry import current_trace_id
+
+logger = logging.getLogger(__name__)
 
 
 def build_compliance_metadata(
@@ -78,4 +81,15 @@ async def log_mcp_tool_invoke(
     )
     db.add(log)
     await db.flush()
+
+    if status == "blocked":
+        try:
+            from app.services.incident_dispatch_service import dispatch_security_incident_from_audit
+
+            refreshed = await db.get(AuditLog, log.id)
+            if refreshed:
+                await dispatch_security_incident_from_audit(db, refreshed)
+        except Exception as exc:
+            logger.warning("MCP incident dispatch failed: %s", exc)
+
     return log.id

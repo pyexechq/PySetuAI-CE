@@ -1,6 +1,6 @@
 # DevOps Agent Handoff
 
-**Last Updated:** Aug 10, 2026
+**Last Updated:** Aug 15, 2026
 
 ## Work Completed
 
@@ -11,13 +11,25 @@
 - Frontend Dockerfile (Node 20-alpine, multi-stage build)
 - Environment variable configuration for database, Redis, JWT, OPA
 
+## Aug 15 updates
+
+| Change | Detail |
+|--------|--------|
+| **Vault default-on** | `VAULT_ENABLED=true` in Compose + `.env.docker`; backend `vault_enabled=True` |
+| **IaC deploy mount** | `./deploy:/deploy:ro`, `IAC_DEPLOY_ROOT=/deploy`; removed invalid `COPY deploy` from Dockerfile |
+| **Migrations** | `059_iac_evidence_tenant_config`, `060_data_movement_policy` — run `make migrate` after pull |
+| **Helm** | `values.yaml` `vaultEnabled: "true"`; air-gap/minikube profiles keep Vault off |
+| **Docs** | [vault-deployment.md](../security/vault-deployment.md), [aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md) |
+
 ## Files Modified
 
 ```
 docker-compose.yml
-deploy/helm/pysetu/
+.env.docker
 backend/Dockerfile
-frontend/Dockerfile
+backend/app/config.py
+deploy/helm/pysetu/values.yaml
+deploy/helm/pysetu/values-minikube.yaml
 ```
 
 ## Design Decisions
@@ -25,27 +37,10 @@ frontend/Dockerfile
 - PostgreSQL 16 Alpine for database
 - Redis 7 Alpine for cache/queue
 - Named volume for postgres persistence
-- Backend exposed on port 8000, frontend on 3000
+- Backend exposed on host port **8001** (default), frontend on 3000
+- Vault dev server on 8200 with root token `dev-root-token` (Compose only)
 
 ## Risks
 
-- Docker Compose not yet tested end-to-end
-- No health checks configured on services
-- No CI/CD pipeline yet
-- Frontend Dockerfile uses `npm ci` which requires package-lock.json
-
-## Dependencies
-
-- Docker Desktop on developer machines
-- Kubernetes/Helm chart available at deploy/helm/pysetu
-
-## Next Recommended Tasks
-
-1. Test `docker compose up --build`
-2. Add health check endpoints to compose services
-3. Create GitHub Actions CI pipeline (lint, build, test)
-4. Add `.env.example` files for frontend and backend
-5. ~~Begin Kubernetes Helm chart (Phase 5)~~ — Done (S4-35)
-6. ~~Air-gap offline bundle (BL-032)~~ — Done (S4-36)
-7. ~~GitHub Actions CI pipeline~~ — Done (S4-37)
-8. External SIEM audit connectors
+- Air-gap bundles intentionally disable Vault (`VAULT_ENABLED=false`)
+- Local uvicorn without Docker needs Vault on :8200 or `VAULT_ENABLED=false`

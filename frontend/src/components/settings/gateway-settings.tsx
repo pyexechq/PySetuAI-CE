@@ -291,6 +291,11 @@ export function GatewaySettingsSection() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Leave empty to allow any origin. Server-to-server calls typically do not send an Origin header.
+                  Per-key overrides are available under{" "}
+                  <Link href="/settings/api-keys" className="underline underline-offset-2">
+                    Client API keys
+                  </Link>
+                  .
                 </p>
               </div>
             </CardContent>

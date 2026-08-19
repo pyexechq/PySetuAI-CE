@@ -161,6 +161,22 @@ async def discover_mcp_tools(server: MCPServer, access_token: str | None = None)
             message="Stdio transport uses a local MCP agent; remote tool discovery skipped.",
             skipped=True,
         )
+    if transport == "rest_proxy":
+        from app.services.mcp_rest_proxy_service import discover_rest_tools
+
+        tools = discover_rest_tools(server)
+        if not tools:
+            return McpDiscoverResult(
+                ok=False,
+                tool_names=[],
+                message="No REST spec stored for this server.",
+            )
+        return McpDiscoverResult(
+            ok=True,
+            tool_names=[t["name"] for t in tools],
+            message=f"REST proxy: {len(tools)} tool(s) from spec.",
+            tool_schemas=tools,
+        )
 
     endpoint = (server.endpoint_url or "").strip()
     if not endpoint:
@@ -239,6 +255,18 @@ async def invoke_mcp_tool(
             ok=False,
             message="Stdio transport uses a local MCP agent; remote tool invocation skipped.",
             skipped=True,
+        )
+    if transport == "rest_proxy":
+        from app.services.mcp_rest_proxy_service import invoke_rest_tool
+
+        started = time.perf_counter()
+        ok, message, result = await invoke_rest_tool(server, tool_name, arguments, access_token=access_token)
+        latency_ms = max(1, int((time.perf_counter() - started) * 1000))
+        return McpToolInvokeResult(
+            ok=ok,
+            message=message,
+            result=result,
+            latency_ms=latency_ms,
         )
 
     endpoint = (server.endpoint_url or "").strip()

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     jwt_secret_key: str = "change-me-in-production-use-vault"
+    client_key_encryption_key: str | None = None
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
 
@@ -29,6 +30,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_default_model: str = "llama3.2"
     gateway_mock_mode: bool = True
+    byok_ingress_enabled: bool = True
     air_gap_mode: bool = False
 
     deployment_mode: str = "saas"
@@ -42,10 +44,10 @@ class Settings(BaseSettings):
     rate_limit_login_requests: int = 10
     rate_limit_window_seconds: int = 60
 
-    vault_enabled: bool = False
+    vault_enabled: bool = True
     vault_addr: str = "http://localhost:8200"
     vault_auth_method: str = "token"
-    vault_token: str | None = None
+    vault_token: str | None = "dev-root-token"
     vault_role_id: str | None = None
     vault_secret_id: str | None = None
     vault_mount_path: str = "secret"
@@ -84,6 +86,8 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from: str = "pysetu@localhost"
     smtp_use_tls: bool = False
+
+    iac_deploy_root: str = ""
 
     @property
     def gateway_upstream(self) -> str:

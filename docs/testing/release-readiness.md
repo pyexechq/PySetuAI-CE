@@ -23,7 +23,7 @@ PySetu AI is **not ready for production release**. Two Severity-1 security defec
 | Security defects = 0 | No S1 security findings | **FAIL** | SF-001, SF-002 open ([security-findings.md](./security-findings.md)) |
 | Regression passed | Full regression suite green | **PARTIAL** | Baseline established; 44/44 unit tests pass, build passes |
 | Performance passed | All targets met | **NOT EVALUATED** | No measurements ([performance-report.md](./performance-report.md)) |
-| Documentation updated | Docs match implementation | **FAIL** | 4 stale documents (DEF-009–012) |
+| Documentation updated | Docs match implementation | **PARTIAL** | Aug 15 batch documented — [aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md) |
 | Handoff notes updated | All agent handoffs current | **IN PROGRESS** | QA handoff created; others stale |
 | Test evidence generated | All mandatory outputs exist | **PASS** | 8 testing documents created |
 
@@ -39,7 +39,7 @@ PySetu AI is **not ready for production release**. Two Severity-1 security defec
 | MCP Governance | Partial | **No** | None | Gap | **No** |
 | Audit Explorer | Yes | Partial | Unit (SIEM export) | Stale API docs | **Partial** |
 | Studio | Partial | Partial | Unit (security scan) | Gap | **No** |
-| Compliance Center | Yes | N/A | None | Heuristic disclaimer needed | **Partial** |
+| Compliance Center | Yes | N/A | Manual (COMP-008–010) | Updated Aug 15 | **Partial** |
 | Security Center | Yes | Partial | Unit (scan, rate limit) | Stale security docs | **Partial** |
 | AI Gateway | Yes | Partial | Unit (policy engine) | Gap | **Partial** |
 | Auth / OIDC | Yes | Partial | Unit (OIDC, rate limit) | Stale security docs | **Partial** |
@@ -86,7 +86,7 @@ PySetu AI is **not ready for production release**. Two Severity-1 security defec
 - **Gateway pipeline** — policy inspect → route → audit (code complete, integration untested)
 - **Compliance snapshots** — create, list, export API complete
 - **SIEM integration** — connectors, export formats (CEF, NDJSON, Elastic), Celery async
-- **Vault/OIDC infrastructure** — code complete, configurable
+- **Vault/OIDC infrastructure** — Vault enabled by default in Docker Compose; OIDC configurable
 
 ---
 

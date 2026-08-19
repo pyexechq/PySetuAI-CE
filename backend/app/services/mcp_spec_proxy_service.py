@@ -45,11 +45,11 @@ def _tool(
     return tool
 
 
-def parse_openapi_spec(spec: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
+def parse_openapi_spec(spec: dict[str, Any], spec_url: str | None = None) -> tuple[list[dict[str, Any]], str]:
     tools: list[dict[str, Any]] = []
     paths = spec.get("paths") or {}
     if not isinstance(paths, dict):
-        return tools, _openapi_base_url(spec)
+        return tools, _openapi_base_url(spec, spec_url)
 
     for path, path_item in paths.items():
         if not isinstance(path_item, dict):
@@ -72,18 +72,37 @@ def parse_openapi_spec(spec: dict[str, Any]) -> tuple[list[dict[str, Any]], str]
                     tags=[str(tag) for tag in tags],
                 )
             )
-    return tools, _openapi_base_url(spec)
+    return tools, _openapi_base_url(spec, spec_url)
 
 
-def _openapi_base_url(spec: dict[str, Any]) -> str:
+def _openapi_base_url(spec: dict[str, Any], spec_url: str | None = None) -> str:
     servers = spec.get("servers")
     if isinstance(servers, list) and servers and isinstance(servers[0], dict):
-        return str(servers[0].get("url") or "")
+        url = str(servers[0].get("url") or "")
+        if url:
+            return _resolve_relative_url(url, spec_url)
     if spec.get("host"):
         schemes = spec.get("schemes")
         scheme = "https" if isinstance(schemes, list) and "https" in schemes else "http"
         return f"{scheme}://{spec['host']}{spec.get('basePath') or ''}"
+    if spec_url:
+        return spec_url.rstrip("/")
     return ""
+
+
+def _resolve_relative_url(url: str, spec_url: str | None) -> str:
+    """Resolve a relative server URL (e.g. '/api/v3') against the spec URL origin."""
+    if not url:
+        return ""
+    if url.startswith(("http://", "https://")):
+        return url
+    if spec_url and spec_url.startswith(("http://", "https://")):
+        from urllib.parse import urlsplit, urlunsplit
+
+        parts = urlsplit(spec_url)
+        origin = urlunsplit((parts.scheme, parts.netloc, "", "", ""))
+        return f"{origin}{url}"
+    return url
 
 
 def parse_postman_spec(collection: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
@@ -175,9 +194,9 @@ async def parse_spec(
             raise ValueError(f"Spec URL fetch failed: {exc}") from exc
         except ValueError as exc:
             raise ValueError("Spec URL did not return valid JSON") from exc
-        tools, endpoint = parse_openapi_spec(spec)
+        tools, endpoint = parse_openapi_spec(spec, spec_url)
     elif protocol == "openapi_json":
-        tools, endpoint = parse_openapi_spec(_parse_json(spec_text, "OpenAPI spec"))
+        tools, endpoint = parse_openapi_spec(_parse_json(spec_text, "OpenAPI spec"), spec_url)
     elif protocol == "postman":
         tools, endpoint = parse_postman_spec(_parse_json(spec_text, "Postman collection"))
     else:  # graphql

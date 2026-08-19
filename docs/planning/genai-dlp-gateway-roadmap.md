@@ -68,7 +68,20 @@ Immutable JSON bundles persisted to `genai_evidence_bundles`; export via API and
 
 ### Phase 6 — IaC evidence (Checkov / Terraform) — **Done (static scanner v1)**
 
-Static Helm/OPA manifest scanner with control mappings; export from Compliance Center. Full Checkov integration deferred.
+Static Helm/OPA manifest scanner with control mappings; export from Compliance Center. **Tenant config UI** (scan paths + checks) shipped Aug 15 (BL-117). Deploy root via `IAC_DEPLOY_ROOT` + `./deploy` volume in Docker Compose. Full Checkov integration deferred.
+
+### Phase 7 — Break-glass exemptions — **Done**
+
+See **Break-glass exemptions** section below.
+
+### Phase 8 — Tenant policy configuration UI — **Done (Aug 15)**
+
+| Capability | UI | API |
+|------------|-----|-----|
+| OPA data-movement rules (labels → destinations) | Compliance → GenAI DLP → **Data-movement policy** | `GET/PUT/POST /compliance/data-movement-policy` |
+| IaC scanner paths & checks | Compliance → Infrastructure evidence → **Configure** | `GET/PUT/POST /compliance/iac-evidence/config` |
+
+**Not in Policy Studio:** ingress regex rules (Block/Redact) vs vector data-movement (OPA) are separate surfaces.
 
 ## Demo data
 
@@ -118,3 +131,7 @@ Time-bound overrides for **embedding** and **llm** hops only (`POST /rag-gateway
 | BL-113 | GenAI evidence bundle export | 5 |
 | BL-114 | IaC evidence (Checkov) | 6 |
 | BL-115 | Break-glass policy exemptions | 7 |
+| BL-117 | Tenant IaC scanner config UI + API | 8 |
+| BL-118 | Tenant data-movement policy UI + API | 8 |
+
+> Aug 15 UX batch (BL-116–BL-122): [aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md)

@@ -12,11 +12,27 @@ from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.governance import PolicyBundle
 from app.models.tenant import Tenant, User
-from app.services.client_api_key_service import normalize_token_saving_mode, resolve_client_api_key
+from app.services.client_api_key_service import (
+    KEY_SOURCE_PYSETU,
+    looks_like_jwt,
+    normalize_token_saving_mode,
+    resolve_client_api_key,
+    resolve_effective_api_origins,
+)
 from app.services.gateway_context import GatewayContext
 from app.services.policy_bundle_service import get_tenant_default_bundle
 
 security = HTTPBearer(auto_error=False)
+
+
+def _enforce_origin_policy(request: Request, effective_origins: list[str] | None) -> None:
+    if not effective_origins:
+        return
+    origin = request.headers.get("origin")
+    if not origin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing Origin header")
+    if origin not in effective_origins:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Origin not allowed by policy")
 
 
 async def get_gateway_context(
@@ -29,19 +45,11 @@ async def get_gateway_context(
 
     token = credentials.credentials.strip()
 
-    if token.startswith("hg_"):
-        record = await resolve_client_api_key(db, token)
-        if record is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid client API key")
-
+    record = await resolve_client_api_key(db, token)
+    if record is not None:
         tenant_result = await db.execute(select(Tenant).where(Tenant.id == record.tenant_id))
         tenant = tenant_result.scalar_one_or_none()
-        if tenant and tenant.allowed_api_origins:
-            origin = request.headers.get("origin")
-            if not origin:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing Origin header")
-            if origin not in tenant.allowed_api_origins:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Origin not allowed by tenant policy")
+        _enforce_origin_policy(request, resolve_effective_api_origins(record, tenant))
 
         bundle_name = None
         if record.bundle_id:
@@ -49,6 +57,8 @@ async def get_gateway_context(
             bundle = bundle_result.scalar_one_or_none()
             bundle_name = bundle.name if bundle else None
         await db.commit()
+        key_source = record.key_source or KEY_SOURCE_PYSETU
+        ingress_token = token if key_source == "mirrored" and record.upstream_pass_through else None
         return GatewayContext(
             tenant_id=record.tenant_id,
             actor=f"client-key:{record.name}",
@@ -65,7 +75,13 @@ async def get_gateway_context(
             ai_token_limit_tpd=record.ai_token_limit_tpd,
             token_saving_enabled=record.token_saving_enabled,
             token_saving_mode=normalize_token_saving_mode(record.token_saving_mode),
+            key_source=key_source,
+            upstream_pass_through=bool(record.upstream_pass_through),
+            ingress_bearer_token=ingress_token,
         )
+
+    if not looks_like_jwt(token):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid client API key")
 
     try:
         payload = decode_access_token(token)

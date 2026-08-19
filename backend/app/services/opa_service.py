@@ -104,6 +104,7 @@ def build_data_movement_opa_input(
     role: str = "client_key",
     auth_type: str = "jwt",
     exemption: dict | None = None,
+    tenant_policy: dict | None = None,
 ) -> dict[str, Any]:
     payload = {
         "subject": {
@@ -140,6 +141,13 @@ def build_data_movement_opa_input(
         },
         "routing_context": {},
         "exemption": exemption or {"valid": False, "allowed_destinations": {}},
+        "tenant_policy": tenant_policy
+        or {
+            "customized": False,
+            "restricted_labels": [],
+            "vector_destinations": [],
+            "never_exempt_labels": [],
+        },
     }
     return payload
 

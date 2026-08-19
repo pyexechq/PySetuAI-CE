@@ -1,4 +1,4 @@
-"""CRUD and delivery stubs for Slack / ServiceNow alert webhooks."""
+"""CRUD and delivery for Slack / ITSM incident connectors."""
 
 from __future__ import annotations
 
@@ -17,7 +17,8 @@ from app.services.integration_service import mask_secret
 
 logger = logging.getLogger(__name__)
 
-VALID_WEBHOOK_TYPES = frozenset({"slack", "servicenow"})
+VALID_WEBHOOK_TYPES = frozenset({"slack", "servicenow", "bmc_helix", "datadog", "webhook"})
+INCIDENT_CONNECTOR_TYPES = frozenset({"servicenow", "bmc_helix", "webhook"})
 
 SAMPLE_EVENT: dict[str, Any] = {
     "title": "PySetu test alert",
@@ -47,6 +48,10 @@ GATEWAY_BLOCK_ACTIONS = frozenset(
         "gateway.egress.block",
         "gateway.rate_limit.block",
         "gateway.token_budget.block",
+        "gateway.prompt.block",
+        "mcp.tool.block",
+        "rag.movement.block",
+        "scanner.threat.detected",
     }
 )
 
@@ -67,6 +72,7 @@ def build_gateway_alert_event(
         "gateway.injection.block": "Prompt injection blocked",
         "gateway.abac.block": "Gateway request blocked by ABAC",
         "gateway.egress.block": "Gateway response blocked by egress policy",
+        "gateway.prompt.block": "Ad-hoc system prompt blocked",
         "gateway.rate_limit.block": "AI rate limit exceeded",
         "gateway.token_budget.block": "AI token budget limit exceeded",
         "gateway.latency.high": "LLM latency above threshold",
@@ -95,6 +101,8 @@ def gateway_block_action(audit_action: str, *, injection: bool = False) -> str:
         return "gateway.abac.block"
     if audit_action == "LLM Response":
         return "gateway.egress.block"
+    if audit_action == "Policy Inspection":
+        return "gateway.prompt.block"
     return "gateway.policy.block"
 
 
@@ -103,44 +111,26 @@ async def dispatch_tenant_alerts(
     tenant_id: uuid.UUID,
     event: dict[str, Any],
 ) -> list[AlertDispatchResult]:
-    """Deliver an event to all enabled tenant webhooks; never raises on delivery failure."""
-    webhooks = await list_webhooks(db, tenant_id)
-    results: list[AlertDispatchResult] = []
-    for webhook in webhooks:
-        if not webhook.enabled:
-            continue
-        try:
-            await send_alert(webhook, event)
-            webhook.alerts_sent += 1
-            webhook.last_alert_at = datetime.now(UTC)
-            webhook.last_error = ""
-            await db.commit()
-            results.append(
-                AlertDispatchResult(
-                    webhook_id=str(webhook.id),
-                    webhook_name=webhook.name,
-                    message=f"Alert sent to {webhook.webhook_type}",
-                    delivered=True,
-                )
-            )
-        except Exception as exc:
-            webhook.last_error = str(exc)
-            await db.commit()
-            logger.warning(
-                "Alert webhook delivery failed for tenant %s webhook %s: %s",
-                tenant_id,
-                webhook.id,
-                exc,
-            )
-            results.append(
-                AlertDispatchResult(
-                    webhook_id=str(webhook.id),
-                    webhook_name=webhook.name,
-                    message=str(exc),
-                    delivered=False,
-                )
-            )
-    return results
+    """Deliver an event to all enabled tenant connectors; never raises on delivery failure."""
+    from app.services.incident_dispatch_service import evaluate_and_dispatch
+    from app.services.incident_event_builder import security_incident_event_from_gateway_dict
+
+    tenant_slug = event.get("tenant")
+    incident_event = security_incident_event_from_gateway_dict(
+        tenant_id,
+        event,
+        tenant_slug=str(tenant_slug) if tenant_slug else None,
+    )
+    raw_results = await evaluate_and_dispatch(db, tenant_id, incident_event)
+    return [
+        AlertDispatchResult(
+            webhook_id=r["webhook_id"],
+            webhook_name=r["webhook_name"],
+            message=r.get("message", ""),
+            delivered=bool(r.get("delivered", False)),
+        )
+        for r in raw_results
+    ]
 
 
 def webhook_to_dict(webhook: AlertWebhook, *, include_token: bool = False) -> dict:
@@ -152,8 +142,11 @@ def webhook_to_dict(webhook: AlertWebhook, *, include_token: bool = False) -> di
         "channel": webhook.channel,
         "enabled": webhook.enabled,
         "alerts_sent": webhook.alerts_sent,
+        "tickets_created": webhook.tickets_created or 0,
         "last_alert_at": webhook.last_alert_at.isoformat() if webhook.last_alert_at else None,
         "last_error": webhook.last_error or "",
+        "config_json": webhook.config_json,
+        "dispatch_policy": webhook.dispatch_policy_json,
         "auth_token_set": bool(webhook.auth_token),
         "auth_token_masked": mask_secret(webhook.auth_token) if webhook.auth_token else None,
         **({"auth_token": webhook.auth_token} if include_token else {}),
@@ -185,7 +178,8 @@ def build_slack_payload(event: dict[str, Any], *, channel: str | None = None) ->
     return payload
 
 
-def build_servicenow_payload(event: dict[str, Any]) -> dict[str, Any]:
+def build_servicenow_payload(event: dict[str, Any], config: dict[str, Any] | None = None) -> dict[str, Any]:
+    config = config or {}
     risk = str(event.get("risk", "medium")).lower()
     urgency = {"low": "3", "medium": "2", "high": "1", "critical": "1"}.get(risk, "2")
     short = f"PySetu: {event.get('action', 'security event')} — {event.get('resource', 'n/a')}"
@@ -200,15 +194,20 @@ def build_servicenow_payload(event: dict[str, Any]) -> dict[str, Any]:
             event.get("details", ""),
         ]
     )
-    return {
+    payload = {
         "short_description": short[:160],
         "description": description[:4000],
         "urgency": urgency,
         "impact": urgency,
-        "category": "Security",
-        "subcategory": "AI Governance",
-        "assignment_group": "Security Operations",
+        "category": config.get("category", "Security"),
+        "subcategory": config.get("subcategory", "AI Governance"),
+        "assignment_group": config.get("assignment_group", "Security Operations"),
     }
+    if config.get("caller_id"):
+        payload["caller_id"] = config["caller_id"]
+    if event.get("trace_id"):
+        payload["correlation_id"] = event["trace_id"]
+    return payload
 
 
 def build_payload(webhook: AlertWebhook, event: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
@@ -219,8 +218,8 @@ def build_payload(webhook: AlertWebhook, event: dict[str, Any]) -> tuple[dict[st
         token = webhook.auth_token or ""
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        return build_servicenow_payload(event), headers
-    raise ValueError(f"Unsupported webhook_type: {webhook.webhook_type}")
+        return build_servicenow_payload(event, webhook.config_json), headers
+    raise ValueError(f"Unsupported webhook_type for legacy payload: {webhook.webhook_type}")
 
 
 async def list_webhooks(db: AsyncSession, tenant_id: uuid.UUID) -> list[AlertWebhook]:
@@ -253,6 +252,8 @@ async def create_webhook(db: AsyncSession, tenant_id: uuid.UUID, data: dict) -> 
         auth_token=(str(data["auth_token"]).strip() or None) if data.get("auth_token") else None,
         channel=(str(data["channel"]).strip() or None) if data.get("channel") else None,
         enabled=bool(data.get("enabled", True)),
+        config_json=data.get("config_json"),
+        dispatch_policy_json=data.get("dispatch_policy"),
     )
     db.add(webhook)
     await db.commit()
@@ -277,6 +278,10 @@ async def update_webhook(db: AsyncSession, webhook: AlertWebhook, data: dict) ->
     if "auth_token" in data and data["auth_token"] is not None:
         token = str(data["auth_token"]).strip()
         webhook.auth_token = token or None
+    if "config_json" in data:
+        webhook.config_json = data["config_json"]
+    if "dispatch_policy" in data:
+        webhook.dispatch_policy_json = data["dispatch_policy"]
     await db.commit()
     await db.refresh(webhook)
     return webhook
@@ -305,6 +310,26 @@ async def send_test_alert(
 
     sample = {**SAMPLE_EVENT, **(event or {})}
     try:
+        if webhook.webhook_type in INCIDENT_CONNECTOR_TYPES:
+            from app.services.incident_dispatch_service import evaluate_and_dispatch
+            from app.services.incident_event_builder import security_incident_event_from_gateway_dict
+
+            incident_event = security_incident_event_from_gateway_dict(
+                webhook.tenant_id,
+                sample,
+                tenant_slug=sample.get("tenant"),
+            )
+            results = await evaluate_and_dispatch(db, webhook.tenant_id, incident_event)
+            if results and results[0].get("delivered"):
+                return AlertDispatchResult(
+                    webhook_id=str(webhook.id),
+                    webhook_name=webhook.name,
+                    message=results[0].get("message", "Test incident dispatched"),
+                )
+            if results:
+                raise ValueError(results[0].get("message", "Test dispatch failed"))
+            raise ValueError("No incident connectors matched test event policy")
+
         await send_alert(webhook, sample)
         webhook.alerts_sent += 1
         webhook.last_alert_at = datetime.now(UTC)
@@ -316,6 +341,10 @@ async def send_test_alert(
             message=f"Test alert sent to {webhook.webhook_type}",
         )
     except httpx.HTTPError as exc:
+        webhook.last_error = str(exc)
+        await db.commit()
+        raise
+    except Exception as exc:
         webhook.last_error = str(exc)
         await db.commit()
         raise

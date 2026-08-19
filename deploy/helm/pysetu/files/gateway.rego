@@ -91,6 +91,40 @@ never_exempt_labels = {
 	"RESTRICTED_PCI": true,
 }
 
+tenant_policy_active {
+	input.tenant_policy.customized == true
+}
+
+effective_restricted[label] {
+	tenant_policy_active
+	input.tenant_policy.restricted_labels[_] == label
+}
+
+effective_restricted[label] {
+	not tenant_policy_active
+	restricted_data_movement[label]
+}
+
+effective_vector_destinations[dest] {
+	tenant_policy_active
+	input.tenant_policy.vector_destinations[_] == dest
+}
+
+effective_vector_destinations[dest] {
+	not tenant_policy_active
+	vector_destinations[dest]
+}
+
+effective_never_exempt[label] {
+	tenant_policy_active
+	input.tenant_policy.never_exempt_labels[_] == label
+}
+
+effective_never_exempt[label] {
+	not tenant_policy_active
+	never_exempt_labels[label]
+}
+
 exemption_covers_movement {
 	input.exemption.valid == true
 	input.exemption.allowed_destinations[input.movement.to]
@@ -99,7 +133,7 @@ exemption_covers_movement {
 
 blocked_exempt_labels[label] {
 	label := input.data.sensitivity_labels[_]
-	never_exempt_labels[label]
+	effective_never_exempt[label]
 }
 
 blocked_exempt_labels[label] {
@@ -115,9 +149,9 @@ vector_store_destinations = {
 
 violations[v] {
 	input.movement.to == dest
-	vector_destinations[dest]
+	effective_vector_destinations[dest]
 	label := input.data.sensitivity_labels[_]
-	restricted_data_movement[label]
+	effective_restricted[label]
 	not exemption_covers_movement
 	v := {
 		"rule": "ABAC Data Movement Restriction",

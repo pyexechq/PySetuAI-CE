@@ -1,0 +1,17 @@
+[Unit]
+Description=PySetu Endpoint Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/path/to/PySetuAI/endpoint-agent
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/path/to/PySetuAI/endpoint-agent
+Environment=PYSETU_HOSTNAME=%H
+ExecStart=/usr/bin/env python3 -m pysetu_agent --config /path/to/PySetuAI/endpoint-agent/deploy/agent-config.json
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -66,6 +66,7 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_DEFAULT_MODEL: ${OLLAMA_DEFAULT_MODEL:-llama3.2}
       GATEWAY_MOCK_MODE: "false"
+      # Air-gap bundle has no Vault service — use DB secret fallback
       VAULT_ENABLED: "false"
       OPA_ENABLED: "true"
       OPA_BASE_URL: http://opa:8181

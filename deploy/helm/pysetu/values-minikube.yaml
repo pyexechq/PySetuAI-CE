@@ -27,6 +27,8 @@ config:
   frontendUrl: http://pysetu.local
   opaFailOpen: "true"
   gatewayMockMode: "true"
+  vaultEnabled: "false"
+  vaultAddr: ""
 
 secrets:
   jwtSecretKey: minikube-dev-secret

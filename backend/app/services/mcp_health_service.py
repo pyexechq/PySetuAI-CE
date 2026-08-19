@@ -33,6 +33,16 @@ async def probe_mcp_server(server: MCPServer, access_token: str | None = None) -
             message="Stdio transport uses a local MCP agent; remote endpoint probe skipped.",
             skipped=True,
         )
+    if transport == "rest_proxy":
+        from app.services.mcp_rest_proxy_service import probe_rest_server
+
+        ok, message, latency_ms = probe_rest_server(server)
+        return McpHealthResult(
+            ok=ok,
+            status="healthy" if ok else "offline",
+            latency_ms=latency_ms,
+            message=message,
+        )
 
     endpoint = (server.endpoint_url or "").strip()
     if not endpoint:

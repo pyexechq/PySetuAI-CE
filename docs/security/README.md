@@ -7,7 +7,8 @@ See also: [Security Architecture](../architecture/security-architecture.md)
 | Guide | Purpose |
 |-------|---------|
 | [JWT secret rotation](./jwt-secret-rotation.md) | Bootstrap and rotate signing keys (S6-06) |
-| [Vault deployment](./vault-deployment.md) | AppRole, tenant secrets, JWT in Vault |
+| [Vault deployment](./vault-deployment.md) | Enabled by default in Compose; AppRole for production |
+| [Compliance UX update](../progress/aug-15-compliance-ux-update.md) | IaC + data-movement config UI, Reports, Help (Aug 15) |
 | [`.env.production.example`](../../.env.production.example) | Production environment variable template |
 
 ## Authentication Flow
@@ -33,14 +34,15 @@ See also: [Security Architecture](../architecture/security-architecture.md)
 
 ## Secret Management
 
-- Development: `.env` / Docker Compose dev defaults (`DEBUG=true`)
-- Production: Vault for tenant keys + optional platform JWT (`DEBUG=false`)
+- **Docker Compose / default backend config:** Vault enabled (`VAULT_ENABLED=true`, dev token `dev-root-token`)
+- **Bare-metal local API:** start Vault on port 8200 or set `VAULT_ENABLED=false` for DB fallback
+- **Production:** external Vault HA cluster with AppRole; platform JWT optional via Vault path (`DEBUG=false`)
 - Never commit secrets to version control
 
 ## Security Checklist (Pre-Production)
 
 - [ ] Rotate JWT secret — [jwt-secret-rotation.md](./jwt-secret-rotation.md)
-- [ ] Enable Vault (`VAULT_ENABLED=true`) for tenant API keys
+- [ ] Verify Vault connectivity and AppRole (not dev root token) — [vault-deployment.md](./vault-deployment.md)
 - [ ] Set `DEBUG=false` in production
 - [ ] Enable TLS/HTTPS (`APP_BASE_SCHEME=https`)
 - [ ] Rate limiting enabled (`RATE_LIMIT_ENABLED=true`)

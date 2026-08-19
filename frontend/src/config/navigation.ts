@@ -13,6 +13,9 @@ import {
   FlaskConical,
   ClipboardCheck,
   Radar,
+  Bot,
+  Monitor,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -54,10 +57,18 @@ export const mainNavGroups: NavGroup[] = [
     ],
   },
   {
+    label: "Agents & endpoints",
+    items: [
+      { title: "Agent Inventory", href: "/agents", icon: Bot },
+      { title: "Endpoint Security", href: "/endpoints", icon: Monitor },
+    ],
+  },
+  {
     label: "Risk & compliance",
     items: [
       { title: "Compliance", href: "/compliance", icon: FileCheck },
       { title: "Data Protection", href: "/data-protection", icon: Lock },
+      { title: "Approval Center", href: "/approvals", icon: ShieldCheck },
       { title: "Reports", href: "/reports", icon: BarChart3 },
     ],
   },

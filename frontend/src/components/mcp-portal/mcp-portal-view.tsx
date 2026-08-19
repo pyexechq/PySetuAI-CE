@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Copy, Loader2, Plug, Unplug } from "lucide-react";
+import { AlertTriangle, Check, Copy, Loader2, Plug, Unplug } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,16 +26,21 @@ const connectionVariant = {
 
 export function McpPortalView() {
   const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
   const [error, setError] = useState<string | null>(null);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+  const [enabling, setEnabling] = useState(false);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, error: queryError, refetch } = useQuery({
     queryKey: ["mcp-portal", token],
     queryFn: () => api.getMcpPortal(token!),
     enabled: Boolean(token),
   });
+
+  const canManagePortal =
+    user?.role === "tenant_admin" || user?.role === "security_admin" || user?.role === "platform_admin";
 
   async function connect(entry: ApiMcpPortalEntry) {
     if (!token) return;
@@ -66,6 +71,20 @@ export function McpPortalView() {
     }
   }
 
+  async function enablePortal() {
+    if (!token) return;
+    setEnabling(true);
+    setError(null);
+    try {
+      await api.updateMcpPortalSettings(token, true);
+      await refetch();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to enable portal");
+    } finally {
+      setEnabling(false);
+    }
+  }
+
   async function copyMultiplex() {
     if (!data?.multiplex_url) return;
     await navigator.clipboard.writeText(data.multiplex_url);
@@ -85,13 +104,32 @@ export function McpPortalView() {
   }
 
   if (!data?.enabled) {
+    const failed = !!queryError;
     return (
       <Card className="border-border/60 bg-card/50">
         <CardHeader>
-          <CardTitle>MCP portal unavailable</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            {failed && <AlertTriangle className="h-4 w-4 text-destructive" />}
+            MCP portal unavailable
+          </CardTitle>
           <CardDescription>
-            Your administrator has disabled the self-service MCP portal for this tenant.
+            {failed
+              ? queryError instanceof ApiError
+                ? queryError.message
+                : "Could not load portal settings."
+              : "Your administrator has disabled the self-service MCP portal for this tenant."}
           </CardDescription>
+          {!failed && canManagePortal && (
+            <Button
+              size="sm"
+              className="mt-4 w-fit gap-2"
+              onClick={enablePortal}
+              disabled={enabling}
+            >
+              {enabling && <Loader2 className="h-4 w-4 animate-spin" />}
+              Enable MCP portal
+            </Button>
+          )}
         </CardHeader>
       </Card>
     );

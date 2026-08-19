@@ -9,8 +9,10 @@ import { PromptTemplateModal } from "./prompt-template-modal";
 import { PromptVersionModal } from "./prompt-version-modal";
 import type { PromptTemplate } from "@/lib/types/domain";
 import { formatDateTime } from "@/lib/date-utils";
+import { usePreferencesStore } from "@/stores/preferences-store";
 
 export function PromptTemplateList() {
+  const timezone = usePreferencesStore((s) => s.timezone);
   const { data: templates, isLoading } = usePromptTemplates();
   const [editingTemplate, setEditingTemplate] = useState<PromptTemplate | null>(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
@@ -21,10 +23,11 @@ export function PromptTemplateList() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-help-id="prompt-template-list">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">System Prompt Templates</h3>
         <Button
+          data-help-id="prompt-create-button"
           onClick={() => {
             setEditingTemplate(null);
             setIsTemplateModalOpen(true);
@@ -87,7 +90,7 @@ export function PromptTemplateList() {
                     v{t.current_version?.version || 1}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {formatDateTime(t.updated_at, "browser")}
+                    {formatDateTime(t.updated_at, timezone)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">

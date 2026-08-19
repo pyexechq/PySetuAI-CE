@@ -2,6 +2,7 @@
 
 import { cn, formatNumber, formatCurrency } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DASHBOARD_METRIC_TOOLTIP, type DashboardMetricKey, type MetricInsightClickHandler } from "@/lib/dashboard-metric-insights";
 import { type LucideIcon, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
@@ -12,6 +13,7 @@ interface MetricCardProps {
   change: number;
   icon: LucideIcon;
   iconColor?: string;
+  valueColor?: string;
   format?: "number" | "currency" | "percent" | "raw";
   periodLabel?: string;
   invertTrend?: boolean;
@@ -19,6 +21,10 @@ interface MetricCardProps {
   onInsightClick?: MetricInsightClickHandler;
   variant?: "default" | "hero" | "compact";
   showTrend?: boolean;
+  status?: {
+    text: string;
+    variant: "default" | "secondary" | "destructive" | "success" | "warning" | "outline";
+  };
 }
 
 function formatMetricValue(value: string | number, format: MetricCardProps["format"]) {
@@ -123,6 +129,7 @@ export function MetricCard({
   change,
   icon: Icon,
   iconColor = "text-primary",
+  valueColor,
   format = "number",
   periodLabel = "vs prior 30 days",
   invertTrend = false,
@@ -130,6 +137,7 @@ export function MetricCard({
   onInsightClick,
   variant = "default",
   showTrend = true,
+  status,
 }: MetricCardProps) {
   const formattedValue = formatMetricValue(value, format);
   const showInsight = Boolean(insightKey && onInsightClick);
@@ -176,12 +184,27 @@ export function MetricCard({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1 pr-6">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
-              <p className="text-3xl font-bold tracking-tight tabular-nums">{formattedValue}</p>
+              {status && <Badge variant={status.variant}>{status.text}</Badge>}
+              <p
+                className={cn(
+                  "text-3xl font-bold tracking-tight tabular-nums",
+                  valueColor
+                    ? cn("bg-clip-text text-transparent", valueColor)
+                    : "bg-gradient-to-r from-indigo-500 to-violet-600 bg-clip-text text-transparent"
+                )}
+              >
+                {formattedValue}
+              </p>
               {showTrend && (
                 <TrendBadge change={change} invertTrend={invertTrend} periodLabel={periodLabel} />
               )}
             </div>
-            <div className={cn("shrink-0 rounded-xl bg-muted/40 p-3", iconColor)}>
+            <div
+              className={cn(
+                "shrink-0 rounded-xl bg-gradient-to-br from-muted/40 to-muted p-3",
+                iconColor
+              )}
+            >
               <Icon className="h-5 w-5" />
             </div>
           </div>
@@ -201,12 +224,23 @@ export function MetricCard({
         <div className="flex items-start justify-between">
           <div className="space-y-2 pr-8">
             <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold tracking-tight">{formattedValue}</p>
+            <p
+              className={cn(
+                "text-2xl font-bold tracking-tight",
+                valueColor
+                  ? cn("bg-clip-text text-transparent", valueColor)
+                  : "bg-gradient-to-r from-indigo-500 to-violet-600 bg-clip-text text-transparent"
+              )}
+            >
+              {formattedValue}
+            </p>
             {showTrend && (
               <TrendBadge change={change} invertTrend={invertTrend} periodLabel={periodLabel} />
             )}
           </div>
-          <div className={cn("rounded-lg bg-muted/50 p-2.5", iconColor)}>
+          <div
+            className={cn("rounded-lg bg-gradient-to-br from-muted/50 to-muted p-2.5", iconColor)}
+          >
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -215,7 +249,7 @@ export function MetricCard({
   );
 }
 
-export interface MetricStripItem extends Omit<MetricCardProps, "variant"> {}
+export type MetricStripItem = Omit<MetricCardProps, "variant">;
 
 export function MetricStrip({
   items,

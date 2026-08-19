@@ -5,12 +5,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api.v1.access import router as access_router
+from app.api.v1.agentic import router as agentic_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.compliance import router as compliance_router
 from app.api.v1.custom_intents import router as custom_intents_router
 from app.api.v1.data_protection import router as data_protection_router
+from app.api.v1.extension import router as extension_router
 from app.api.v1.gateway import admin_router as gateway_admin_router
 from app.api.v1.gateway import openai_router as gateway_openai_router
+from app.api.v1.help import router as help_router
 from app.api.v1.governance import router as governance_router
 from app.api.v1.integrations import router as integrations_router
 from app.api.v1.notifications import router as notifications_router
@@ -36,6 +39,7 @@ from app.core.telemetry import setup_telemetry
 from app.db.seed import seed_demo_data, seed_platform_admin
 from app.db.seed_genai_dlp import seed_genai_dlp_demo_events
 from app.db.seed_governance import seed_access_data, seed_governance_data, seed_uag_data
+from app.db.seed_prompt_templates import seed_prompt_templates_data
 from app.services.vault_service import assert_production_security, load_jwt_secret_from_vault
 from app.services.health_service import build_dependency_status
 from app.services.http_client_pool import close_http_client
@@ -58,6 +62,9 @@ async def lifespan(app: FastAPI):
             seeded = await seed_genai_dlp_demo_events()
             if seeded:
                 print(f"GenAI DLP seed: demo events added for {seeded} tenant(s).")
+            prompt_seeded = await seed_prompt_templates_data()
+            if prompt_seeded:
+                print(f"Prompt template seed: demo templates added for {prompt_seeded} tenant(s).")
         except Exception as exc:
             print(f"Seed skipped (database may be unavailable): {exc}")
     yield
@@ -85,6 +92,7 @@ app.include_router(platform_router, prefix=settings.api_prefix)
 app.include_router(governance_router, prefix=settings.api_prefix)
 app.include_router(audit_router, prefix=settings.api_prefix)
 app.include_router(access_router, prefix=settings.api_prefix)
+app.include_router(agentic_router, prefix=settings.api_prefix)
 app.include_router(observability_router, prefix=settings.api_prefix)
 app.include_router(settings_router, prefix=settings.api_prefix)
 app.include_router(telemetry_router, prefix=settings.api_prefix)
@@ -97,11 +105,13 @@ app.include_router(compliance_router, prefix=settings.api_prefix)
 app.include_router(qa_router, prefix=settings.api_prefix)
 app.include_router(security_router, prefix=settings.api_prefix)
 app.include_router(data_protection_router, prefix=settings.api_prefix)
+app.include_router(extension_router, prefix=settings.api_prefix)
 app.include_router(rag_gateway_router, prefix=settings.api_prefix)
 app.include_router(notifications_router, prefix=settings.api_prefix)
 app.include_router(mcp_security_router, prefix=settings.api_prefix)
 app.include_router(routing_groups_router, prefix=settings.api_prefix)
 app.include_router(prompt_templates_router, prefix=settings.api_prefix)
+app.include_router(help_router, prefix=settings.api_prefix)
 app.include_router(custom_intents_router, prefix=settings.api_prefix)
 app.include_router(gateway_admin_router, prefix=settings.api_prefix)
 app.include_router(gateway_openai_router)

@@ -78,6 +78,7 @@ const EMPTY_GATEWAY_STATUS = {
   blocked_today: 0,
   endpoints: ["/v1/chat/completions", "/v1/models"],
   proxy_mode: "none",
+  opa_available: false,
 };
 
 const PIPELINE_STEPS = [
@@ -99,6 +100,80 @@ function upstreamLabel(status: {
   if (status.proxy_mode === "ollama") parts.push("Ollama");
   else if (status.proxy_mode && status.proxy_mode !== "none") parts.push(status.proxy_mode);
   return parts.length > 0 ? parts.join(" · ") : "Not configured";
+}
+
+type BadgeVariant = "default" | "secondary" | "destructive" | "success" | "warning" | "outline";
+interface StatusMeta {
+  text: string;
+  variant: BadgeVariant;
+}
+
+function gatewayStatusGradient(status: string, opaAvailable: boolean): string {
+  const normalized = (status || "unknown").toLowerCase();
+  if (normalized === "operational" || normalized === "healthy") {
+    return opaAvailable
+      ? "bg-gradient-to-r from-emerald-500 to-emerald-700"
+      : "bg-gradient-to-r from-amber-500 to-amber-700";
+  }
+  if (normalized === "degraded" || normalized === "warning") {
+    return "bg-gradient-to-r from-amber-500 to-amber-700";
+  }
+  if (normalized === "offline" || normalized === "error" || normalized === "unavailable") {
+    return "bg-gradient-to-r from-red-500 to-red-700";
+  }
+  return "bg-gradient-to-r from-slate-500 to-slate-700";
+}
+
+function gatewayStatusMeta(status: string, opaAvailable: boolean): StatusMeta {
+  const normalized = (status || "unknown").toLowerCase();
+  if (normalized === "operational" || normalized === "healthy") {
+    return { text: opaAvailable ? "Online" : "No policy engine", variant: opaAvailable ? "success" : "warning" };
+  }
+  if (normalized === "degraded" || normalized === "warning") {
+    return { text: "Degraded", variant: "warning" };
+  }
+  if (normalized === "offline" || normalized === "error" || normalized === "unavailable") {
+    return { text: "Offline", variant: "destructive" };
+  }
+  return { text: "Unknown", variant: "secondary" };
+}
+
+function upstreamStatusMeta(status: {
+  openai_compatible: boolean;
+  gemini_compatible: boolean;
+  proxy_mode?: string;
+}): StatusMeta {
+  const hasAny = status.openai_compatible || status.gemini_compatible || status.proxy_mode === "ollama";
+  if (!hasAny) return { text: "Not configured", variant: "secondary" };
+  if (status.proxy_mode === "ollama") return { text: "Ollama proxy", variant: "warning" };
+  return { text: "Connected", variant: "success" };
+}
+
+function upstreamGradient(status: {
+  openai_compatible: boolean;
+  gemini_compatible: boolean;
+  proxy_mode?: string;
+}): string {
+  const hasAny = status.openai_compatible || status.gemini_compatible || status.proxy_mode === "ollama";
+  if (!hasAny) return "bg-gradient-to-r from-slate-500 to-slate-700";
+  if (status.proxy_mode === "ollama") return "bg-gradient-to-r from-amber-500 to-amber-700";
+  return "bg-gradient-to-r from-blue-500 to-blue-700";
+}
+
+function proxyModeStatusMeta(proxyMode?: string): StatusMeta {
+  const mode = (proxyMode || "none").toLowerCase();
+  if (mode === "none" || mode === "direct" || mode === "mock") {
+    return { text: "Direct", variant: "secondary" };
+  }
+  return { text: "Proxy", variant: "success" };
+}
+
+function proxyModeGradient(proxyMode?: string): string {
+  const mode = (proxyMode || "none").toLowerCase();
+  if (mode === "none" || mode === "direct" || mode === "mock") {
+    return "bg-gradient-to-r from-slate-500 to-slate-700";
+  }
+  return "bg-gradient-to-r from-violet-500 to-violet-700";
 }
 
 export function AiGatewayView() {
@@ -150,11 +225,13 @@ export function AiGatewayView() {
           variant="hero"
           showTrend={false}
           title="Gateway status"
-          value={isLoading ? "…" : status.status.charAt(0).toUpperCase() + status.status.slice(1)}
+          value={isLoading ? "..." : status.status.charAt(0).toUpperCase() + status.status.slice(1)}
           change={0}
           icon={Shield}
-          iconColor="text-emerald-400"
+          iconColor={status.opa_available ? "text-emerald-400" : "text-amber-400"}
           format="raw"
+          status={gatewayStatusMeta(status.status, status.opa_available ?? false)}
+          valueColor={gatewayStatusGradient(status.status, status.opa_available ?? false)}
         />
         <MetricCard
           variant="hero"
@@ -163,8 +240,12 @@ export function AiGatewayView() {
           value={upstreamLabel(status)}
           change={0}
           icon={Cloud}
-          iconColor="text-blue-400"
+          iconColor={
+            status.openai_compatible || status.gemini_compatible ? "text-blue-400" : "text-slate-400"
+          }
           format="raw"
+          status={upstreamStatusMeta(status)}
+          valueColor={upstreamGradient(status)}
         />
         <MetricCard
           variant="hero"
@@ -174,6 +255,8 @@ export function AiGatewayView() {
           change={0}
           icon={ArrowRightLeft}
           iconColor="text-violet-400"
+          status={{ text: "Available", variant: "success" }}
+          valueColor="bg-gradient-to-r from-violet-500 to-violet-700"
         />
         <MetricCard
           variant="hero"
@@ -182,8 +265,10 @@ export function AiGatewayView() {
           value={!status.proxy_mode || status.proxy_mode === "none" ? "Direct" : status.proxy_mode}
           change={0}
           icon={Route}
-          iconColor="text-amber-400"
+          iconColor={status.proxy_mode && status.proxy_mode !== "none" ? "text-amber-400" : "text-slate-400"}
           format="raw"
+          status={proxyModeStatusMeta(status.proxy_mode)}
+          valueColor={proxyModeGradient(status.proxy_mode)}
         />
       </section>
 

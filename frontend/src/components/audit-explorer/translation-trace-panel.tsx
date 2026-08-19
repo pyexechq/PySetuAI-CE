@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import type { AuditLogEntry } from "@/lib/types/domain";
 import { parseUagTraceFromDetails } from "@/lib/uag-trace";
 import { resolveAuditRoutingRule } from "@/lib/audit-routing";
+import { formatDateTime } from "@/lib/date-utils";
+import { usePreferencesStore } from "@/stores/preferences-store";
 
 interface TranslationTracePanelProps {
   entry: AuditLogEntry | null;
@@ -102,6 +104,7 @@ function TraceStepCard({ step, isGovernance }: { step: TraceStepConfig; isGovern
 }
 
 export function TranslationTracePanel({ entry }: TranslationTracePanelProps) {
+  const timezone = usePreferencesStore((s) => s.timezone);
   if (!entry) {
     return (
       <Card className="border-border/60 bg-gradient-to-br from-violet-500/5 via-card/50 to-sky-500/5">
@@ -195,7 +198,7 @@ export function TranslationTracePanel({ entry }: TranslationTracePanelProps) {
         </CardTitle>
         <CardDescription className="text-xs leading-relaxed">
           <span className="font-medium text-foreground/80">{entry.actor}</span>
-          <span className="text-muted-foreground"> · {entry.timestamp}</span>
+          <span className="text-muted-foreground"> · {formatDateTime(entry.timestamp, timezone)}</span>
           <span className="mt-1 block text-muted-foreground">{summary}</span>
         </CardDescription>
       </CardHeader>

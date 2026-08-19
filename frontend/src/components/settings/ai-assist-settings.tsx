@@ -13,6 +13,7 @@ const FEATURE_LIST = [
   "Policy Studio AI Helper",
   "Compliance Center AI assist",
   "Dashboard metric insights",
+  "Context-aware help chat",
 ];
 
 const DEFAULT_MODELS: Record<ApiAiAssistSettings["provider"], string> = {

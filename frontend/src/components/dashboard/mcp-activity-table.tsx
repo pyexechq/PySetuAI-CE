@@ -13,7 +13,8 @@ export function McpActivityTable({ data }: { data: ApiDashboardOverview["mcp_act
         {data.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No MCP servers registered</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+<table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="pb-3 font-medium">Server</th>
@@ -37,6 +38,7 @@ export function McpActivityTable({ data }: { data: ApiDashboardOverview["mcp_act
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </CardContent>
     </Card>

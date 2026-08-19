@@ -54,7 +54,7 @@ export function DateRangePicker() {
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative" data-help-id="header-date-range">
       <Button
         type="button"
         variant="outline"

@@ -14,3 +14,7 @@ Thumbs.db
 ._*
 backend/.pytest_deps/
 backend/pysetu.db
+
+# Endpoint agent local config (contains real API keys) — commit only the .example template
+endpoint-agent/deploy/agent-config.json
+endpoint-agent/deploy/agent-config.json.save

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -21,6 +23,7 @@ class PolicyBundleResponse(BaseModel):
     custom_intent_ids: list[str] = []
     policy_names: list[str] = []
     mcp_scope: McpScopeConfig | None = None
+    target_domains: list[str] = []
     created_at: str
 
 
@@ -32,6 +35,7 @@ class PolicyBundleCreateRequest(BaseModel):
     policy_ids: list[str] = []
     custom_intent_ids: list[str] = []
     mcp_scope: McpScopeConfig | None = None
+    target_domains: list[str] = []
 
 
 class PolicyBundleUpdateRequest(BaseModel):
@@ -42,6 +46,7 @@ class PolicyBundleUpdateRequest(BaseModel):
     policy_ids: list[str] | None = None
     custom_intent_ids: list[str] | None = None
     mcp_scope: McpScopeConfig | None = None
+    target_domains: list[str] | None = None
 
 
 class ClientApiKeyResponse(BaseModel):
@@ -61,6 +66,11 @@ class ClientApiKeyResponse(BaseModel):
     ai_token_limit_tpd: int | None = None
     token_saving_enabled: bool | None = None
     token_saving_mode: str | None = None
+    allowed_api_origins: list[str] | None = None
+    allowed_api_origins_mode: Literal["inherit", "allow_all", "restrict"] = "inherit"
+    key_source: Literal["pysetu", "mirrored"] = "pysetu"
+    upstream_pass_through: bool = False
+    revealable: bool = False
     is_active: bool
     last_used_at: str | None = None
     created_at: str | None = None
@@ -79,10 +89,35 @@ class ClientApiKeyCreateRequest(BaseModel):
     ai_token_limit_tpd: int | None = None
     token_saving_enabled: bool | None = None
     token_saving_mode: str | None = None
+    allowed_api_origins: list[str] | None = None
 
 
 class ClientApiKeyCreateResponse(ClientApiKeyResponse):
     api_key: str
+
+
+class ClientApiKeyRevealResponse(BaseModel):
+    id: str
+    name: str
+    api_key: str
+
+
+class ClientApiKeyMirroredCreateRequest(BaseModel):
+    name: str
+    description: str = ""
+    mirrored_api_key: str
+    bundle_id: str | None = None
+    client_response_protocol: str | None = None
+    upstream_pass_through: bool = True
+    ai_rate_limit_rpm: int | None = None
+    ai_rate_limit_rph: int | None = None
+    ai_rate_limit_rpd: int | None = None
+    ai_token_limit_tpm: int | None = None
+    ai_token_limit_tph: int | None = None
+    ai_token_limit_tpd: int | None = None
+    token_saving_enabled: bool | None = None
+    token_saving_mode: str | None = None
+    allowed_api_origins: list[str] | None = None
 
 
 class ClientApiKeyUpdateRequest(BaseModel):
@@ -98,4 +133,6 @@ class ClientApiKeyUpdateRequest(BaseModel):
     ai_token_limit_tpd: int | None = None
     token_saving_enabled: bool | None = None
     token_saving_mode: str | None = None
+    allowed_api_origins: list[str] | None = None
+    upstream_pass_through: bool | None = None
     is_active: bool | None = None

@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "PySetu AI Browser Protection",
+  "version": "0.1.0",
+  "description": "Blocks sensitive or restricted prompts before they reach configured AI websites.",
+  "permissions": ["storage"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "host_permissions": ["http://localhost:8001/*"],
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "PySetu AI Browser Protection",
+    "default_popup": "src/options/options.html"
+  },
+  "options_page": "src/options/options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*",
+        "https://claude.ai/*"
+      ],
+      "js": ["src/content/content-script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

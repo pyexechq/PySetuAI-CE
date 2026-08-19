@@ -1,3 +1,4 @@
+from app.models.agentic import AgentCapability, AgentInventory, ApprovalRequest, Endpoint, SecurityEvent
 from app.models.governance import (
     AlertWebhook,
     AuditLog,
@@ -50,4 +51,9 @@ __all__ = [
     "UagModelMapping",
     "UagTranslationPolicy",
     "UagTranslationEvent",
+    "Endpoint",
+    "AgentInventory",
+    "AgentCapability",
+    "SecurityEvent",
+    "ApprovalRequest",
 ]

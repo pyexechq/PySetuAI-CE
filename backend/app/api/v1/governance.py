@@ -205,7 +205,7 @@ _require_llm_admin = require_permission(MANAGE_LLM_PROVIDERS)
 _require_audit = require_permission(VIEW_AUDIT_LOGS)
 
 ALLOWED_MCP_STATUSES = {"healthy", "degraded", "offline"}
-ALLOWED_MCP_TRANSPORTS = {"sse", "stdio", "streamable_http"}
+ALLOWED_MCP_TRANSPORTS = {"sse", "stdio", "streamable_http", "rest_proxy"}
 
 
 def _mcp_server_response(server: MCPServer) -> MCPServerResponse:
@@ -287,6 +287,9 @@ def _normalize_connection_config(config: dict | None) -> dict:
     allowed_agents = config.get("allowed_agents")
     if isinstance(allowed_agents, list):
         normalized["allowed_agents"] = [str(item) for item in allowed_agents]
+    rest_spec = config.get("rest_spec")
+    if isinstance(rest_spec, dict):
+        normalized["rest_spec"] = rest_spec
     return normalized
 
 
@@ -1679,7 +1682,7 @@ async def list_audit_logs(
     items = [
         AuditLogResponse(
             id=str(log.id),
-            timestamp=log.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            timestamp=log.timestamp.isoformat(),
             actor=log.actor,
             action=log.action,
             resource=log.resource,
@@ -1718,7 +1721,7 @@ async def get_audit_log_body(
         response_payload=body.response_payload,
         guardrail_events=body.guardrail_events,
         tool_events=body.tool_events,
-        created_at=body.created_at.strftime("%Y-%m-%d %H:%M:%S") if body.created_at else None,
+        created_at=body.created_at.isoformat() if body.created_at else None,
     )
 
 

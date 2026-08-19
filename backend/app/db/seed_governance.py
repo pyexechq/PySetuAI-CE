@@ -457,6 +457,7 @@ async def seed_access_for_tenant(session, tenant_id: uuid.UUID) -> bool:
             status="active",
             is_default=is_default,
             policy_ids=policy_ids,
+            target_domains=["chatgpt.com", "gemini.google.com", "claude.ai"],
         )
         session.add(bundle)
         await session.flush()

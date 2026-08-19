@@ -1,7 +1,61 @@
-# Current Sprint — Sprint 18 (Phase 13, Layer 1)
+# Current Sprint — Sprint 20 (Phase 16b, Endpoint Enforcement)
 
-**Updated:** Aug 14, 2026  
-**Active focus:** MCP compliance pipeline Layer 1 — audit, enforce deny lists, bundle MCP scope, DLP on tool path, routing key binding (BL-098–BL-103).
+**Updated:** Aug 19, 2026  
+**Active focus:** Unified AI Agent Control Plane Phase 2 — local DLP/secret detection, local policy engine, directory scanning, and the approval workflow.
+
+> Architecture: [agentic-control-plane.md](../architecture/agentic-control-plane.md)  
+> Roadmap: [agentic-control-plane-roadmap.md](./agentic-control-plane-roadmap.md)
+
+## Sprint 20 — Endpoint Enforcement
+
+| ID | Task | Status |
+|----|------|--------|
+| S20-01 | Local secret + PII detection (`endpoint-agent/pysetu_agent/detection.py`) | Done |
+| S20-02 | Local policy engine + integrity-checked cache (`policy.py`) | Done |
+| S20-03 | Directory scanner + daemon `--scan-dir` (`scan.py`, `daemon.py`) | Done |
+| S20-04 | Approval workflow — model, migration `068`, `/approvals` API | Done |
+| S20-05 | Endpoint agent unit tests (24 tests) | Done |
+| S20-06 | File governance adapter (polling watcher) | Done |
+| S20-07 | Shell command governance (heuristic pre-filter) | Done |
+| S20-08 | Policy sync endpoint (control plane → agent) | Done |
+| S20-09 | Approval Center UI | Done |
+| S20-10 | `--watch` mode + background service (launchd/systemd) | Done |
+
+## Exit criteria
+
+- Secret/PII detection returns classifications and a redacted copy without uploading raw content.
+- Local policy decisions are deterministic, with block > approval > redact > log > allow precedence.
+- The policy cache detects tampering via a SHA-256 checksum.
+- `decision="approval"` events create a `pending` `ApprovalRequest` with a 24h expiry.
+- Approve/reject endpoints are tenant-scoped and reject already-decided requests.
+
+## Prior sprint (closed)
+
+Sprint 19 (S19-01–S19-08) — Agent Control Plane Foundation.
+
+## Sprint 19 — Agent Control Plane Foundation
+
+| ID | Task | Status |
+|----|------|--------|
+| S19-01 | `Endpoint` / `AgentInventory` / `AgentCapability` / `SecurityEvent` models + migration `067` | Done |
+| S19-02 | Endpoint register/heartbeat/list APIs | Done |
+| S19-03 | Agent inventory + capability APIs | Done |
+| S19-04 | Unified security-event ingest + Audit Explorer linkage | Done |
+| S19-05 | Deterministic risk scoring service | Done |
+| S19-06 | Agent Inventory + Endpoint Security pages and nav | Done |
+| S19-07 | Tests for risk scoring, schemas, and event normalization | Done |
+| S19-08 | Endpoint daemon (discovery + telemetry skeleton) | Done |
+
+## Exit criteria
+
+- Endpoint registration is idempotent per `(tenant_id, hostname)` and authenticated via client API key.
+- Every endpoint security event writes a `SecurityEvent` row and a linked `AuditLog` with `source="endpoint"`.
+- Agent risk score is deterministic and bounded 0–100.
+- Agent Inventory and Endpoint Security pages render from live APIs.
+
+## Sprint 18 (closed)
+
+Sprint 18 (BL-098–BL-103) — MCP compliance pipeline Layer 1.
 
 > Design: [mcp-policy-pipeline-design.md](./mcp-policy-pipeline-design.md)  
 > Plan: [mcp-policy-pipeline-plan.md](./mcp-policy-pipeline-plan.md)
@@ -36,3 +90,4 @@ Sprint 17 (BL-092–BL-097) complete Aug 14 — [quality-audit-sprint.md](./qual
 - BL-038 git remote / push
 - BL-039 full pytest CI
 - BL-044 demo creds in prod
+- **Aug 15 UX batch (BL-116–BL-122)** — documented in [aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md); run migrations `059` + `060` after pull

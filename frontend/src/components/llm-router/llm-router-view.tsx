@@ -745,6 +745,7 @@ export function LlmRouterView() {
               )}
             </CardHeader>
             <CardContent>
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/60">
@@ -814,6 +815,7 @@ export function LlmRouterView() {
                   })}
                 </tbody>
               </table>
+              </div>
               {canEdit && (
                 <p className="mt-3 text-xs text-muted-foreground">
                   Routing share (%) controls weighted distribution when{" "}
@@ -843,6 +845,7 @@ export function LlmRouterView() {
             )}
           </CardHeader>
           <CardContent>
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60">
@@ -910,6 +913,7 @@ export function LlmRouterView() {
                 )}
               </tbody>
             </table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -1070,6 +1074,7 @@ export function LlmRouterView() {
                   No attributed LLM traffic yet. Set Est. Cost on models in the registry, then send gateway traffic.
                 </p>
               ) : (
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border/60 text-xs text-muted-foreground">
@@ -1099,6 +1104,7 @@ export function LlmRouterView() {
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </CardContent>
           </Card>

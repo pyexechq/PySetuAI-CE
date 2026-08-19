@@ -151,3 +151,27 @@ def run_security_scan(payload: SecurityScanRequest) -> SecurityScanResponse:
             for m in result.matches
         ],
     )
+
+
+async def dispatch_scanner_incident(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    actor: str,
+    content: str,
+    result: SecurityScanResponse,
+    *,
+    tenant_slug: str | None = None,
+) -> list[dict]:
+    from app.services.incident_dispatch_service import dispatch_security_incident
+    from app.services.incident_event_builder import build_security_incident_event_from_scan
+
+    event = build_security_incident_event_from_scan(
+        tenant_id,
+        actor,
+        content[:500],
+        result,
+        tenant_slug=tenant_slug,
+    )
+    if event is None:
+        return []
+    return await dispatch_security_incident(db, tenant_id, event)

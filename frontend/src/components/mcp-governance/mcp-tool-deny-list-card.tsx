@@ -254,7 +254,8 @@ export function McpToolDenyListCard({ canEdit }: { canEdit: boolean }) {
               No tools denied for {role?.label}
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+<table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60">
                   <th className="pb-3 text-left text-xs font-medium text-muted-foreground">Tool</th>
@@ -297,6 +298,7 @@ export function McpToolDenyListCard({ canEdit }: { canEdit: boolean }) {
                 ))}
               </tbody>
             </table>
+          </div>
           )}
         </div>
 

@@ -58,10 +58,18 @@
 - [x] Governed RAG tester exemption ID field
 - [x] Tests: `test_policy_exemption_service.py`
 
+## Phase 8: Tenant config UI (Aug 15) ✅
+
+- [x] IaC evidence tenant config — migration `059`, `iac_evidence_config_service.py`, configure modal
+- [x] Data-movement policy tenant config — migration `060`, `data_movement_policy_service.py`, modal + OPA `tenant_policy`
+- [x] Docker IaC fix — `./deploy:/deploy` mount; no `COPY deploy` in backend Dockerfile
+- [x] Vault enabled by default in Compose (`VAULT_ENABLED=true`)
+- [x] Tests: `test_data_movement_policy_service.py`
+
 ## Verification
 
 ```bash
-cd backend && pytest tests/test_dlp_classification.py tests/test_opa_data_movement.py tests/test_evidence_bundle_service.py tests/test_conditional_rag_service.py tests/test_iac_evidence_service.py tests/test_rag_audit_service.py tests/test_seed_genai_dlp.py tests/test_policy_exemption_service.py -v
+cd backend && pytest tests/test_dlp_classification.py tests/test_opa_data_movement.py tests/test_evidence_bundle_service.py tests/test_conditional_rag_service.py tests/test_iac_evidence_service.py tests/test_data_movement_policy_service.py tests/test_rag_audit_service.py tests/test_seed_genai_dlp.py tests/test_policy_exemption_service.py -v
 ```
 
 ## Deferred (future)

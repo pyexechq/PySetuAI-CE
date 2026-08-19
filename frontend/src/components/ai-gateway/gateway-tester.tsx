@@ -107,10 +107,13 @@ export function GatewayTester() {
       </CardHeader>
       <CardContent className="space-y-4">
         {ollamaStatus && !ollamaStatus.reachable && (
-          <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
-            Start Ollama on your machine (`ollama serve`) and pull a model (`ollama pull llama3.2`).
-            Docker backend connects via {ollamaStatus.base_url}.
-          </p>
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+            <p className="font-medium">Ollama is not reachable</p>
+            <p className="mt-1">
+              Start Ollama on your machine (`ollama serve`) and pull a model (`ollama pull llama3.2`).
+              Docker backend connects via {ollamaStatus.base_url}.
+            </p>
+          </div>
         )}
 
         {ollamaStatus?.models && ollamaStatus.models.length > 0 && (
@@ -213,11 +216,11 @@ export function GatewayTester() {
         </Button>
 
         {blocked && (
-          <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
-            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-700 dark:text-red-300" />
             <div>
               <p className="font-medium">Blocked / Error</p>
-              <p className="text-red-200/80">{blocked}</p>
+              <p className="text-red-800 dark:text-red-200">{blocked}</p>
             </div>
           </div>
         )}

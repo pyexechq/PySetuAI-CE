@@ -1,6 +1,6 @@
 # Testing Documentation
 
-**Last Updated:** Aug 11, 2026  
+**Last Updated:** Aug 15, 2026  
 **Owner:** Principal QA & Validation Agent
 
 ---
@@ -35,6 +35,7 @@ PySetu AI has **44 backend unit tests** (all passing) and **frontend production 
 | [security-findings.md](./security-findings.md) | 12 security findings |
 | [performance-report.md](./performance-report.md) | Performance targets (not yet measured) |
 | [release-readiness.md](./release-readiness.md) | Release gate assessment |
+| [aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md) | Aug 15 feature + API reference |
 
 ---
 

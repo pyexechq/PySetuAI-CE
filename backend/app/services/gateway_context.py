@@ -26,4 +26,7 @@ class GatewayContext:
     ai_token_limit_tpd: int | None = None
     token_saving_enabled: bool | None = None
     token_saving_mode: str | None = None
+    key_source: str = "pysetu"
+    upstream_pass_through: bool = False
+    ingress_bearer_token: str | None = None
     debug_mode: bool = False

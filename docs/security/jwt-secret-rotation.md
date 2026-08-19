@@ -8,7 +8,7 @@ PySetu signs API access tokens with `HS256` and a shared platform secret. Produc
 
 On API startup (`backend/app/main.py`):
 
-1. If `VAULT_ENABLED=true`, read `secret/pysetu/platform/jwt_secret` (`value` field).
+1. If `VAULT_ENABLED=true` (default in Docker Compose), read `secret/pysetu/platform/jwt_secret` (`value` field).
 2. Otherwise use `JWT_SECRET_KEY` from the environment.
 3. When `DEBUG=false`, refuse to start if the active secret matches a known insecure default (`vault_service.is_insecure_jwt_secret`).
 
@@ -97,7 +97,7 @@ Use [`.env.production.example`](../../.env.production.example) as the variable r
 
 - [ ] `DEBUG=false`
 - [ ] Strong `JWT_SECRET_KEY` **or** Vault JWT at `pysetu/platform/jwt_secret`
-- [ ] `VAULT_ENABLED=true` for tenant API keys
+- [ ] `VAULT_ENABLED=true` (default) with AppRole in production — not dev root token
 - [ ] Unique `POSTGRES_PASSWORD` and Redis auth if exposed
 - [ ] `OPA_FAIL_OPEN=false` when OPA is required for gateway decisions
 - [ ] HTTPS termination at load balancer (`APP_BASE_SCHEME=https`)

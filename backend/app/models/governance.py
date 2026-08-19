@@ -166,6 +166,27 @@ class AlertWebhook(Base):
     alerts_sent: Mapped[int] = mapped_column(Integer, default=0)
     last_alert_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str] = mapped_column(Text, default="")
+    config_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    dispatch_policy_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    tickets_created: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class IncidentOutbox(Base):
+    __tablename__ = "incident_outbox"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    connector_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("alert_webhooks.id", ondelete="CASCADE"), index=True
+    )
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    external_ticket_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    external_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    event_count: Mapped[int] = mapped_column(Integer, default=1)
+    first_event_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_event_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_event_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -230,6 +251,8 @@ class PolicyBundle(Base):
     policy_ids: Mapped[list] = mapped_column(JSONB, default=list)
     custom_intent_ids: Mapped[list] = mapped_column(JSONB, default=list)
     mcp_scope: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    target_domains: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    file_governance_rules: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -242,6 +265,7 @@ class ClientApiKey(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     key_prefix: Mapped[str] = mapped_column(String(32), nullable=False)
     key_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    key_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     bundle_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("policy_bundles.id"), nullable=True
     )
@@ -255,7 +279,10 @@ class ClientApiKey(Base):
     ai_token_limit_tpd: Mapped[int | None] = mapped_column(Integer, nullable=True)
     token_saving_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     token_saving_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    
+    allowed_api_origins: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    key_source: Mapped[str] = mapped_column(String(16), default="pysetu", server_default="pysetu")
+    upstream_pass_through: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -301,6 +328,9 @@ class TenantIntegration(Base):
     pinecone_host: Mapped[str] = mapped_column(String(512), default="")
     pinecone_namespace: Mapped[str] = mapped_column(String(255), default="")
     pinecone_dimension: Mapped[int] = mapped_column(Integer, default=1536)
+    iac_scan_paths: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    iac_checks: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    data_movement_policy: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

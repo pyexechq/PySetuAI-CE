@@ -1,8 +1,21 @@
 # QA Agent Handoff
 
-**Last Updated:** Aug 11, 2026  
+**Last Updated:** Aug 19, 2026
 **Test Cycle:** QA-001 (Initial Validation)  
 **Agent:** Principal QA & Validation Agent
+
+## Current Validation Update
+
+- Endpoint-agent focused regression suite: **38 tests passed**.
+- Live disposable DLP scan: **passed** after normalizing local decisions to the
+   backend API enum (`blocked`, `redacted`, `allowed`, `approval`, `log`).
+- Verified that the policy cache is populated and that raw test file contents
+   are not part of the security-event payload.
+- MCP Layer 1 work is represented as complete in the current sprint tracking;
+   the attached implementation plan still contains unchecked task boxes and
+   should be reconciled with `docs/planning/current-sprint.md`.
+- Direct Claude Desktop prompt, clipboard, and file-upload interception remain
+   untested and unsupported by the current endpoint agent.
 
 ---
 

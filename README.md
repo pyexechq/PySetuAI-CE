@@ -93,6 +93,7 @@ make down           # stop all containers
 | Frontend | http://localhost:3000 |
 | Backend API | http://localhost:8001 |
 | API Docs | http://localhost:8001/docs |
+| Vault (secrets) | http://localhost:8200 |
 | Mailhog (email) | http://localhost:8025 |
 
 Sign in with `admin@acme.com` / `demo1234` (tenant: `acme`).
@@ -131,7 +132,7 @@ Before any non-dev deployment:
 
 1. Copy [`.env.production.example`](.env.production.example) and fill secrets (never commit).
 2. Generate or Vault-bootstrap JWT: [docs/security/jwt-secret-rotation.md](docs/security/jwt-secret-rotation.md)
-3. Set `DEBUG=false`, enable Vault, and use strong database passwords.
+3. Set `DEBUG=false`, confirm Vault AppRole (Vault is on by default in Compose), and use strong database passwords.
 4. Run `./scripts/generate-jwt-secret.sh` or `./scripts/vault-bootstrap-jwt-secret.sh`
 
 ### Air-gap (offline)
@@ -176,6 +177,8 @@ PySetu AI/
 ## Documentation
 
 See `/docs` for architecture, planning, progress tracking, ADRs, and agent handoffs.
+
+**Recent (Aug 15):** [Compliance UX & config update](docs/progress/aug-15-compliance-ux-update.md) — tabbed Compliance Center, IaC/data-movement policy modals, Reports preview, Help fixes, Vault default-on.
 
 ## Development Phases
 

@@ -48,7 +48,7 @@ export function NotificationCenter() {
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative" data-help-id="header-notifications">
       <Button
         type="button"
         variant="ghost"

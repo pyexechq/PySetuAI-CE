@@ -1,6 +1,6 @@
 # Security Agent Handoff
 
-**Last Updated:** Aug 10, 2026
+**Last Updated:** Aug 19, 2026
 
 ## Work Completed
 
@@ -10,6 +10,13 @@
 - Defined RBAC role hierarchy (6 roles)
 - Documented threat model and mitigation strategies
 - Created ADR-003 for multi-tenant JWT scoping
+- Validated local endpoint DLP detection for secrets and PII without uploading
+	raw file contents
+- Added integrity-checked offline policy cache and endpoint security-event audit
+	linkage
+- Confirmed the endpoint daemon currently reports file decisions; it does not
+	provide OS-level blocking, clipboard interception, or direct Claude Desktop
+	prompt interception
 
 ## Files Modified
 
@@ -25,7 +32,7 @@ docs/decisions/ADR-003-multi-tenant-jwt.md
 - Tenant ID embedded in token, not passed as loose header
 - bcrypt for password storage
 - OPA integration planned for ABAC (Phase 2)
-- Vault integration planned for secrets (Phase 5)
+- Vault enabled by default in Docker Compose (S6-01); use AppRole + JWT bootstrap for production
 
 ## Risks
 
@@ -34,10 +41,13 @@ docs/decisions/ADR-003-multi-tenant-jwt.md
 - No RBAC enforcement on API routes yet
 - No audit logging of authentication events
 - No CSRF protection needed yet (API-only, no cookies)
+- Endpoint DLP is not a universal desktop enforcement layer; direct Claude
+	Desktop prompts and clipboard data bypass the current agent
+- Shell governance is a heuristic classifier without an installed shell hook
 
 ## Dependencies
 
-- Hashicorp Vault (Phase 5)
+- Hashicorp Vault (enabled by default in Compose; air-gap uses DB fallback)
 - OPA server (Phase 2)
 - Frontend login flow for end-to-end auth testing
 

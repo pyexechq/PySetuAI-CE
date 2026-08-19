@@ -73,6 +73,15 @@ def tools_from_server(server: Any) -> list[dict[str, Any]]:
     schemas = config.get("tool_schemas") if isinstance(config, dict) else None
     tools: list[dict[str, Any]] = []
     seen: set[str] = set()
+    if getattr(server, "transport", None) == "rest_proxy":
+        from app.services.mcp_rest_proxy_service import discover_rest_tools
+
+        for tool in discover_rest_tools(server):
+            normalized = _normalize_tool(tool)
+            if normalized["name"] and normalized["name"] not in seen:
+                seen.add(normalized["name"])
+                tools.append(normalized)
+        return tools
     if isinstance(schemas, list) and schemas:
         for schema in schemas:
             if not isinstance(schema, dict):

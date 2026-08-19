@@ -8,7 +8,7 @@ import type {
   CustomIntentTestResponse,
 } from "./types/domain";
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api/v1";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 
 export interface ApiDateRangeParams {
   from_date?: string;
@@ -212,6 +212,7 @@ export interface ApiIacEvidenceReport {
   generated_at: string;
   scanner: string;
   deploy_root: string;
+  scan_paths?: string[];
   files_scanned: number;
   score: number;
   summary: { pass: number; warn: number; fail: number };
@@ -223,6 +224,41 @@ export interface ApiIacEvidenceReport {
     evidence_files: string[];
     detail: string;
   }[];
+}
+
+export interface ApiIacEvidenceCheckConfig {
+  id: string;
+  title: string;
+  framework: string;
+  pattern: string;
+  enabled: boolean;
+}
+
+export interface ApiIacEvidenceConfig {
+  deploy_root: string;
+  deploy_root_env: string;
+  scan_paths: string[];
+  checks: ApiIacEvidenceCheckConfig[];
+  is_customized: boolean;
+  defaults: {
+    scan_paths: string[];
+    checks: ApiIacEvidenceCheckConfig[];
+  };
+}
+
+export interface ApiDataMovementPolicy {
+  restricted_labels: string[];
+  vector_destinations: string[];
+  never_exempt_labels: string[];
+}
+
+export interface ApiDataMovementPolicyConfig {
+  policy: ApiDataMovementPolicy;
+  is_customized: boolean;
+  defaults: ApiDataMovementPolicy;
+  label_options: { id: string; label: string }[];
+  destination_options: { id: string; label: string }[];
+  opa_policy_path: string;
 }
 
 export interface ApiPolicyExemption {
@@ -958,6 +994,10 @@ export const api = {
   createMcpServer: (token: string, body: ApiMcpServerCreateRequest) =>
     apiFetch<ApiMcpServer>("/mcp/servers", { method: "POST", body: JSON.stringify(body) }, token),
 
+  parseMcpSpec: (token: string, body: { protocol: string; spec_url?: string; spec_text?: string }) =>
+    apiFetch<ApiMcpSpecParseResponse>("/mcp/servers/parse-spec", { method: "POST", body: JSON.stringify(body) }, token),
+
+
   updateMcpServer: (token: string, serverId: string, body: ApiMcpServerUpdateRequest) =>
     apiFetch<ApiMcpServer>(`/mcp/servers/${serverId}`, { method: "PUT", body: JSON.stringify(body) }, token),
 
@@ -1308,7 +1348,34 @@ export const api = {
     }, token),
 
   scanIacEvidence: (token: string) =>
-    apiFetch<ApiIacEvidenceReport>("/rag-gateway/iac-evidence", {}, token),
+    apiFetch<ApiIacEvidenceReport>("/compliance/iac-evidence/scan", {}, token),
+
+  getIacEvidenceConfig: (token: string) =>
+    apiFetch<ApiIacEvidenceConfig>("/compliance/iac-evidence/config", {}, token),
+
+  updateIacEvidenceConfig: (
+    token: string,
+    body: { scan_paths: string[]; checks: ApiIacEvidenceCheckConfig[] },
+  ) =>
+    apiFetch<ApiIacEvidenceConfig>("/compliance/iac-evidence/config", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  resetIacEvidenceConfig: (token: string) =>
+    apiFetch<ApiIacEvidenceConfig>("/compliance/iac-evidence/config/reset", { method: "POST" }, token),
+
+  getDataMovementPolicy: (token: string) =>
+    apiFetch<ApiDataMovementPolicyConfig>("/compliance/data-movement-policy", {}, token),
+
+  updateDataMovementPolicy: (token: string, body: { policy: ApiDataMovementPolicy }) =>
+    apiFetch<ApiDataMovementPolicyConfig>("/compliance/data-movement-policy", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }, token),
+
+  resetDataMovementPolicy: (token: string) =>
+    apiFetch<ApiDataMovementPolicyConfig>("/compliance/data-movement-policy/reset", { method: "POST" }, token),
 
   createDemoRagEvents: (token: string) =>
     apiFetch<{ seeded: boolean; evidence_count: number; message: string }>(
@@ -1423,14 +1490,50 @@ export const api = {
   getClientApiKeys: (token: string) =>
     apiFetch<ApiClientApiKey[]>("/client-api-keys", {}, token),
 
+  getAgents: (token: string) =>
+    apiFetch<ApiAgent[]>("/agents", {}, token),
+
+  getAgent: (token: string, agentId: string) =>
+    apiFetch<ApiAgent>(`/agents/${agentId}`, {}, token),
+
+  getEndpoints: (token: string) =>
+    apiFetch<ApiEndpoint[]>("/endpoints", {}, token),
+
+  getSecurityEvents: (token: string, limit = 200) =>
+    apiFetch<ApiSecurityEvent[]>(`/security-events?limit=${limit}`, {}, token),
+
+  getSecurityEventSummary: (token: string) =>
+    apiFetch<ApiSecurityEventSummary>("/security-events/summary", {}, token),
+
+  getApprovals: (token: string, status: string = "pending") =>
+    apiFetch<ApiApprovalRequest[]>(`/approvals?status=${status}`, {}, token),
+
+  approveApproval: (token: string, approvalId: string, reason: string = "") =>
+    apiFetch<ApiApprovalRequest>(`/approvals/${approvalId}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }, token),
+
+  rejectApproval: (token: string, approvalId: string, reason: string = "") =>
+    apiFetch<ApiApprovalRequest>(`/approvals/${approvalId}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }, token),
+
   createClientApiKey: (token: string, body: ApiClientApiKeyCreateRequest) =>
     apiFetch<ApiClientApiKeyCreateResponse>("/client-api-keys", { method: "POST", body: JSON.stringify(body) }, token),
+
+  createMirroredClientApiKey: (token: string, body: ApiClientApiKeyMirroredCreateRequest) =>
+    apiFetch<ApiClientApiKey>("/client-api-keys/mirrored", { method: "POST", body: JSON.stringify(body) }, token),
 
   updateClientApiKey: (token: string, keyId: string, body: ApiClientApiKeyUpdateRequest) =>
     apiFetch<ApiClientApiKey>(`/client-api-keys/${keyId}`, { method: "PUT", body: JSON.stringify(body) }, token),
 
   deleteClientApiKey: (token: string, keyId: string) =>
     apiFetch<void>(`/client-api-keys/${keyId}`, { method: "DELETE" }, token),
+
+  revealClientApiKey: (token: string, keyId: string) =>
+    apiFetch<ApiClientApiKeyRevealResponse>(`/client-api-keys/${keyId}/reveal`, {}, token),
 
   chatCompletion: (
     token: string,
@@ -1606,6 +1709,20 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(body),
     }, token),
+
+  helpChat: (
+    token: string,
+    body: {
+      message: string;
+      pathname: string;
+      search?: string | null;
+      page_title?: string | null;
+      page_description?: string | null;
+      visible_help_ids?: string[];
+      history?: { role: "user" | "assistant"; content: string }[];
+    },
+  ) =>
+    apiFetch<ApiHelpChatResponse>("/help/chat", { method: "POST", body: JSON.stringify(body) }, token),
 
   listAlertWebhooks: (token: string) =>
     apiFetch<ApiAlertWebhook[]>("/settings/alert-webhooks", {}, token),
@@ -2043,6 +2160,20 @@ export interface ApiMcpToolDenyRule extends ApiMcpToolDenyRuleRequest {
   created_at: string;
 }
 
+export interface ApiMcpSpecTool {
+  name: string;
+  description: string;
+  method?: string | null;
+  path?: string | null;
+  tags?: string[];
+}
+
+export interface ApiMcpSpecParseResponse {
+  protocol: string;
+  tools: ApiMcpSpecTool[];
+  endpoint_url: string;
+}
+
 export interface ApiMcpServerCreateRequest {
   name: string;
   category: string;
@@ -2050,7 +2181,7 @@ export interface ApiMcpServerCreateRequest {
   tool_names?: string[];
   endpoint_url?: string | null;
   transport?: string;
-  connection_config?: { auth_header?: string; timeout_sec?: number };
+  connection_config?: Record<string, unknown>;
 }
 
 export interface ApiMcpServerUpdateRequest {
@@ -2133,6 +2264,9 @@ export interface ApiAuditLog {
   risk: string;
   details: string;
   has_request_log?: boolean;
+  matched_routing_rule?: string | null;
+  routing_strategy?: string | null;
+  upstream?: string | null;
 }
 
 export interface ApiAuditLogBody {
@@ -2211,8 +2345,11 @@ export interface ApiAlertWebhook {
   channel?: string | null;
   enabled: boolean;
   alerts_sent: number;
+  tickets_created?: number;
   last_alert_at: string | null;
   last_error: string;
+  config_json?: Record<string, unknown> | null;
+  dispatch_policy?: Record<string, unknown> | null;
   auth_token_set: boolean;
   auth_token_masked: string | null;
 }
@@ -2224,6 +2361,8 @@ export interface ApiAlertWebhookCreateRequest {
   auth_token?: string;
   channel?: string;
   enabled?: boolean;
+  config_json?: Record<string, unknown>;
+  dispatch_policy?: Record<string, unknown>;
 }
 
 export interface ApiAlertWebhookTestResult {
@@ -2658,9 +2797,100 @@ export interface ApiClientApiKey {
   ai_token_limit_tpd: number | null;
   token_saving_enabled: boolean | null;
   token_saving_mode: string | null;
+  allowed_api_origins: string[] | null;
+  allowed_api_origins_mode: "inherit" | "allow_all" | "restrict";
+  key_source: "pysetu" | "mirrored";
+  upstream_pass_through: boolean;
+  revealable: boolean;
   is_active: boolean;
   last_used_at: string | null;
   created_at: string | null;
+}
+
+export interface ApiEndpoint {
+  id: string;
+  tenant_id: string;
+  hostname: string;
+  os_name: string;
+  os_version: string;
+  agent_version: string;
+  status: string;
+  last_seen_at: string | null;
+  registered_at: string;
+  metadata_json: Record<string, unknown> | null;
+}
+
+export interface ApiAgent {
+  id: string;
+  tenant_id: string;
+  endpoint_id: string | null;
+  name: string;
+  agent_type: string;
+  vendor: string;
+  version: string;
+  user_name: string;
+  status: string;
+  risk_score: number;
+  data_sources: string[] | null;
+  tools: string[] | null;
+  mcp_servers: string[] | null;
+  permissions: string[] | null;
+  last_activity_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiSecurityEvent {
+  id: string;
+  tenant_id: string;
+  endpoint_id: string | null;
+  agent_id: string | null;
+  audit_log_id: string | null;
+  source: string;
+  event_type: string;
+  user_name: string;
+  tool: string;
+  action: string;
+  resource: string;
+  classification: string[] | null;
+  decision: string;
+  risk_score: number;
+  policy_id: string | null;
+  policy_name: string;
+  metadata_json: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface ApiSecurityEventSummary {
+  total: number;
+  blocked: number;
+  redacted: number;
+  allowed: number;
+  high_risk: number;
+  by_decision: Record<string, number>;
+  by_type: Record<string, number>;
+}
+
+export interface ApiApprovalRequest {
+  id: string;
+  tenant_id: string;
+  security_event_id: string | null;
+  endpoint_id: string | null;
+  agent_id: string | null;
+  user_name: string;
+  tool: string;
+  action: string;
+  resource: string;
+  classification: string[] | null;
+  risk_score: number;
+  reason: string;
+  policy_id: string | null;
+  policy_name: string;
+  status: string;
+  decided_by: string;
+  decided_at: string | null;
+  expires_at: string | null;
+  created_at: string;
 }
 
 export interface ApiClientApiKeyCreateRequest {
@@ -2676,9 +2906,34 @@ export interface ApiClientApiKeyCreateRequest {
   ai_token_limit_tpd?: number | null;
   token_saving_enabled?: boolean | null;
   token_saving_mode?: string | null;
+  allowed_api_origins?: string[] | null;
+}
+
+export interface ApiClientApiKeyMirroredCreateRequest {
+  name: string;
+  description?: string;
+  mirrored_api_key: string;
+  bundle_id?: string;
+  client_response_protocol?: string | null;
+  upstream_pass_through?: boolean;
+  ai_rate_limit_rpm?: number | null;
+  ai_rate_limit_rph?: number | null;
+  ai_rate_limit_rpd?: number | null;
+  ai_token_limit_tpm?: number | null;
+  ai_token_limit_tph?: number | null;
+  ai_token_limit_tpd?: number | null;
+  token_saving_enabled?: boolean | null;
+  token_saving_mode?: string | null;
+  allowed_api_origins?: string[] | null;
 }
 
 export interface ApiClientApiKeyCreateResponse extends ApiClientApiKey {
+  api_key: string;
+}
+
+export interface ApiClientApiKeyRevealResponse {
+  id: string;
+  name: string;
   api_key: string;
 }
 
@@ -2695,6 +2950,8 @@ export interface ApiClientApiKeyUpdateRequest {
   ai_token_limit_tpd?: number | null;
   token_saving_enabled?: boolean | null;
   token_saving_mode?: string | null;
+  allowed_api_origins?: string[] | null;
+  upstream_pass_through?: boolean | null;
   is_active?: boolean;
 }
 
@@ -2833,6 +3090,25 @@ export interface ApiAiAssistSettings {
   provider_labels?: Record<string, string>;
   features: string[];
   air_gap_mode: boolean;
+}
+
+export interface ApiHelpChatHighlight {
+  help_id: string;
+  label: string;
+  reason: string;
+}
+
+export interface ApiHelpChatLink {
+  href: string;
+  label: string;
+}
+
+export interface ApiHelpChatResponse {
+  reply: string;
+  highlights: ApiHelpChatHighlight[];
+  links: ApiHelpChatLink[];
+  ai_enhanced: boolean;
+  page_label: string | null;
 }
 
 export interface ApiOrganizationSettings {

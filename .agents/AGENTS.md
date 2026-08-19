@@ -126,7 +126,7 @@ When creating a new Alembic migration file:
 | Backend API | http://localhost:8001 |
 | API Docs (Swagger) | http://localhost:8001/docs |
 | Mailhog (email) | http://localhost:8025 |
-| Vault UI | http://localhost:8200 |
+| Vault UI | http://localhost:8200 (enabled by default; token `dev-root-token`) |
 | OPA | http://localhost:8181 |
 
 Default login: `admin@acme.com` / `demo1234` (tenant: `acme`)

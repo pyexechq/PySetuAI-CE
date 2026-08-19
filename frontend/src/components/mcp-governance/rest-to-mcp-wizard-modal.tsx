@@ -45,83 +45,6 @@ const DEFAULT_CATEGORIES = [
   "Human Resources", "Finance", "Sales", "Productivity", "Engineering", "Operations",
 ];
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
-
-function toToolName(raw: string): string {
-  return raw.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 64);
-}
-
-function parseOpenApiSpec(spec: Record<string, unknown>): ParsedTool[] {
-  const paths = (spec.paths ?? {}) as Record<string, unknown>;
-  const tools: ParsedTool[] = [];
-  const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head"];
-  for (const [path, pathItem] of Object.entries(paths)) {
-    if (!pathItem || typeof pathItem !== "object") continue;
-    for (const method of HTTP_METHODS) {
-      const op = (pathItem as Record<string, unknown>)[method];
-      if (!op || typeof op !== "object") continue;
-      const opObj = op as Record<string, unknown>;
-      const operationId = String(opObj.operationId ?? "");
-      const summary = String(opObj.summary ?? "");
-      const description = String(opObj.description ?? summary);
-      const tags = Array.isArray(opObj.tags) ? (opObj.tags as string[]) : [];
-      const rawName = operationId || `${method}_${path.replace(/\//g, "_").replace(/[{}]/g, "")}`;
-      tools.push({
-        name: toToolName(rawName),
-        description: description || `${method.toUpperCase()} ${path}`,
-        method: method.toUpperCase(),
-        path,
-        tags,
-        selected: true,
-      });
-    }
-  }
-  return tools;
-}
-
-function parsePostmanSpec(collection: Record<string, unknown>): ParsedTool[] {
-  const tools: ParsedTool[] = [];
-  function traverse(items: unknown[]) {
-    for (const item of items) {
-      if (!item || typeof item !== "object") continue;
-      const it = item as Record<string, unknown>;
-      if (Array.isArray(it.item)) { traverse(it.item as unknown[]); continue; }
-      if (it.request) {
-        const req = it.request as Record<string, unknown>;
-        const name = String(it.name ?? "");
-        const method = String((req.method as string) ?? "GET");
-        const urlObj = req.url as Record<string, unknown> | string | undefined;
-        const rawPath = typeof urlObj === "string"
-          ? urlObj
-          : Array.isArray((urlObj as Record<string, unknown>)?.path)
-            ? ((urlObj as Record<string, unknown>).path as string[]).join("/")
-            : "";
-        tools.push({ name: toToolName(name || rawPath), description: `${method} ${rawPath}` || name, method, path: rawPath, tags: [], selected: true });
-      }
-    }
-  }
-  if (Array.isArray(collection.item)) traverse(collection.item as unknown[]);
-  return tools;
-}
-
-function parseGraphQlSdl(sdl: string): ParsedTool[] {
-  const tools: ParsedTool[] = [];
-  const blockRe = /\b(type\s+)(Mutation|Query)\s*\{([^}]+)\}/gi;
-  let blockMatch: RegExpExecArray | null;
-  while ((blockMatch = blockRe.exec(sdl)) !== null) {
-    const kind = blockMatch[2].toLowerCase();
-    const body = blockMatch[3];
-    const fieldRe = /(\w+)\s*(?:\([^)]*\))?\s*:/g;
-    let fieldMatch: RegExpExecArray | null;
-    while ((fieldMatch = fieldRe.exec(body)) !== null) {
-      const fieldName = fieldMatch[1];
-      if (fieldName === "__typename") continue;
-      tools.push({ name: toToolName(fieldName), description: `GraphQL ${kind}: ${fieldName}`, method: kind === "mutation" ? "MUTATION" : "QUERY", path: fieldName, tags: [kind], selected: true });
-    }
-  }
-  return tools;
-}
-
 // ─── sub-components ───────────────────────────────────────────────────────────
 
 function StepDot({ step, active, done }: { step: number; active: boolean; done: boolean }) {
@@ -151,6 +74,7 @@ export function RestToMcpWizardModal({ open, token, categorySuggestions, onClose
   const [serverName, setServerName] = useState("");
   const [serverCategory, setServerCategory] = useState("Engineering");
   const [endpointUrl, setEndpointUrl] = useState("");
+  const [authorizationHeader, setAuthorizationHeader] = useState("");
   const [rbacGroups, setRbacGroups] = useState<string[]>(["ai_user"]);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
@@ -161,7 +85,7 @@ export function RestToMcpWizardModal({ open, token, categorySuggestions, onClose
   const reset = useCallback(() => {
     setStep(1); setProtocol("openapi_url"); setSpecUrl(""); setSpecText(""); setParsing(false);
     setParseError(null); setTools([]); setExpandedTool(null); setServerName("");
-    setServerCategory("Engineering"); setEndpointUrl(""); setRbacGroups(["ai_user"]);
+    setServerCategory("Engineering"); setEndpointUrl(""); setAuthorizationHeader(""); setRbacGroups(["ai_user"]);
     setSaving(false); setSavedOk(false); setSaveError(null);
   }, []);
 
@@ -169,31 +93,31 @@ export function RestToMcpWizardModal({ open, token, categorySuggestions, onClose
 
   async function parseSpec() {
     setParseError(null); setParsing(true);
-    let parsed: ParsedTool[] = [];
     try {
+      if (!token) throw new Error("Not authenticated");
+      let parsed: ParsedTool[] = [];
+      let endpoint = "";
       if (protocol === "openapi_url") {
         if (!specUrl.trim()) throw new Error("Please enter an OpenAPI spec URL");
+        // Fetch in the browser so localhost/internal URLs the user can reach work,
+        // then send the raw JSON to the backend for parsing + relative-URL resolution.
         const resp = await fetch(specUrl.trim());
-        if (!resp.ok) throw new Error(`Fetch failed: ${resp.status} ${resp.statusText}`);
-        const spec = (await resp.json()) as Record<string, unknown>;
-        parsed = parseOpenApiSpec(spec);
-        setEndpointUrl(String((spec.servers as Array<{ url: string }> | undefined)?.[0]?.url ?? (spec.host ? `https://${spec.host}${spec.basePath ?? ""}` : "")));
-      } else if (protocol === "openapi_json") {
-        const spec = JSON.parse(specText) as Record<string, unknown>;
-        parsed = parseOpenApiSpec(spec);
-        setEndpointUrl(String((spec.servers as Array<{ url: string }> | undefined)?.[0]?.url ?? ""));
-      } else if (protocol === "postman") {
-        const col = JSON.parse(specText) as Record<string, unknown>;
-        parsed = parsePostmanSpec(col);
-        const info = col.info as Record<string, unknown> | undefined;
-        if (!serverName && info?.name) setServerName(String(info.name));
-      } else if (protocol === "graphql") {
-        parsed = parseGraphQlSdl(specText);
+        if (!resp.ok) throw new Error(`Spec URL fetch failed: HTTP ${resp.status}`);
+        const specText = await resp.text();
+        const result = await api.parseMcpSpec(token, { protocol: "openapi_json", spec_text: specText, spec_url: specUrl.trim() });
+        parsed = result.tools.map((t) => ({ name: t.name, description: t.description, method: t.method ?? undefined, path: t.path ?? undefined, tags: t.tags ?? [], selected: true }));
+        endpoint = result.endpoint_url;
+      } else if (protocol === "openapi_json" || protocol === "postman" || protocol === "graphql") {
+        const result = await api.parseMcpSpec(token, { protocol, spec_text: specText });
+        parsed = result.tools.map((t) => ({ name: t.name, description: t.description, method: t.method ?? undefined, path: t.path ?? undefined, tags: t.tags ?? [], selected: true }));
+        endpoint = result.endpoint_url;
       }
       if (parsed.length === 0) throw new Error("No operations found. Check the spec format and try again.");
-      setTools(parsed); setStep(2);
+      setTools(parsed);
+      if (endpoint) setEndpointUrl(endpoint);
+      setStep(2);
     } catch (err) {
-      setParseError(err instanceof Error ? err.message : "Failed to parse spec");
+      setParseError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to parse spec");
     } finally { setParsing(false); }
   }
 
@@ -204,12 +128,25 @@ export function RestToMcpWizardModal({ open, token, categorySuggestions, onClose
     if (selectedTools.length === 0) { setSaveError("Select at least one tool"); return; }
     setSaving(true); setSaveError(null);
     try {
+      const restSpec = {
+        base_url: endpointUrl.trim(),
+        operations: selectedTools.map((t) => ({
+          name: t.name,
+          method: t.method ?? "GET",
+          path: t.path ?? "",
+          description: t.description,
+        })),
+      };
+      const connConfig: Record<string, any> = { rest_spec: restSpec };
+      if (authorizationHeader.trim()) {
+        connConfig.authorization_header = authorizationHeader.trim();
+      }
       await api.createMcpServer(token, {
         name, category: serverCategory, status: "healthy",
         tool_names: selectedTools.map((t) => t.name),
         endpoint_url: endpointUrl.trim() || null,
-        transport: "streamable_http",
-        connection_config: {},
+        transport: "rest_proxy",
+        connection_config: connConfig,
       });
       setSavedOk(true); onSaved();
       setTimeout(() => { handleClose(); }, 1800);
@@ -301,7 +238,7 @@ export function RestToMcpWizardModal({ open, token, categorySuggestions, onClose
                     <input id="spec-url" value={specUrl} onChange={(e) => setSpecUrl(e.target.value)}
                       placeholder="https://api.example.com/openapi.json"
                       className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-primary" />
-                    <p className="text-xs text-muted-foreground">Must be accessible from your browser (JSON format preferred).</p>
+                    <p className="text-xs text-muted-foreground">Fetched server-side by the gateway (JSON format preferred).</p>
                   </>
                 )}
                 {(protocol === "openapi_json" || protocol === "postman") && (
@@ -426,6 +363,12 @@ export function RestToMcpWizardModal({ open, token, categorySuggestions, onClose
                       <input id="wiz-endpoint" value={endpointUrl} onChange={(e) => setEndpointUrl(e.target.value)} placeholder="https://api.example.com"
                         className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-primary" />
                     </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="text-sm font-medium" htmlFor="wiz-auth">Authorization Header (optional)</label>
+                      <input id="wiz-auth" value={authorizationHeader} onChange={(e) => setAuthorizationHeader(e.target.value)} placeholder="Bearer token... or API-Key: xyz"
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-primary" />
+                      <p className="text-xs text-muted-foreground">Used for health checks and tool invocation. Leave empty if the API is public.</p>
+                    </div>
                   </div>
 
                   {/* RBAC */}
@@ -457,7 +400,7 @@ export function RestToMcpWizardModal({ open, token, categorySuggestions, onClose
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><p className="text-muted-foreground">Tools registered</p><p className="font-semibold">{selectedTools.length}</p></div>
                       <div><p className="text-muted-foreground">Protocol</p><p className="font-semibold capitalize">{protocol.replace(/_/g, " ")}</p></div>
-                      <div><p className="text-muted-foreground">Transport</p><p className="font-semibold">Streamable HTTP</p></div>
+                      <div><p className="text-muted-foreground">Transport</p><p className="font-semibold">REST Proxy</p></div>
                       <div><p className="text-muted-foreground">Roles</p><p className="font-semibold">{rbacGroups.length} group{rbacGroups.length !== 1 ? "s" : ""}</p></div>
                     </div>
                     <div>

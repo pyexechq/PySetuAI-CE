@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Activity, AlertTriangle, ArrowRight, CheckCircle2,
   Filter, MoreHorizontal, Plus, Search,
-  Server, Settings2, Users,
+  Server, Settings2, Trash2, Users,
   XCircle, Network, Wifi, Globe, Wand2,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
@@ -586,6 +586,13 @@ export function McpGovernanceView() {
                             onClick={() => openEditModal(server)}
                           >
                             <Settings2 className="h-3 w-3" /> Edit
+                          </Button>
+                          <Button
+                            type="button" variant="ghost" size="sm"
+                            className="h-7 px-2 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => removeServer(server)}
+                          >
+                            <Trash2 className="h-3 w-3" /> Remove
                           </Button>
                         </div>
                       )}

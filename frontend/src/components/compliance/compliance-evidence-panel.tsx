@@ -14,7 +14,7 @@ import { formatNumber } from "@/lib/utils";
 
 import { toast } from "react-hot-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 
 function downloadExport(token: string, snapshotId: string, format: "csv" | "json", createdAt: string) {
   const stamp = createdAt.slice(0, 10).replace(/-/g, "");

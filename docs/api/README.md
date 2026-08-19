@@ -99,3 +99,23 @@ Get executive dashboard KPI metrics.
 - `GET/POST /api/v1/llm/providers` — LLM provider registry
 - `GET/POST /api/v1/mcp/servers` — MCP server registry
 - `GET /api/v1/audit/logs` — Audit log search
+
+## Compliance & governance (Aug 15)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/compliance/iac-evidence/config` | Tenant IaC scanner config |
+| PUT | `/compliance/iac-evidence/config` | Save scan paths + checks (admin) |
+| POST | `/compliance/iac-evidence/config/reset` | Reset IaC defaults |
+| GET | `/compliance/iac-evidence/scan` | Run IaC evidence scan |
+| GET | `/compliance/data-movement-policy` | Tenant OPA data-movement policy |
+| PUT | `/compliance/data-movement-policy` | Save policy (admin) |
+| POST | `/compliance/data-movement-policy/reset` | Reset movement defaults |
+| GET | `/rag-gateway/evidence` | List GenAI evidence bundles |
+| GET | `/rag-gateway/evidence/{id}/export` | Export evidence JSON |
+| POST | `/rag-gateway/demo-events` | Seed demo RAG events (debug) |
+| GET | `/security/vault/status` | Vault connectivity + JWT bootstrap status |
+| POST | `/reports/{report_id}/preview` | Report preview data for modal |
+| GET/POST | `/help/chat` | In-app help assist |
+
+Full UX map: [aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md)

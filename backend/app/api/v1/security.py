@@ -41,9 +41,23 @@ async def get_security_overview(
 @router.post("/security/scan", response_model=SecurityScanResponse)
 async def scan_security_content(
     payload: SecurityScanRequest,
-    _current_user: Annotated[User, Depends(_require_security_scan)],
+    current_user: Annotated[User, Depends(_require_security_scan)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SecurityScanResponse:
-    return run_security_scan(payload)
+    from app.services.security_analytics_service import dispatch_scanner_incident
+
+    result = run_security_scan(payload)
+    try:
+        await dispatch_scanner_incident(
+            db,
+            current_user.tenant_id,
+            current_user.email,
+            payload.content,
+            result,
+        )
+    except Exception:
+        pass
+    return result
 
 
 @router.get("/security/opa/status", response_model=OpaStatusResponse)

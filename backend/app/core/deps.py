@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.security import decode_access_token
 from app.db.session import get_db
+from app.models.governance import ClientApiKey
 from app.models.tenant import Tenant, User
 
 from app.services.tenant_features_service import is_feature_enabled
@@ -84,3 +85,31 @@ async def require_uag_simulator(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Governance Sandbox and Compatibility Center are disabled for this tenant",
     )
+
+
+async def get_current_client(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ClientApiKey:
+    """Authenticate a non-interactive caller (e.g. the browser extension) via ClientApiKey."""
+    from app.services.client_api_key_service import resolve_client_api_key, resolve_effective_api_origins
+
+    if credentials is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    key = await resolve_client_api_key(db, credentials.credentials)
+    if key is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+
+    tenant = await db.get(Tenant, key.tenant_id)
+    if tenant is None or not tenant.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant is inactive")
+
+    effective_origins = resolve_effective_api_origins(key, tenant)
+    if effective_origins is not None:
+        origin = request.headers.get("origin")
+        if not origin or origin not in effective_origins:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Origin not allowed for this API key")
+
+    return key

@@ -252,3 +252,40 @@ body {
 .audit-log-grid .audit-risk-medium {
   color: #f97316 !important;
 }
+
+.help-spotlight {
+  position: relative;
+  z-index: 45;
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 0.5rem;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 25%, transparent);
+  animation: help-spotlight-pulse 1.2s ease-in-out 2;
+}
+
+@keyframes help-spotlight-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--primary) 35%, transparent);
+  }
+}
+
+/* Mobile: give the audit grid more vertical room on small screens. */
+@media (max-width: 640px) {
+  .audit-log-grid {
+    height: 70vh;
+  }
+}
+
+/* Coarse pointers (touch): enlarge tap targets for nav links and icon buttons. */
+@media (pointer: coarse) {
+  nav a,
+  nav button,
+  .sidebar a,
+  .sidebar button {
+    min-height: 44px;
+  }
+}

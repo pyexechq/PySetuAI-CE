@@ -8,6 +8,8 @@ class AlertWebhookCreateRequest(BaseModel):
     auth_token: str | None = Field(default=None, max_length=4096)
     channel: str | None = Field(default=None, max_length=128)
     enabled: bool = True
+    config_json: dict | None = None
+    dispatch_policy: dict | None = None
 
 
 class AlertWebhookUpdateRequest(BaseModel):
@@ -17,6 +19,8 @@ class AlertWebhookUpdateRequest(BaseModel):
     auth_token: str | None = Field(default=None, max_length=4096)
     channel: str | None = Field(default=None, max_length=128)
     enabled: bool | None = None
+    config_json: dict | None = None
+    dispatch_policy: dict | None = None
 
 
 class AlertWebhookResponse(BaseModel):
@@ -27,8 +31,11 @@ class AlertWebhookResponse(BaseModel):
     channel: str | None = None
     enabled: bool
     alerts_sent: int
+    tickets_created: int = 0
     last_alert_at: str | None = None
     last_error: str = ""
+    config_json: dict | None = None
+    dispatch_policy: dict | None = None
     auth_token_set: bool = False
     auth_token_masked: str | None = None
 

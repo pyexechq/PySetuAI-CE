@@ -13,6 +13,7 @@ from app.config import settings
 from app.core.demo_credentials import include_password_in_provision_response, redact_demo_users
 from app.core.security import get_password_hash
 from app.db.seed_governance import seed_access_for_tenant, seed_governance_for_tenant
+from app.db.seed_prompt_templates import seed_prompt_templates_for_tenant
 from app.models.governance import MCPServer
 from app.models.tenant import Tenant, User
 from app.services.tenant_features_service import (
@@ -235,6 +236,7 @@ async def provision_tenant(
 
         await seed_governance_for_tenant(db, tenant.id)
         await seed_access_for_tenant(db, tenant.id)
+        await seed_prompt_templates_for_tenant(db, tenant.id)
 
     admin_invite = None
     if send_admin_invite:

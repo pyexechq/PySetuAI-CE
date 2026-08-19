@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 
-import { HelpCircle, Moon, Sun, LogOut, Settings } from "lucide-react";
+import { Moon, Sun, LogOut, Settings, Menu } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DateRangePicker } from "@/components/layout/date-range-picker";
+import { HeaderHelpMenu } from "@/components/layout/header-help-menu";
 import { NotificationCenter } from "@/components/layout/notification-center";
 import { PlatformStatusBadge } from "@/components/layout/platform-status-badge";
 import { useAuthStore } from "@/stores/auth-store";
@@ -17,9 +18,10 @@ import { UserPreferencesModal } from "@/components/layout/user-preferences-modal
 interface HeaderProps {
   title: string;
   description?: string;
+  onMenuClick?: () => void;
 }
 
-export function Header({ title, description }: HeaderProps) {
+export function Header({ title, description, onMenuClick }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const { user, logout } = useAuthStore();
@@ -44,23 +46,35 @@ export function Header({ title, description }: HeaderProps) {
 
   return (
     <TooltipProvider delayDuration={200}>
-    <header className="relative z-40 flex h-16 shrink-0 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-sm">
-      <div>
-        <h1 className="text-lg font-semibold text-foreground">{title}</h1>
-        {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
+    <header className="relative z-40 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-sm md:px-6">
+      <div className="flex min-w-0 items-center gap-2">
+        {onMenuClick && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={onMenuClick}
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
         )}
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-semibold text-foreground">{title}</h1>
+          {description && (
+            <p className="hidden truncate text-sm text-muted-foreground sm:block">{description}</p>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         <DateRangePicker />
         <NotificationCenter />
-        <Button variant="ghost" size="icon" aria-label="Help">
-          <HelpCircle className="h-4 w-4" />
-        </Button>
+        <HeaderHelpMenu />
         <Button
           variant="ghost"
           size="icon"
           className="relative"
+          data-help-id="header-theme"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           aria-label="Toggle theme"
         >
@@ -69,8 +83,8 @@ export function Header({ title, description }: HeaderProps) {
         </Button>
         <PlatformStatusBadge />
 
-        <div className="ml-2 flex items-center border-l border-border pl-4 relative" ref={profileRef}>
-          <button 
+        <div className="ml-2 flex items-center border-l border-border pl-4 relative" ref={profileRef} data-help-id="header-profile">
+          <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="flex items-center gap-2 rounded-full ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label="User profile menu"

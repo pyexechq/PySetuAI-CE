@@ -12,7 +12,8 @@ export function TopPoliciesTable({ data }: { data: ApiDashboardOverview["top_pol
         {data.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No policies configured</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+<table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="pb-2 font-medium">#</th>
@@ -32,6 +33,7 @@ export function TopPoliciesTable({ data }: { data: ApiDashboardOverview["top_pol
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </CardContent>
     </Card>
