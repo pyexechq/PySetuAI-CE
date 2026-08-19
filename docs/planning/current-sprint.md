@@ -1,10 +1,33 @@
-# Current Sprint — Sprint 21 (Phase 3, MCP Governance Depth)
+# Current Sprint — Sprint 22 (Phase 4, Microsoft Copilot)
 
 **Updated:** Aug 19, 2026  
-**Active focus:** Unified AI Agent Control Plane Phase 3 — per-tool MCP governance, tool-chain risk scoring, agentic attack-surface graph, and approval-center integration.
+**Active focus:** Unified AI Agent Control Plane Phase 4 — Microsoft Copilot inventory, connector risk, sync adapter, and governance drift detection.
 
 > Architecture: [agentic-control-plane.md](../architecture/agentic-control-plane.md)  
 > Roadmap: [agentic-control-plane-roadmap.md](./agentic-control-plane-roadmap.md)
+
+## Sprint 22 — Microsoft Copilot
+
+| ID | Task | Status |
+|----|------|--------|
+| S22-01 | `CopilotInstance` / `CopilotConnector` / `CopilotBaseline` / `CopilotDriftRecord` models + migration `071` | Done |
+| S22-02 | `copilot_service` — connector/instance risk scoring | Done |
+| S22-03 | Sync adapter — idempotent payload merge + soft-delete removal | Done |
+| S22-04 | Drift detection — baseline capture + pure comparison + persistence | Done |
+| S22-05 | `copilot` API router (instances, connectors, sync, drift, baselines, summary) | Done |
+| S22-06 | Microsoft Copilot UI (`/microsoft-copilot`) + nav + api client | Done |
+| S22-07 | Unit tests (`test_copilot_governance.py`) | Done |
+
+## Exit criteria
+
+- Connector and instance risk scores are deterministic 0–100 and reuse control-plane risk conventions.
+- Sync is idempotent by `(tenant_id, external_id)`; removed entities are soft-deleted (`status="removed"`).
+- Drift detection compares current state against a captured baseline and flags risk/status/new/removed changes.
+- Microsoft Copilot page renders instances, connectors, and drift from live APIs.
+
+## Prior sprint (closed)
+
+Sprint 21 (S21-01–S21-10) — MCP Governance Depth.
 
 ## Sprint 21 — MCP Governance Depth
 

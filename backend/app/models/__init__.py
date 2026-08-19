@@ -6,6 +6,12 @@ from app.models.agentic import (
     MCPToolChainEvent,
     SecurityEvent,
 )
+from app.models.copilot import (
+    CopilotBaseline,
+    CopilotConnector,
+    CopilotDriftRecord,
+    CopilotInstance,
+)
 from app.models.governance import (
     AlertWebhook,
     AuditLog,
@@ -66,4 +72,8 @@ __all__ = [
     "SecurityEvent",
     "ApprovalRequest",
     "MCPToolChainEvent",
+    "CopilotInstance",
+    "CopilotConnector",
+    "CopilotBaseline",
+    "CopilotDriftRecord",
 ]

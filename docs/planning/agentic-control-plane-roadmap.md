@@ -1,6 +1,6 @@
 # Agent Control Plane Roadmap
 
-> Phased rollout of the Unified AI Agent Control Plane. Phase 1, Phase 2, and Phase 3 are complete and committed.
+> Phased rollout of the Unified AI Agent Control Plane. Phase 1, Phase 2, Phase 3, and Phase 4 are complete and committed.
 
 ## Phase 1 — Foundation (done)
 
@@ -34,12 +34,12 @@
 - MCP discovery from endpoint configs — done (`.mcp.json`, `.cursor/mcp.json`, Claude Desktop config)
 - Agent-to-agent event monitoring (source/target agent attribution) — done (source agent resolved from gateway actor)
 
-## Phase 4 — Microsoft Copilot
+## Phase 4 — Microsoft Copilot (done)
 
-- Microsoft Copilot / Teams / Copilot Studio inventory
-- Connector inventory and risk assessment
-- Graph / audit / security API synchronization
-- Governance drift detection
+- Microsoft Copilot / Teams / Copilot Studio inventory — done
+- Connector inventory and risk assessment — done
+- Graph / audit / security API synchronization — done (payload-driven sync adapter; MS Graph OAuth is tenant-side)
+- Governance drift detection — done (baseline capture + drift comparison)
 
 ## Phase 5 — Advanced Agentic Security
 

@@ -17,6 +17,7 @@ from app.api.v1.help import router as help_router
 from app.api.v1.governance import router as governance_router
 from app.api.v1.integrations import router as integrations_router
 from app.api.v1.notifications import router as notifications_router
+from app.api.v1.copilot import router as copilot_router
 from app.api.v1.mcp_governance import router as mcp_governance_router
 from app.api.v1.mcp_security import router as mcp_security_router
 from app.api.v1.observability import router as observability_router
@@ -95,6 +96,7 @@ app.include_router(audit_router, prefix=settings.api_prefix)
 app.include_router(access_router, prefix=settings.api_prefix)
 app.include_router(agentic_router, prefix=settings.api_prefix)
 app.include_router(mcp_governance_router, prefix=settings.api_prefix)
+app.include_router(copilot_router, prefix=settings.api_prefix)
 app.include_router(observability_router, prefix=settings.api_prefix)
 app.include_router(settings_router, prefix=settings.api_prefix)
 app.include_router(telemetry_router, prefix=settings.api_prefix)

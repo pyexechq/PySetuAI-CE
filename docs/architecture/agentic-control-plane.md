@@ -195,3 +195,28 @@ python -m pysetu_agent --scan-dir . --policy-file policy.json
 - The MCP Tool Chains UI at `/mcp-tool-chains` shows summary cards, the
   attack-surface map (ReactFlow), and the recent chain-event feed with
   decision filtering.
+
+## 13. Microsoft Copilot governance (Phase 4)
+
+- `CopilotInstance` (M365 Copilot / Copilot Studio agents / Teams),
+  `CopilotConnector` (Power Platform / Graph / custom), `CopilotBaseline`, and
+  `CopilotDriftRecord` (migration `071`) are tenant-scoped and keyed by the
+  external (MS Graph) object id for idempotent sync.
+- `copilot_service` computes deterministic 0–100 risk scores for connectors
+  (base by type + risky auth + sensitive scopes/data + broad permissions) and
+  instances (base by type + sensitive data + broad permissions), reusing the
+  control-plane `SENSITIVE_DATA_KEYWORDS` and `risk_band` conventions.
+- The sync adapter (`sync_copilot_payload`) idempotently merges a
+  tenant-provided payload by `(tenant_id, external_id)` and soft-deletes
+  (`status="removed"`) entities no longer present. It does not call MS Graph —
+  the tenant's sync job provides the payload.
+- Drift detection (`capture_baseline` + `detect_drift`) compares current state
+  against a JSONB baseline snapshot and flags `risk_increase` / `risk_decrease`
+  / `policy_mismatch` / `new_entity` / `removed_entity`. The pure comparison
+  (`compare_state_to_baseline`) is unit-testable without a DB.
+- API surface: `GET /copilot/instances`, `GET /copilot/connectors`,
+  `POST /copilot/sync`, `GET /copilot/drift`,
+  `POST /copilot/drift/{id}/acknowledge`, `POST/GET /copilot/baselines`,
+  `GET /copilot/summary`.
+- The Microsoft Copilot UI at `/microsoft-copilot` shows summary cards,
+  instance/connector inventories, and the drift feed with acknowledge actions.

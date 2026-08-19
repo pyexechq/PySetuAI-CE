@@ -1542,6 +1542,31 @@ export const api = {
   getMcpToolChainGraph: (token: string, limit = 200) =>
     apiFetch<ApiMcpToolChainGraph>(`/mcp/tool-chains/graph?limit=${limit}`, {}, token),
 
+  getCopilotInstances: (token: string) =>
+    apiFetch<ApiCopilotInstance[]>("/copilot/instances", {}, token),
+
+  getCopilotConnectors: (token: string) =>
+    apiFetch<ApiCopilotConnector[]>("/copilot/connectors", {}, token),
+
+  getCopilotDrift: (token: string, status?: string, severity?: string) =>
+    apiFetch<ApiCopilotDrift[]>(
+      `/copilot/drift?status=${status ?? "all"}${severity && severity !== "all" ? `&severity=${severity}` : ""}`,
+      {},
+      token
+    ),
+
+  getCopilotSummary: (token: string) =>
+    apiFetch<ApiCopilotSummary>("/copilot/summary", {}, token),
+
+  syncCopilot: (token: string, body: ApiCopilotSyncRequest) =>
+    apiFetch<ApiCopilotSyncResponse>("/copilot/sync", { method: "POST", body: JSON.stringify(body) }, token),
+
+  captureCopilotBaseline: (token: string, body: ApiCopilotBaselineCreateRequest) =>
+    apiFetch<ApiCopilotBaseline>("/copilot/baselines", { method: "POST", body: JSON.stringify(body) }, token),
+
+  acknowledgeCopilotDrift: (token: string, driftId: string) =>
+    apiFetch<ApiCopilotDrift>(`/copilot/drift/${driftId}/acknowledge`, { method: "POST" }, token),
+
   createClientApiKey: (token: string, body: ApiClientApiKeyCreateRequest) =>
     apiFetch<ApiClientApiKeyCreateResponse>("/client-api-keys", { method: "POST", body: JSON.stringify(body) }, token),
 
@@ -2987,6 +3012,102 @@ export interface ApiMcpGraphEdge {
 export interface ApiMcpToolChainGraph {
   nodes: ApiMcpGraphNode[];
   edges: ApiMcpGraphEdge[];
+}
+
+export interface ApiCopilotInstance {
+  id: string;
+  tenant_id: string;
+  external_id: string;
+  instance_type: string;
+  name: string;
+  display_name: string;
+  status: string;
+  risk_score: number;
+  risk_band: string;
+  owner: string;
+  environment: string;
+  data_sources: string[] | null;
+  permissions: string[] | null;
+  metadata_json: Record<string, unknown> | null;
+  last_synced_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ApiCopilotConnector {
+  id: string;
+  tenant_id: string;
+  external_id: string;
+  name: string;
+  connector_type: string;
+  publisher: string;
+  status: string;
+  risk_score: number;
+  risk_band: string;
+  auth_type: string;
+  scopes: string[] | null;
+  data_sources: string[] | null;
+  permissions: string[] | null;
+  metadata_json: Record<string, unknown> | null;
+  last_synced_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ApiCopilotDrift {
+  id: string;
+  tenant_id: string;
+  baseline_id: string | null;
+  entity_type: string;
+  entity_id: string | null;
+  entity_external_id: string;
+  entity_name: string;
+  drift_type: string;
+  severity: string;
+  previous_value: Record<string, unknown> | null;
+  current_value: Record<string, unknown> | null;
+  description: string;
+  status: string;
+  created_at: string | null;
+  resolved_at: string | null;
+}
+
+export interface ApiCopilotBaseline {
+  id: string;
+  tenant_id: string;
+  name: string;
+  created_by: string;
+  created_at: string | null;
+}
+
+export interface ApiCopilotSummary {
+  instances_total: number;
+  instances_by_type: Record<string, number>;
+  connectors_total: number;
+  connectors_by_type: Record<string, number>;
+  high_risk_instances: number;
+  high_risk_connectors: number;
+  open_drift: number;
+  by_severity: Record<string, number>;
+}
+
+export interface ApiCopilotSyncRequest {
+  instances: Record<string, unknown>[];
+  connectors: Record<string, unknown>[];
+  audit_events?: Record<string, unknown>[];
+}
+
+export interface ApiCopilotSyncResponse {
+  instances_upserted: number;
+  instances_removed: number;
+  connectors_upserted: number;
+  connectors_removed: number;
+  drift_found: number;
+}
+
+export interface ApiCopilotBaselineCreateRequest {
+  name: string;
+  created_by?: string;
 }
 
 export interface ApiClientApiKeyCreateRequest {
