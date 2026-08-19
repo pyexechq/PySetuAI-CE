@@ -75,6 +75,34 @@ class CliWiringTest(unittest.TestCase):
         finally:
             _restore_env(previous)
 
+    def test_mcp_gateway_config_writes_file_without_credentials(self) -> None:
+        previous = _set_env(PYSETU_API_KEY=None, PYSETU_HOSTNAME=None)
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory, ".mcp.json")
+                code = main(["--mcp-gateway-config", str(path)])
+                self.assertEqual(code, 0)
+                self.assertTrue(path.exists())
+                self.assertIn("mcpServers", path.read_text(encoding="utf-8"))
+        finally:
+            _restore_env(previous)
+
+    def test_mcp_gateway_unknown_server_returns_1(self) -> None:
+        previous = _set_env(PYSETU_API_KEY=None, PYSETU_HOSTNAME=None)
+        try:
+            code = main(["--mcp-gateway", "--server", "does-not-exist"])
+            self.assertEqual(code, 1)
+        finally:
+            _restore_env(previous)
+
+    def test_mcp_gateway_requires_server(self) -> None:
+        previous = _set_env(PYSETU_API_KEY=None, PYSETU_HOSTNAME=None)
+        try:
+            code = main(["--mcp-gateway"])
+            self.assertEqual(code, 2)
+        finally:
+            _restore_env(previous)
+
 
 if __name__ == "__main__":
     unittest.main()

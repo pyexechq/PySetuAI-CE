@@ -120,6 +120,7 @@ class DiscoveredMcpServer:
     url: str = ""
     transport: str = "stdio"
     tools: tuple[str, ...] = field(default_factory=tuple)
+    args: tuple[str, ...] = field(default_factory=tuple)
 
 
 def _mcp_server_name(server_id: str, server: dict) -> str:
@@ -147,6 +148,13 @@ def _mcp_server_tools(server: dict) -> tuple[str, ...]:
     return ()
 
 
+def _mcp_server_args(server: dict) -> tuple[str, ...]:
+    args = server.get("args")
+    if isinstance(args, list):
+        return tuple(str(arg) for arg in args if isinstance(arg, str))
+    return ()
+
+
 def _parse_mcp_servers(servers: dict, source: str) -> list[DiscoveredMcpServer]:
     found: list[DiscoveredMcpServer] = []
     for server_id, server in servers.items():
@@ -162,6 +170,7 @@ def _parse_mcp_servers(servers: dict, source: str) -> list[DiscoveredMcpServer]:
                 url=url,
                 transport="http" if url else "stdio",
                 tools=_mcp_server_tools(server),
+                args=_mcp_server_args(server),
             )
         )
     return found

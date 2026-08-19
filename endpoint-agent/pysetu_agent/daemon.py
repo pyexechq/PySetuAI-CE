@@ -11,6 +11,7 @@ import json
 import os
 import platform
 import socket
+import sys
 import time
 from datetime import UTC, datetime
 from typing import Any
@@ -181,6 +182,41 @@ def load_policy(client: ControlPlaneClient, policy_file: str | None) -> LocalPol
     return policy
 
 
+def load_local_policy(policy_file: str | None) -> LocalPolicy:
+    """Load policy from a local cache file, or defaults if none/unreadable."""
+    if not policy_file:
+        return LocalPolicy.defaults()
+    return PolicyCache(policy_file).load_or_defaults()
+
+
+def run_mcp_gateway(config: AgentConfig, server_name: str, policy_file: str | None = None) -> int:
+    """Run the stdio MCP gateway proxying one discovered server."""
+    from .mcp_gateway import run_gateway
+
+    servers = discover_mcp_servers()
+    server = next((s for s in servers if s.name == server_name), None)
+    if server is None:
+        print(f"pysetu: unknown MCP server: {server_name}", file=sys.stderr)
+        return 1
+    if server.transport != "stdio":
+        print(f"pysetu: server {server_name} uses {server.transport}; only stdio is supported", file=sys.stderr)
+        return 1
+    return run_gateway(server, load_local_policy(policy_file))
+
+
+def run_mcp_gateway_config(config: AgentConfig, output_path: str | None = None, launcher: str | None = None) -> int:
+    """Generate an MCP config pointing tools at the gateway. Writes to output_path or prints."""
+    from .mcp_gateway import gateway_config, write_gateway_config
+
+    servers = discover_mcp_servers()
+    if output_path and output_path != "-":
+        path = write_gateway_config(output_path, servers, launcher=launcher)
+        print(f"Wrote MCP gateway config to {path}")
+    else:
+        print(json.dumps(gateway_config(servers, launcher=launcher), indent=2))
+    return 0
+
+
 def run_scan(
     config: AgentConfig,
     scan_dir: str,
@@ -287,9 +323,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--wrap-shell", action="store_true", help="Install PATH shims for claude/cursor/code")
     parser.add_argument("--wrap-shell-dir", default=os.path.join(os.path.expanduser("~"), ".pysetu", "bin"), help="Shim directory")
     parser.add_argument("--clipboard", action="store_true", help="Run the clipboard DLP monitor (macOS)")
+    parser.add_argument("--mcp-gateway", action="store_true", help="Run the MCP gateway proxy (stdio)")
+    parser.add_argument("--server", help="Upstream MCP server name to proxy (with --mcp-gateway)")
+    parser.add_argument("--mcp-gateway-config", nargs="?", const="-", metavar="PATH", help="Generate an MCP config pointing tools at the gateway (PATH, or '-' to print)")
     args = parser.parse_args(argv)
 
     config = AgentConfig.load(args.config)
+
+    # Offline modes that do not require control-plane credentials.
+    if args.mcp_gateway_config is not None:
+        return run_mcp_gateway_config(config, args.mcp_gateway_config)
+
+    if args.mcp_gateway:
+        if not args.server:
+            print("pysetu: --mcp-gateway requires --server NAME", file=sys.stderr)
+            return 2
+        return run_mcp_gateway(config, args.server, args.policy_file)
+
     missing = missing_fields(config)
     if missing:
         print(f"Missing required configuration: {', '.join(missing)}. Set PYSETU_API_KEY and PYSETU_HOSTNAME.")

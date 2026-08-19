@@ -94,6 +94,9 @@ to include `--watch /path/to/project`.
   scanning argv and piped stdin for secrets/PII before the real binary runs.
 - `clipboard.py` — macOS clipboard DLP monitor (`pbpaste`/`pbcopy`) that redacts
   or clears sensitive content copied to the clipboard.
+- `mcp_gateway.py` — local MCP gateway that intercepts tool-call traffic for AI
+  desktop clients (Claude Code, Claude Desktop, Cursor, VSCode), scanning
+  `tools/call` arguments and blocking/redacting/passing through.
 
 When `--policy-file` is provided, `--scan-dir` fetches the effective policy from
 the control plane (`GET /agentic/policy`) and caches it locally.
@@ -138,6 +141,39 @@ pass-through if the wrapper is ever re-entered.
 
 Polls the system clipboard and, when sensitive content is detected, redacts it
 in place (or clears it for a block decision). Uses `pbpaste`/`pbcopy`.
+
+### MCP gateway (`--mcp-gateway`)
+
+Claude Code, Claude Desktop, Cursor, and VSCode all connect to MCP servers over
+stdio. The gateway sits between the tool and a real MCP server: the tool is
+pointed at the gateway as if it were an MCP server, and the gateway spawns the
+real server as a subprocess and forwards JSON-RPC messages. Every `tools/call`
+is scanned for secrets/PII and either **blocked**, **redacted**, or **passed
+through** before reaching the real server.
+
+Generate a config the tool can point at (writes `.mcp.json` or prints with `-`):
+
+```bash
+python -m pysetu_agent --mcp-gateway-config .mcp.json
+python -m pysetu_agent --mcp-gateway-config -
+```
+
+Run the gateway proxying one discovered server:
+
+```bash
+python -m pysetu_agent --mcp-gateway --server github --policy-file policy.json
+```
+
+Behavior on `tools/call`:
+
+- **block** — a JSON-RPC error is returned to the tool and the real server is
+  never called (secrets, or a redaction that would produce invalid JSON).
+- **redact** — the tool arguments are rewritten with `[REDACTED]` before being
+  forwarded to the real server.
+- **allow** — the call is forwarded unchanged.
+
+Only stdio upstreams are proxied; HTTP/SSE servers are skipped by the config
+generator. The proxy is a synchronous request/response forwarder.
 
 ## Tests
 
