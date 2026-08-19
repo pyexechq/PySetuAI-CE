@@ -132,7 +132,7 @@ async def test_evaluate_and_dispatch_creates_ticket() -> None:
     )
 
     with patch(
-        "app.services.incident_dispatch_service.list_webhooks",
+        "app.services.alert_webhook_service.list_webhooks",
         AsyncMock(return_value=[webhook]),
     ), patch(
         "app.services.incident_dispatch_service.get_incident_adapter",
@@ -205,7 +205,7 @@ async def test_evaluate_and_dispatch_updates_on_duplicate() -> None:
     mock_adapter.update_ticket = AsyncMock(return_value=AdapterResult(external_ticket_id="sys123"))
 
     with patch(
-        "app.services.incident_dispatch_service.list_webhooks",
+        "app.services.alert_webhook_service.list_webhooks",
         AsyncMock(return_value=[webhook]),
     ), patch(
         "app.services.incident_dispatch_service.get_incident_adapter",

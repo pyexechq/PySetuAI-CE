@@ -111,6 +111,7 @@ def test_dispatch_tenant_alerts_delivers_to_enabled_webhooks() -> None:
             "alerts_sent": 0,
             "last_alert_at": None,
             "last_error": "",
+            "dispatch_policy_json": None,
         },
     )()
 
@@ -150,12 +151,13 @@ def test_dispatch_tenant_alerts_records_failure_without_raising() -> None:
         (),
         {
             "id": uuid.uuid4(),
-            "name": "ServiceNow",
-            "webhook_type": "servicenow",
+            "name": "Slack Ops",
+            "webhook_type": "slack",
             "enabled": True,
             "alerts_sent": 2,
             "last_alert_at": None,
             "last_error": "",
+            "dispatch_policy_json": None,
         },
     )()
     db = AsyncMock()
