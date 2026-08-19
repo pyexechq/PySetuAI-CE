@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.telemetry import current_trace_id, get_tracer
-from app.schemas.openai import InspectionResult, PolicyViolation
+from app.schemas.openai import InspectionResult, PolicyRuleEvaluationResult, PolicyViolation
 from app.services.policy_bundle_service import get_tenant_default_bundle, load_bundle_rules
 from app.services.injection_detection_service import scan_content
 
@@ -108,8 +108,15 @@ def _condition_matches(
     return False, None
 
 
-def _evaluate_rules(content: str, rules: list, *, context: dict | None = None) -> InspectionResult:
+def _evaluate_rules(
+    content: str,
+    rules: list,
+    *,
+    context: dict | None = None,
+    include_rule_results: bool = False,
+) -> InspectionResult:
     violations: list[PolicyViolation] = []
+    rule_results: list[PolicyRuleEvaluationResult] = []
     redacted = content
     blocked = False
     highest_risk = "low"
@@ -120,6 +127,10 @@ def _evaluate_rules(content: str, rules: list, *, context: dict | None = None) -
             rule_name = raw.name
             action = raw.action
             severity = raw.severity
+            rule_id = None
+            condition = None
+            policy_name = None
+            enabled = True
             matched = False
             detail = ""
             redact_pattern = raw.pattern
@@ -135,15 +146,35 @@ def _evaluate_rules(content: str, rules: list, *, context: dict | None = None) -
                         detail = f"Keyword matched: {kw}"
                         break
         else:
-            if not isinstance(raw, dict) or not raw.get("enabled", True):
+            if not isinstance(raw, dict):
                 continue
+            rule_id = str(raw.get("id", "")) or None
             rule_name = str(raw.get("name", "Rule"))
             action = str(raw.get("action", "Allow"))
             severity = str(raw.get("severity", "medium"))
             condition = str(raw.get("condition", ""))
-            matched, redact_pattern = _condition_matches(condition, content, context=context)
+            enabled = bool(raw.get("enabled", True))
             policy_name = raw.get("policy_name")
+            matched, redact_pattern = _condition_matches(condition, content, context=context)
             detail = f"Condition matched: {condition}" + (f" ({policy_name})" if policy_name else "")
+
+        if include_rule_results:
+            rule_results.append(
+                PolicyRuleEvaluationResult(
+                    rule_id=rule_id,
+                    rule_name=rule_name,
+                    condition=condition,
+                    action=action,
+                    severity=severity,
+                    enabled=enabled,
+                    matched=matched,
+                    detail=detail if matched else None,
+                    policy_name=policy_name,
+                )
+            )
+
+        if isinstance(raw, dict) and not enabled:
+            continue
 
         if not matched:
             continue
@@ -164,16 +195,21 @@ def _evaluate_rules(content: str, rules: list, *, context: dict | None = None) -
                     redacted = SSN_PATTERN.sub("[REDACTED]", redacted)
 
     if blocked:
-        return InspectionResult(allowed=False, action="block", violations=violations, risk=highest_risk)
-    if any(v.action == "Redact" for v in violations):
-        return InspectionResult(
+        result = InspectionResult(allowed=False, action="block", violations=violations, risk=highest_risk)
+    elif any(v.action == "Redact" for v in violations):
+        result = InspectionResult(
             allowed=True,
             action="redact",
             violations=violations,
             redacted_content=redacted,
             risk=highest_risk,
         )
-    return InspectionResult(allowed=True, violations=violations, risk="low")
+    else:
+        result = InspectionResult(allowed=True, violations=violations, risk="low")
+
+    if include_rule_results:
+        result.rule_results = rule_results
+    return result
 
 
 RISK_RANK = {"low": 0, "medium": 1, "high": 2, "critical": 3}

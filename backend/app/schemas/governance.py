@@ -438,7 +438,9 @@ class PolicyRulesSaveRequest(BaseModel):
 
 class PolicyTestRequest(BaseModel):
     content: str
-    rules: list[PolicyRuleUpdateRequest]
+    rules: list[PolicyRuleUpdateRequest] = []
+    api_key_id: str | None = None
+    bundle_id: str | None = None
 
 
 class PolicyConditionHelpExample(BaseModel):

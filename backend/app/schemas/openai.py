@@ -72,9 +72,22 @@ class PolicyViolation(BaseModel):
     detail: str
 
 
+class PolicyRuleEvaluationResult(BaseModel):
+    rule_id: str | None = None
+    rule_name: str
+    condition: str | None = None
+    action: str
+    severity: str | None = None
+    enabled: bool = True
+    matched: bool
+    detail: str | None = None
+    policy_name: str | None = None
+
+
 class InspectionResult(BaseModel):
     allowed: bool
     action: str = "allow"
     violations: list[PolicyViolation] = Field(default_factory=list)
     redacted_content: str | None = None
     risk: str = "low"
+    rule_results: list[PolicyRuleEvaluationResult] | None = None

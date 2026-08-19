@@ -111,6 +111,7 @@ from app.schemas.access import ClientApiKeyResponse
 from app.schemas.openai import InspectionResult
 from app.services.client_api_key_service import client_key_response, get_client_api_key
 from app.services.integration_service import get_or_create_integration
+from app.services.policy_bundle_service import get_policy_bundle, get_tenant_default_bundle, load_bundle_rules
 from app.services.policy_engine import _evaluate_rules
 from app.services.request_log_service import (
     get_request_log_body,
@@ -503,7 +504,25 @@ async def get_policy_rules(
     current_user: Annotated[User, Depends(_require_policy_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     policy_id: str | None = Query(None, description="Policy UUID; defaults to Prompt Injection Guard"),
+    bundle_id: str | None = Query(None, description="Policy bundle UUID"),
+    default_bundle: bool = Query(False, description="Load the tenant default policy bundle"),
 ) -> list[PolicyRuleResponse]:
+    if bundle_id or default_bundle:
+        bundle = await get_policy_bundle(db, current_user.tenant_id, bundle_id) if bundle_id else None
+        if bundle is None:
+            bundle = await get_tenant_default_bundle(db, current_user.tenant_id)
+        rules = await load_bundle_rules(db, current_user.tenant_id, bundle)
+        return [
+            PolicyRuleResponse(
+                id=str(rule.get("id", i)),
+                name=str(rule.get("name", "Rule")),
+                condition=str(rule.get("condition", "")),
+                action=str(rule.get("action", "Allow")),
+                severity=str(rule.get("severity", "medium")),
+                enabled=bool(rule.get("enabled", True)),
+            )
+            for i, rule in enumerate(rules)
+        ]
     if policy_id:
         policy = await _get_policy(db, current_user.tenant_id, policy_id)
     else:
@@ -700,12 +719,27 @@ async def seed_compliance_template(
 @router.post("/policies/test", response_model=InspectionResult)
 async def test_policy_rules(
     payload: PolicyTestRequest,
-    _current_user: Annotated[User, Depends(_require_policy_access)],
+    current_user: Annotated[User, Depends(_require_policy_access)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> InspectionResult:
-    # Convert Pydantic models back to dicts for _evaluate_rules
-    rules_dicts = [rule.model_dump() for rule in payload.rules]
-    result = _evaluate_rules(payload.content, rules_dicts)
-    return result
+    rules: list[dict] = []
+    if payload.api_key_id:
+        key = await get_client_api_key(db, current_user.tenant_id, payload.api_key_id)
+        bundle: PolicyBundle | None = None
+        if key.bundle_id:
+            bundle = await get_policy_bundle(db, current_user.tenant_id, str(key.bundle_id))
+        if bundle is None:
+            bundle = await get_tenant_default_bundle(db, current_user.tenant_id)
+        rules = await load_bundle_rules(db, current_user.tenant_id, bundle)
+    elif payload.bundle_id:
+        bundle = await get_policy_bundle(db, current_user.tenant_id, payload.bundle_id)
+        rules = await load_bundle_rules(db, current_user.tenant_id, bundle)
+    else:
+        rules = [rule.model_dump() for rule in payload.rules]
+
+    if not rules:
+        return InspectionResult(allowed=True, action="allow", violations=[], risk="low")
+    return _evaluate_rules(payload.content, rules, include_rule_results=True)
 
 
 @router.get("/policies/graph-links", response_model=list[PolicyGraphLinkResponse])
