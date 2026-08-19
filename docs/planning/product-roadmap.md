@@ -206,7 +206,7 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 - [ ] Retention + erasure workflows (BL-107)
 - [ ] Optional WORM audit ledger (BL-108)
 
-## Phase 16 — Unified AI Agent Control Plane (in progress)
+## Phase 16 — Unified AI Agent Control Plane (complete — Aug 19, 2026)
 
 > Architecture: [agentic-control-plane.md](../architecture/agentic-control-plane.md)  
 > Roadmap: [agentic-control-plane-roadmap.md](./agentic-control-plane-roadmap.md)  
@@ -222,7 +222,7 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 - [x] Agent Inventory and Endpoint Security pages
 - [x] Endpoint daemon — discovery + telemetry skeleton (`endpoint-agent/`)
 
-### Phase 16b — Endpoint Enforcement (in progress)
+### Phase 16b — Endpoint Enforcement (complete)
 
 - [x] Local secret + PII detection (`endpoint-agent/pysetu_agent/detection.py`)
 - [x] Local policy engine + integrity-checked offline cache (`policy.py`)
@@ -234,13 +234,32 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 - [x] Approval Center UI
 - [x] `--watch` mode + background service packaging (launchd/systemd)
 
-### Later control-plane layers
+### Phase 16c — MCP Governance Depth (complete)
 
-- [ ] Agentic attack surface graph
-- [ ] Microsoft Copilot inventory + Graph/Audit sync
-- [ ] MCP tool-chain governance
-- [ ] Prompt-injection + exfiltration detections
-- [ ] Guardian policy enforcement loop
+- [x] Per-tool MCP governance policies (allow / approval / block) — migration `070`
+- [x] Tool-chain risk scoring (deterministic 0-100)
+- [x] MCP tool-chain event monitoring + summary
+- [x] Agentic attack-surface graph (agent → agent → server → tool → data → external)
+- [x] Approval center integration for MCP tool calls (gateway `before_invoke`)
+- [x] MCP Tool Chains UI (`/mcp-tool-chains`)
+- [x] MCP discovery from endpoint configs (`.mcp.json`, `.cursor/mcp.json`, Claude Desktop config)
+- [x] Agent-to-agent event monitoring (source/target agent attribution)
+
+### Phase 16d — Microsoft Copilot (complete)
+
+- [x] Microsoft Copilot / Teams / Copilot Studio inventory — migration `071`
+- [x] Connector inventory and risk assessment
+- [x] Graph / audit / security API synchronization (payload-driven sync adapter; MS Graph OAuth is tenant-side)
+- [x] Governance drift detection (baseline capture + drift comparison)
+
+### Phase 16e — Advanced Agentic Security (complete)
+
+- [x] Agent chains and attack-surface visualization
+- [x] Anomaly and behavior detection (volume, tool usage, data access, timing, chain risk) — migration `072`
+- [x] Prompt-injection detection in files/repos/MCP resources (wraps existing `scan_content`)
+- [x] Exfiltration detection (large read, rapid read, sensitive boundary exit)
+- [x] Guardian policy enforcement loop (severity→action evaluation + on-demand run + Celery beat schedule `run_guardian_loop_all_tenants`)
+- [x] Automated remediation (block agent, revoke access, quarantine, alert)
 
 ## Milestones
 
@@ -262,3 +281,4 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 | M14: MCP compliance pipeline | Sprint 18–20 | 🔄 In progress — BL-098–BL-108 ([mcp-policy-pipeline-design.md](./mcp-policy-pipeline-design.md)) |
 | M15: GenAI DLP Gateway | Aug 14, 2026 | ✅ Complete — BL-109–BL-115 ([genai-dlp-gateway-roadmap.md](./genai-dlp-gateway-roadmap.md)) |
 | M16: Compliance UX & config | Aug 15, 2026 | ✅ Complete — BL-116–BL-122 ([aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md)) |
+| M17: Unified AI Agent Control Plane | Aug 19, 2026 | ✅ Complete — Phases 16a–16e (endpoint enforcement, MCP governance depth, Copilot, agentic security, Guardian loop) ([agentic-control-plane-roadmap.md](./agentic-control-plane-roadmap.md)) |
