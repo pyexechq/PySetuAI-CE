@@ -61,6 +61,7 @@ export const mainNavGroups: NavGroup[] = [
     items: [
       { title: "Agent Inventory", href: "/agents", icon: Bot },
       { title: "Endpoint Security", href: "/endpoints", icon: Monitor },
+      { title: "MCP Tool Chains", href: "/mcp-tool-chains", icon: GitBranch },
     ],
   },
   {

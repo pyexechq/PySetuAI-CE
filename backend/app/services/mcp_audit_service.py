@@ -93,3 +93,48 @@ async def log_mcp_tool_invoke(
             logger.warning("MCP incident dispatch failed: %s", exc)
 
     return log.id
+
+
+async def log_mcp_chain_event(
+    db: AsyncSession,
+    ctx: GatewayContext,
+    *,
+    server_name: str,
+    server_id: uuid.UUID,
+    tool_name: str,
+    tool_risk: str,
+    decision: str,
+    chain_risk_score: int,
+    data_source: str = "",
+    external_service: str = "",
+    policy_id: str | None = None,
+    policy_name: str = "",
+    metadata: dict[str, Any] | None = None,
+) -> uuid.UUID | None:
+    """Record an MCP tool-chain event for the attack-surface graph.
+
+    Best-effort: failures are logged and swallowed so the gateway hot path is
+    never blocked by chain-event persistence.
+    """
+    try:
+        from app.services.mcp_tool_chain_service import record_mcp_chain_event
+
+        event = await record_mcp_chain_event(
+            db,
+            ctx.tenant_id,
+            mcp_server_id=server_id,
+            mcp_server_name=server_name,
+            tool_name=tool_name,
+            tool_risk=tool_risk,
+            data_source=data_source,
+            external_service=external_service,
+            decision=decision,
+            chain_risk_score=chain_risk_score,
+            policy_id=policy_id,
+            policy_name=policy_name,
+            metadata=metadata,
+        )
+        return event.id
+    except Exception as exc:
+        logger.warning("MCP chain event recording failed: %s", exc)
+        return None

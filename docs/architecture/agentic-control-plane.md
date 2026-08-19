@@ -165,3 +165,28 @@ python -m pysetu_agent --scan-dir . --policy-file policy.json
   definitions for background operation.
 - The Approval Center UI at `/approvals` lists pending requests and supports
   approve/reject actions backed by the `/approvals` API.
+
+## 12. MCP governance depth (Phase 3)
+
+- `MCPToolPolicy` (migration `070`) holds per-tool governance actions
+  (`allow` / `approval` / `block`) keyed by `(tenant_id, server_id, tool_name)`.
+  `mcp_tool_policy_service` resolves the effective action, defaulting to
+  `allow` when no policy exists so existing behavior is unchanged.
+- `MCPToolChainEvent` (migration `070`) records each governed MCP tool
+  invocation: source/target agent, endpoint, MCP server, tool, data source,
+  external service, decision, and a deterministic 0–100 chain risk score.
+- `mcp_tool_chain_service` computes chain risk from tool risk class plus
+  bounded contributions from sensitive data sources, unknown external
+  services, agent risk, and MCP server risk. It also builds the agentic
+  attack-surface graph (agent → agent → server → tool → data → external).
+- The gateway `before_invoke` hook now composes the deny-list + bundle scope
+  (hard `block` baseline) with the per-tool policy. An `approval` action
+  creates a `pending` `ApprovalRequest` via the unified security-event
+  pipeline and returns JSON-RPC error `-32005` with `approval_request_id`.
+- Allowed invocations emit a `MCPToolChainEvent` via `log_mcp_chain_event`
+  (best-effort, never blocks the hot path).
+- API surface: `GET/PUT/DELETE /mcp/tool-policies`, `GET /mcp/tool-chains`,
+  `GET /mcp/tool-chains/summary`, `GET /mcp/tool-chains/graph`.
+- The MCP Tool Chains UI at `/mcp-tool-chains` shows summary cards, the
+  attack-surface map (ReactFlow), and the recent chain-event feed with
+  decision filtering.

@@ -1,8 +1,8 @@
 # Agent Control Plane Roadmap
 
-> Phased rollout of the Unified AI Agent Control Plane. Phase 1 foundation is in progress.
+> Phased rollout of the Unified AI Agent Control Plane. Phase 1 and Phase 2 are complete and committed; Phase 3 is in progress.
 
-## Phase 1 — Foundation (current)
+## Phase 1 — Foundation (done)
 
 - Endpoint registration + heartbeat
 - Endpoint inventory
@@ -11,7 +11,7 @@
 - Deterministic risk scoring
 - Agent Inventory and Endpoint Security dashboards
 
-## Phase 2 — Endpoint Enforcement (in progress)
+## Phase 2 — Endpoint Enforcement (done)
 
 - Signed, least-privilege endpoint daemon (Windows / macOS / Linux)
 - AI tool discovery (process, config, IDE extension, MCP config) — done
@@ -23,12 +23,16 @@
 - Approval workflow — backend model + API done, UI done
 - `--watch` continuous mode + launchd/systemd service packaging — done
 
-## Phase 3 — MCP Governance Depth
+## Phase 3 — MCP Governance Depth (in progress)
 
-- MCP discovery from endpoint configs
-- Tool-chain governance and risk scoring
-- Agent-to-agent / MCP event monitoring
-- Approval center integration
+- Per-tool MCP governance policies (allow / approval / block) — done
+- Tool-chain risk scoring (deterministic 0-100) — done
+- MCP tool-chain event monitoring + summary — done
+- Agentic attack-surface graph (agent → agent → server → tool → data → external) — done
+- Approval center integration for MCP tool calls (gateway before_invoke) — done
+- MCP Tool Chains UI (`/mcp-tool-chains`) — done
+- MCP discovery from endpoint configs — pending
+- Agent-to-agent event monitoring (source/target agent attribution) — partial (fields present, attribution wiring pending)
 
 ## Phase 4 — Microsoft Copilot
 

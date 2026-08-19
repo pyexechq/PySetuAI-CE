@@ -1,4 +1,11 @@
-from app.models.agentic import AgentCapability, AgentInventory, ApprovalRequest, Endpoint, SecurityEvent
+from app.models.agentic import (
+    AgentCapability,
+    AgentInventory,
+    ApprovalRequest,
+    Endpoint,
+    MCPToolChainEvent,
+    SecurityEvent,
+)
 from app.models.governance import (
     AlertWebhook,
     AuditLog,
@@ -6,6 +13,7 @@ from app.models.governance import (
     CustomIntent,
     LLMProvider,
     MCPServer,
+    MCPToolPolicy,
     McpOAuthCredential,
     McpSsoInjectionConfig,
     McpToolDenyRule,
@@ -35,6 +43,7 @@ __all__ = [
     "McpOAuthCredential",
     "McpSsoInjectionConfig",
     "McpToolDenyRule",
+    "MCPToolPolicy",
     "AuditLog",
     "AlertWebhook",
     "SiemConnector",
@@ -56,4 +65,5 @@ __all__ = [
     "AgentCapability",
     "SecurityEvent",
     "ApprovalRequest",
+    "MCPToolChainEvent",
 ]

@@ -11,6 +11,7 @@ from app.core.gateway_deps import get_gateway_context
 from app.core.rate_limit import check_ai_rate_limits, check_ai_token_limits
 from app.core.telemetry import current_trace_id
 from app.db.session import get_db
+from app.models.agentic import ApprovalRequest
 from app.models.governance import AuditLog, LLMProvider, MCPServer, RoutingGroup
 from app.models.tenant import Tenant, User
 from app.services.alert_webhook_service import build_gateway_alert_event, dispatch_tenant_alerts
@@ -294,6 +295,74 @@ async def chat_completions_api(
     return await _handle_chat_completions(request, ctx, db, http_request)
 
 
+async def _create_mcp_approval(
+    db: AsyncSession,
+    ctx: GatewayContext,
+    server: Any,
+    tool_name: str,
+    arguments: dict,
+    policy: Any,
+) -> str:
+    """Create an ApprovalRequest for an MCP tool requiring human sign-off.
+
+    Reuses the unified security-event + approval pipeline so the request shows
+    up in the Approval Center and Audit Explorer. Returns the approval request id.
+    """
+    from app.schemas.agentic import SecurityEventIngestRequest
+    from app.services.agentic_service import record_security_event
+    from app.services.mcp_tool_chain_service import compute_chain_risk_score, record_mcp_chain_event
+
+    risk_score = getattr(policy, "risk_score", 0) or 0
+    policy_id = getattr(policy, "id", None)
+    policy_name = getattr(policy, "tool_name", tool_name) or tool_name
+    chain_risk = compute_chain_risk_score("write", data_source="", external_service="", agent_risk=risk_score)
+
+    event, _ = await record_security_event(
+        db,
+        ctx.tenant_id,
+        SecurityEventIngestRequest(
+            source="mcp",
+            event_type="mcp_tool",
+            user_name=ctx.actor,
+            tool=tool_name,
+            action=f"mcp.{tool_name}"[:128],
+            resource=f"{getattr(server, 'name', '')}/{tool_name}",
+            classification=["mcp", "approval"],
+            decision="approval",
+            risk_score=risk_score,
+            policy_id=str(policy_id) if policy_id else None,
+            policy_name=policy_name,
+            metadata={"server": getattr(server, "name", ""), "arguments": arguments},
+        ),
+        actor=ctx.actor,
+    )
+    approval = await db.execute(
+        select(ApprovalRequest).where(ApprovalRequest.security_event_id == event.id)
+    )
+    approval_row = approval.scalar_one_or_none()
+    approval_id = str(approval_row.id) if approval_row else ""
+
+    await record_mcp_chain_event(
+        db,
+        ctx.tenant_id,
+        security_event_id=event.id,
+        approval_request_id=approval_row.id if approval_row else None,
+        mcp_server_id=server.id,
+        mcp_server_name=getattr(server, "name", ""),
+        tool_name=tool_name,
+        tool_risk="write",
+        data_source="",
+        external_service="",
+        decision="approval",
+        chain_risk_score=chain_risk,
+        policy_id=str(policy_id) if policy_id else None,
+        policy_name=policy_name,
+        metadata={"arguments": arguments},
+    )
+    await db.commit()
+    return approval_id
+
+
 async def _handle_mcp_multiplex(
     request: Request,
     ctx: GatewayContext,
@@ -303,7 +372,7 @@ async def _handle_mcp_multiplex(
 
     from app.services.gateway_service import _load_bundle
     from app.services.mcp_access_service import (
-        check_tool_access,
+        check_tool_policy_action,
         filter_multiplex_catalog,
         filter_servers_for_bundle,
         resolve_actor_role,
@@ -360,9 +429,11 @@ async def _handle_mcp_multiplex(
             parse_qualified_name=parse_qualified_name,
         )
 
-    async def before_invoke(server, tool_name: str, arguments: dict) -> tuple[bool, str]:
-        allowed, reason = check_tool_access(bundle, deny_rules, actor_role, server, tool_name)
-        if not allowed:
+    async def before_invoke(server, tool_name: str, arguments: dict) -> tuple[bool, str, str | None]:
+        action, reason, policy = await check_tool_policy_action(
+            db, ctx.tenant_id, bundle, deny_rules, actor_role, server, tool_name
+        )
+        if action == "block":
             await log_mcp_tool_invoke(
                 db,
                 ctx,
@@ -379,7 +450,12 @@ async def _handle_mcp_multiplex(
                     deny_reason=reason,
                 ),
             )
-            return False, reason
+            return False, reason, None
+        if action == "approval":
+            approval_request_id = await _create_mcp_approval(
+                db, ctx, server, tool_name, arguments, policy
+            )
+            return False, reason, approval_request_id
         inspect_content = json.dumps({"tool": tool_name, "arguments": arguments}, default=str)
         ingress = await inspect_for_gateway(db, ctx.tenant_id, bundle, inspect_content)
         if not ingress.allowed:
@@ -401,8 +477,8 @@ async def _handle_mcp_multiplex(
                     inspect_actions=[ingress.action or "block"],
                 ),
             )
-            return False, detail
-        return True, ""
+            return False, detail, None
+        return True, "", None
 
     async def after_invoke(server, tool_name: str, result_text: str) -> tuple[bool, str, str]:
         egress = await inspect_for_gateway(db, ctx.tenant_id, bundle, result_text)
@@ -472,6 +548,22 @@ async def _handle_mcp_multiplex(
                     risk="low",
                     details="multiplex tools/call",
                     latency_ms=latency_ms,
+                )
+                from app.services.mcp_audit_service import log_mcp_chain_event
+                from app.services.mcp_tool_chain_service import compute_chain_risk_score
+                from app.services.mcp_tool_risk_service import classify_tool_risk
+
+                tool_risk = classify_tool_risk(str(tool_name))
+                await log_mcp_chain_event(
+                    db,
+                    ctx,
+                    server_name=matched.name,
+                    server_id=matched.id,
+                    tool_name=str(tool_name),
+                    tool_risk=tool_risk,
+                    decision="allowed",
+                    chain_risk_score=compute_chain_risk_score(tool_risk),
+                    metadata={"latency_ms": latency_ms},
                 )
             await db.commit()
     return JSONResponse(response)

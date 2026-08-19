@@ -5,9 +5,12 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from app.models.governance import McpToolDenyRule, PolicyBundle
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.governance import McpToolDenyRule, MCPToolPolicy, PolicyBundle
 from app.services.gateway_context import GatewayContext
 from app.services.mcp_security_service import is_tool_denied
+from app.services.mcp_tool_policy_service import resolve_tool_action
 
 CLIENT_KEY_ROLE = "client_key"
 
@@ -80,6 +83,35 @@ def check_tool_access(
     if is_tool_denied(deny_rules, actor_role, server_id, tool_name):
         return False, f"Tool '{tool_name}' denied for role '{actor_role}'"
     return True, ""
+
+
+async def check_tool_policy_action(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    bundle: PolicyBundle | None,
+    deny_rules: list[McpToolDenyRule],
+    actor_role: str,
+    server: Any,
+    tool_name: str,
+) -> tuple[str, str, MCPToolPolicy | None]:
+    """Compose deny-list + bundle scope with per-tool governance policy.
+
+    Returns ``(action, reason, policy)`` where action is one of
+    ``allow`` | ``approval`` | ``block``. The deny-list and bundle scope act as
+    the hard ``block`` baseline; the per-tool policy adds ``approval`` on top.
+    """
+    allowed, reason = check_tool_access(bundle, deny_rules, actor_role, server, tool_name)
+    if not allowed:
+        return "block", reason, None
+    server_id = getattr(server, "id", None)
+    if server_id is None:
+        return "block", "Invalid MCP server", None
+    action, policy = await resolve_tool_action(db, tenant_id, server_id, tool_name)
+    if action == "block":
+        return "block", f"Tool '{tool_name}' blocked by governance policy", policy
+    if action == "approval":
+        return "approval", f"Tool '{tool_name}' requires approval", policy
+    return "allow", "", policy
 
 
 def filter_multiplex_catalog(

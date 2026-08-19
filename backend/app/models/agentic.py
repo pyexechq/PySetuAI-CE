@@ -140,3 +140,41 @@ class ApprovalRequest(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
+
+
+class MCPToolChainEvent(Base):
+    __tablename__ = "mcp_tool_chain_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    security_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("security_events.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    approval_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("approval_requests.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    source_agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    target_agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    endpoint_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("endpoints.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    mcp_server_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("mcp_servers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    mcp_server_name: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    tool_risk: Mapped[str] = mapped_column(String(20), default="read", nullable=False)
+    data_source: Mapped[str] = mapped_column(String(512), default="", nullable=False)
+    external_service: Mapped[str] = mapped_column(String(512), default="", nullable=False)
+    decision: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    chain_risk_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
+    policy_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    policy_name: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    metadata_json: Mapped[dict | None] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )

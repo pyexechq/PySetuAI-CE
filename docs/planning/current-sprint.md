@@ -1,10 +1,35 @@
-# Current Sprint — Sprint 20 (Phase 16b, Endpoint Enforcement)
+# Current Sprint — Sprint 21 (Phase 3, MCP Governance Depth)
 
 **Updated:** Aug 19, 2026  
-**Active focus:** Unified AI Agent Control Plane Phase 2 — local DLP/secret detection, local policy engine, directory scanning, and the approval workflow.
+**Active focus:** Unified AI Agent Control Plane Phase 3 — per-tool MCP governance, tool-chain risk scoring, agentic attack-surface graph, and approval-center integration.
 
 > Architecture: [agentic-control-plane.md](../architecture/agentic-control-plane.md)  
 > Roadmap: [agentic-control-plane-roadmap.md](./agentic-control-plane-roadmap.md)
+
+## Sprint 21 — MCP Governance Depth
+
+| ID | Task | Status |
+|----|------|--------|
+| S21-01 | `MCPToolPolicy` + `MCPToolChainEvent` models + migration `070` | Done |
+| S21-02 | `mcp_tool_policy_service` — per-tool allow/approval/block | Done |
+| S21-03 | `mcp_tool_chain_service` — chain risk scoring, events, summary, graph | Done |
+| S21-04 | `mcp_governance` API router (policies, chains, summary, graph) | Done |
+| S21-05 | Gateway `before_invoke` approval-aware check + `_create_mcp_approval` | Done |
+| S21-06 | Chain-event emission on allowed invocations (`log_mcp_chain_event`) | Done |
+| S21-07 | MCP Tool Chains UI (`/mcp-tool-chains`) + nav + api client | Done |
+| S21-08 | Unit tests (`test_mcp_governance.py`) | Done |
+
+## Exit criteria
+
+- Per-tool policy action resolves to allow / approval / block; deny-list + bundle scope remain the hard block baseline.
+- `approval` action creates a `pending` `ApprovalRequest` and returns `-32005` with `approval_request_id` to the caller.
+- Every governed MCP `tools/call` records a `MCPToolChainEvent` with a deterministic 0–100 chain risk score.
+- Attack-surface graph renders agent → agent → server → tool → data → external chains.
+- MCP Tool Chains page renders from live APIs.
+
+## Prior sprint (closed)
+
+Sprint 20 (S20-01–S20-10) — Endpoint Enforcement.
 
 ## Sprint 20 — Endpoint Enforcement
 

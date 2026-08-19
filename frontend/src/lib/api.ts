@@ -1520,6 +1520,28 @@ export const api = {
       body: JSON.stringify({ reason }),
     }, token),
 
+  getMcpToolPolicies: (token: string) =>
+    apiFetch<ApiMcpToolPolicy[]>("/mcp/tool-policies", {}, token),
+
+  upsertMcpToolPolicy: (token: string, body: ApiMcpToolPolicyUpsertRequest) =>
+    apiFetch<ApiMcpToolPolicy>("/mcp/tool-policies", { method: "PUT", body: JSON.stringify(body) }, token),
+
+  deleteMcpToolPolicy: (token: string, policyId: string) =>
+    apiFetch<void>(`/mcp/tool-policies/${policyId}`, { method: "DELETE" }, token),
+
+  getMcpToolChains: (token: string, limit = 200, decision?: string) =>
+    apiFetch<ApiMcpToolChainEvent[]>(
+      `/mcp/tool-chains?limit=${limit}${decision && decision !== "all" ? `&decision=${decision}` : ""}`,
+      {},
+      token
+    ),
+
+  getMcpToolChainSummary: (token: string) =>
+    apiFetch<ApiMcpToolChainSummary>("/mcp/tool-chains/summary", {}, token),
+
+  getMcpToolChainGraph: (token: string, limit = 200) =>
+    apiFetch<ApiMcpToolChainGraph>(`/mcp/tool-chains/graph?limit=${limit}`, {}, token),
+
   createClientApiKey: (token: string, body: ApiClientApiKeyCreateRequest) =>
     apiFetch<ApiClientApiKeyCreateResponse>("/client-api-keys", { method: "POST", body: JSON.stringify(body) }, token),
 
@@ -2891,6 +2913,80 @@ export interface ApiApprovalRequest {
   decided_at: string | null;
   expires_at: string | null;
   created_at: string;
+}
+
+export interface ApiMcpToolPolicy {
+  id: string;
+  tenant_id: string;
+  server_id: string;
+  tool_name: string;
+  action: "allow" | "approval" | "block";
+  risk_score: number;
+  reason: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ApiMcpToolPolicyUpsertRequest {
+  server_id: string;
+  tool_name: string;
+  action: "allow" | "approval" | "block";
+  risk_score?: number;
+  reason?: string;
+}
+
+export interface ApiMcpToolChainEvent {
+  id: string;
+  tenant_id: string;
+  security_event_id: string | null;
+  approval_request_id: string | null;
+  source_agent_id: string | null;
+  target_agent_id: string | null;
+  endpoint_id: string | null;
+  mcp_server_id: string | null;
+  mcp_server_name: string;
+  tool_name: string;
+  tool_risk: string;
+  data_source: string;
+  external_service: string;
+  decision: string;
+  chain_risk_score: number;
+  risk_band: string;
+  policy_id: string | null;
+  policy_name: string;
+  metadata_json: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface ApiMcpToolChainSummary {
+  total: number;
+  allowed: number;
+  blocked: number;
+  approval: number;
+  high_risk: number;
+  by_decision: Record<string, number>;
+  by_tool_risk: Record<string, number>;
+  by_external_service: Record<string, number>;
+}
+
+export interface ApiMcpGraphNode {
+  id: string;
+  label: string;
+  type: string;
+  risk_score: number;
+  color: string;
+}
+
+export interface ApiMcpGraphEdge {
+  from: string;
+  to: string;
+  label: string;
+  risk_score: number;
+}
+
+export interface ApiMcpToolChainGraph {
+  nodes: ApiMcpGraphNode[];
+  edges: ApiMcpGraphEdge[];
 }
 
 export interface ApiClientApiKeyCreateRequest {

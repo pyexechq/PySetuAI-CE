@@ -106,7 +106,7 @@ def multiplex_public_path() -> str:
     return "/v1/mcp"
 
 
-BeforeInvokeHook = Callable[[Any, str, dict[str, Any]], Awaitable[tuple[bool, str]]]
+BeforeInvokeHook = Callable[[Any, str, dict[str, Any]], Awaitable[tuple[bool, str, str | None]]]
 AfterInvokeHook = Callable[[Any, str, str], Awaitable[tuple[bool, str, str]]]
 
 
@@ -138,8 +138,18 @@ async def handle_tools_call(
     if not tool_is_visible(server, original, auto_hide_destructive=auto_hide_destructive):
         return jsonrpc_error(request_id, -32001, f"Tool is hidden by risk policy: {original}")
     if before_invoke is not None:
-        allowed, reason = await before_invoke(server, original, arguments)
+        allowed, reason, approval_request_id = await before_invoke(server, original, arguments)
         if not allowed:
+            if approval_request_id:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "error": {
+                        "code": -32005,
+                        "message": reason or "Tool requires approval",
+                        "data": {"approval_request_id": approval_request_id},
+                    },
+                }
             return jsonrpc_error(request_id, -32003, reason or "Tool invocation blocked by policy")
     allowed, reason = await evaluate_tool_access(
         original,
