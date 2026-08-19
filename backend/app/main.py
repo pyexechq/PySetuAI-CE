@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api.v1.access import router as access_router
 from app.api.v1.agentic import router as agentic_router
+from app.api.v1.agentic_security import router as agentic_security_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.compliance import router as compliance_router
 from app.api.v1.custom_intents import router as custom_intents_router
@@ -95,6 +96,7 @@ app.include_router(governance_router, prefix=settings.api_prefix)
 app.include_router(audit_router, prefix=settings.api_prefix)
 app.include_router(access_router, prefix=settings.api_prefix)
 app.include_router(agentic_router, prefix=settings.api_prefix)
+app.include_router(agentic_security_router, prefix=settings.api_prefix)
 app.include_router(mcp_governance_router, prefix=settings.api_prefix)
 app.include_router(copilot_router, prefix=settings.api_prefix)
 app.include_router(observability_router, prefix=settings.api_prefix)

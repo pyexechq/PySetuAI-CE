@@ -1567,6 +1567,64 @@ export const api = {
   acknowledgeCopilotDrift: (token: string, driftId: string) =>
     apiFetch<ApiCopilotDrift>(`/copilot/drift/${driftId}/acknowledge`, { method: "POST" }, token),
 
+  getAgentAnomalies: (token: string, status?: string, severity?: string, anomalyType?: string) =>
+    apiFetch<ApiAgentAnomaly[]>(
+      `/agentic-security/anomalies?status=${status ?? "all"}${severity && severity !== "all" ? `&severity=${severity}` : ""}${anomalyType && anomalyType !== "all" ? `&anomaly_type=${anomalyType}` : ""}`,
+      {},
+      token
+    ),
+
+  getAgentAnomalySummary: (token: string) =>
+    apiFetch<ApiAgentAnomalySummary>("/agentic-security/anomalies/summary", {}, token),
+
+  acknowledgeAgentAnomaly: (token: string, anomalyId: string) =>
+    apiFetch<ApiAgentAnomaly>(`/agentic-security/anomalies/${anomalyId}/acknowledge`, { method: "POST" }, token),
+
+  getPromptInjectionFindings: (token: string, status?: string, severity?: string, targetType?: string) =>
+    apiFetch<ApiPromptInjectionFinding[]>(
+      `/agentic-security/prompt-injection?status=${status ?? "all"}${severity && severity !== "all" ? `&severity=${severity}` : ""}${targetType && targetType !== "all" ? `&target_type=${targetType}` : ""}`,
+      {},
+      token
+    ),
+
+  getPromptInjectionSummary: (token: string) =>
+    apiFetch<ApiPromptInjectionSummary>("/agentic-security/prompt-injection/summary", {}, token),
+
+  scanPromptInjection: (token: string, body: ApiPromptInjectionScanRequest) =>
+    apiFetch<ApiPromptInjectionScanResponse>("/agentic-security/prompt-injection/scan", { method: "POST", body: JSON.stringify(body) }, token),
+
+  acknowledgePromptInjection: (token: string, findingId: string) =>
+    apiFetch<ApiPromptInjectionFinding>(`/agentic-security/prompt-injection/${findingId}/acknowledge`, { method: "POST" }, token),
+
+  getExfiltrationEvents: (token: string, status?: string, exfilType?: string) =>
+    apiFetch<ApiExfiltrationEvent[]>(
+      `/agentic-security/exfiltration?status=${status ?? "all"}${exfilType && exfilType !== "all" ? `&exfil_type=${exfilType}` : ""}`,
+      {},
+      token
+    ),
+
+  getExfiltrationSummary: (token: string) =>
+    apiFetch<ApiExfiltrationSummary>("/agentic-security/exfiltration/summary", {}, token),
+
+  acknowledgeExfiltration: (token: string, exfilId: string) =>
+    apiFetch<ApiExfiltrationEvent>(`/agentic-security/exfiltration/${exfilId}/acknowledge`, { method: "POST" }, token),
+
+  getGuardianActions: (token: string, status?: string, actionType?: string) =>
+    apiFetch<ApiGuardianAction[]>(
+      `/agentic-security/guardian/actions?status=${status ?? "all"}${actionType && actionType !== "all" ? `&action_type=${actionType}` : ""}`,
+      {},
+      token
+    ),
+
+  getGuardianSummary: (token: string) =>
+    apiFetch<ApiGuardianSummary>("/agentic-security/guardian/summary", {}, token),
+
+  runGuardianLoop: (token: string) =>
+    apiFetch<ApiGuardianRunResponse>("/agentic-security/guardian/run", { method: "POST" }, token),
+
+  executeGuardianAction: (token: string, actionId: string) =>
+    apiFetch<ApiGuardianAction>(`/agentic-security/guardian/actions/${actionId}/execute`, { method: "POST" }, token),
+
   createClientApiKey: (token: string, body: ApiClientApiKeyCreateRequest) =>
     apiFetch<ApiClientApiKeyCreateResponse>("/client-api-keys", { method: "POST", body: JSON.stringify(body) }, token),
 
@@ -3108,6 +3166,126 @@ export interface ApiCopilotSyncResponse {
 export interface ApiCopilotBaselineCreateRequest {
   name: string;
   created_by?: string;
+}
+
+export interface ApiAgentAnomaly {
+  id: string;
+  tenant_id: string;
+  agent_id: string | null;
+  endpoint_id: string | null;
+  anomaly_type: string;
+  severity: string;
+  risk_score: number;
+  risk_band: string;
+  baseline_value: Record<string, unknown> | null;
+  observed_value: Record<string, unknown> | null;
+  description: string;
+  status: string;
+  source_event_ids: string[] | null;
+  created_at: string | null;
+  resolved_at: string | null;
+}
+
+export interface ApiAgentAnomalySummary {
+  total: number;
+  open: number;
+  high_risk: number;
+  by_type: Record<string, number>;
+  by_severity: Record<string, number>;
+}
+
+export interface ApiPromptInjectionFinding {
+  id: string;
+  tenant_id: string;
+  agent_id: string | null;
+  endpoint_id: string | null;
+  scan_target_type: string;
+  scan_target: string;
+  content_preview: string;
+  highest_severity: string;
+  detected: boolean;
+  recommended_action: string;
+  matches: Record<string, unknown>[] | null;
+  status: string;
+  created_at: string | null;
+}
+
+export interface ApiPromptInjectionSummary {
+  total: number;
+  open: number;
+  by_severity: Record<string, number>;
+  by_target_type: Record<string, number>;
+}
+
+export interface ApiPromptInjectionScanRequest {
+  content: string;
+  target_type: string;
+  target?: string;
+}
+
+export interface ApiPromptInjectionScanResponse {
+  detected: boolean;
+  highest_severity: string;
+  recommended_action: string;
+  matches: Record<string, unknown>[];
+}
+
+export interface ApiExfiltrationEvent {
+  id: string;
+  tenant_id: string;
+  agent_id: string | null;
+  endpoint_id: string | null;
+  exfil_type: string;
+  resource: string;
+  tool: string;
+  bytes_read: number;
+  event_count: number;
+  window_seconds: number;
+  sensitivity: string;
+  risk_score: number;
+  risk_band: string;
+  status: string;
+  source_event_ids: string[] | null;
+  created_at: string | null;
+}
+
+export interface ApiExfiltrationSummary {
+  total: number;
+  open: number;
+  high_risk: number;
+  by_type: Record<string, number>;
+}
+
+export interface ApiGuardianAction {
+  id: string;
+  tenant_id: string;
+  agent_id: string | null;
+  endpoint_id: string | null;
+  trigger_type: string;
+  trigger_id: string | null;
+  action_type: string;
+  action_status: string;
+  policy_id: string | null;
+  policy_name: string;
+  severity: string;
+  details: string;
+  execution_result: Record<string, unknown> | null;
+  created_at: string | null;
+  executed_at: string | null;
+}
+
+export interface ApiGuardianSummary {
+  total: number;
+  pending: number;
+  executed: number;
+  failed: number;
+  by_action_type: Record<string, number>;
+}
+
+export interface ApiGuardianRunResponse {
+  evaluated: number;
+  executed: number;
+  failed: number;
 }
 
 export interface ApiClientApiKeyCreateRequest {

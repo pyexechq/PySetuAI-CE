@@ -16,6 +16,7 @@ import {
   Bot,
   Monitor,
   ShieldCheck,
+  ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
 
@@ -63,6 +64,7 @@ export const mainNavGroups: NavGroup[] = [
       { title: "Endpoint Security", href: "/endpoints", icon: Monitor },
       { title: "MCP Tool Chains", href: "/mcp-tool-chains", icon: GitBranch },
       { title: "Microsoft Copilot", href: "/microsoft-copilot", icon: Bot },
+      { title: "Agentic Security", href: "/agentic-security", icon: ShieldAlert },
     ],
   },
   {

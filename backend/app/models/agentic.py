@@ -8,7 +8,7 @@ identity is tenant-scoped and never relies on display names alone.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -178,3 +178,104 @@ class MCPToolChainEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
+
+
+class AgentAnomalyRecord(Base):
+    __tablename__ = "agent_anomaly_records"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    endpoint_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("endpoints.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    anomaly_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    severity: Mapped[str] = mapped_column(String(20), default="medium", nullable=False, index=True)
+    risk_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
+    baseline_value: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    observed_value: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="open", nullable=False, index=True)
+    source_event_ids: Mapped[list | None] = mapped_column(JSONB, default=list)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PromptInjectionFinding(Base):
+    __tablename__ = "prompt_injection_findings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    endpoint_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("endpoints.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    scan_target_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    scan_target: Mapped[str] = mapped_column(String(1024), default="", nullable=False)
+    content_preview: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    highest_severity: Mapped[str] = mapped_column(String(20), default="low", nullable=False, index=True)
+    detected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    recommended_action: Mapped[str] = mapped_column(String(20), default="allow", nullable=False)
+    matches: Mapped[list | None] = mapped_column(JSONB, default=list)
+    status: Mapped[str] = mapped_column(String(20), default="open", nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+
+
+class ExfiltrationEvent(Base):
+    __tablename__ = "exfiltration_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    endpoint_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("endpoints.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    exfil_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    resource: Mapped[str] = mapped_column(String(1024), default="", nullable=False)
+    tool: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    bytes_read: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    event_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    window_seconds: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    sensitivity: Mapped[str] = mapped_column(String(20), default="", nullable=False)
+    risk_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(20), default="open", nullable=False, index=True)
+    source_event_ids: Mapped[list | None] = mapped_column(JSONB, default=list)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+
+
+class GuardianAction(Base):
+    __tablename__ = "guardian_actions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    endpoint_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("endpoints.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    trigger_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    trigger_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    action_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    action_status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False, index=True)
+    policy_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    policy_name: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), default="medium", nullable=False)
+    details: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    execution_result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+    executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

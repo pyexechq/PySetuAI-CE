@@ -1,9 +1,13 @@
 from app.models.agentic import (
+    AgentAnomalyRecord,
     AgentCapability,
     AgentInventory,
     ApprovalRequest,
     Endpoint,
+    ExfiltrationEvent,
+    GuardianAction,
     MCPToolChainEvent,
+    PromptInjectionFinding,
     SecurityEvent,
 )
 from app.models.copilot import (
@@ -76,4 +80,8 @@ __all__ = [
     "CopilotConnector",
     "CopilotBaseline",
     "CopilotDriftRecord",
+    "AgentAnomalyRecord",
+    "PromptInjectionFinding",
+    "ExfiltrationEvent",
+    "GuardianAction",
 ]

@@ -1,10 +1,34 @@
-# Current Sprint — Sprint 22 (Phase 4, Microsoft Copilot)
+# Current Sprint — Sprint 23 (Phase 5, Advanced Agentic Security)
 
 **Updated:** Aug 19, 2026  
-**Active focus:** Unified AI Agent Control Plane Phase 4 — Microsoft Copilot inventory, connector risk, sync adapter, and governance drift detection.
+**Active focus:** Unified AI Agent Control Plane Phase 5 — anomaly detection, prompt-injection scanning, exfiltration detection, and the Guardian enforcement loop.
 
 > Architecture: [agentic-control-plane.md](../architecture/agentic-control-plane.md)  
 > Roadmap: [agentic-control-plane-roadmap.md](./agentic-control-plane-roadmap.md)
+
+## Sprint 23 — Advanced Agentic Security
+
+| ID | Task | Status |
+|----|------|--------|
+| S23-01 | `AgentAnomalyRecord` / `PromptInjectionFinding` / `ExfiltrationEvent` / `GuardianAction` models + migration `072` | Done |
+| S23-02 | `anomaly_detection_service` — volume/tool/data/timing/chain-risk detectors | Done |
+| S23-03 | `exfiltration_detection_service` — large/rapid/sensitive-boundary detectors | Done |
+| S23-04 | `prompt_injection_scan_service` — wraps `scan_content`, persists findings | Done |
+| S23-05 | `guardian_service` — severity→action evaluation + remediation execution | Done |
+| S23-06 | `agentic_security` API router (anomalies, injection, exfil, guardian) | Done |
+| S23-07 | Agentic Security UI (`/agentic-security`) + nav + api client | Done |
+| S23-08 | Unit tests (`test_agentic_security.py`) | Done |
+
+## Exit criteria
+
+- Anomaly/exfiltration detectors are pure, deterministic, and unit-testable.
+- Prompt-injection scanning reuses `scan_content` and stores only a truncated preview.
+- Guardian loop evaluates open findings and executes block/revoke/quarantine/alert remediation.
+- Agentic Security page renders anomalies, findings, exfiltration, and guardian actions from live APIs.
+
+## Prior sprint (closed)
+
+Sprint 22 (S22-01–S22-07) — Microsoft Copilot.
 
 ## Sprint 22 — Microsoft Copilot
 

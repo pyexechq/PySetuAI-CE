@@ -1,6 +1,6 @@
 # Agent Control Plane Roadmap
 
-> Phased rollout of the Unified AI Agent Control Plane. Phase 1, Phase 2, Phase 3, and Phase 4 are complete and committed.
+> Phased rollout of the Unified AI Agent Control Plane. Phases 1-5 are complete and committed.
 
 ## Phase 1 — Foundation (done)
 
@@ -41,14 +41,14 @@
 - Graph / audit / security API synchronization — done (payload-driven sync adapter; MS Graph OAuth is tenant-side)
 - Governance drift detection — done (baseline capture + drift comparison)
 
-## Phase 5 — Advanced Agentic Security
+## Phase 5 — Advanced Agentic Security (done)
 
-- Agent chains and attack-surface visualization
-- Anomaly and behavior detection
-- Prompt-injection detection in files/repos/MCP resources
-- Exfiltration detection
-- Guardian policy enforcement loop
-- Automated remediation
+- Agent chains and attack-surface visualization — done (Phase 3 graph)
+- Anomaly and behavior detection — done (volume, tool usage, data access, timing, chain risk)
+- Prompt-injection detection in files/repos/MCP resources — done (wraps existing `scan_content`)
+- Exfiltration detection — done (large read, rapid read, sensitive boundary exit)
+- Guardian policy enforcement loop — done (severity→action evaluation + on-demand run)
+- Automated remediation — done (block agent, revoke access, quarantine, alert)
 
 ## Compliance mapping
 

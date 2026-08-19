@@ -220,3 +220,30 @@ python -m pysetu_agent --scan-dir . --policy-file policy.json
   `GET /copilot/summary`.
 - The Microsoft Copilot UI at `/microsoft-copilot` shows summary cards,
   instance/connector inventories, and the drift feed with acknowledge actions.
+
+## 14. Advanced agentic security (Phase 5)
+
+- `AgentAnomalyRecord`, `PromptInjectionFinding`, `ExfiltrationEvent`, and
+  `GuardianAction` (migration `072`) are tenant-scoped and reference agents /
+  endpoints with SET NULL semantics.
+- `anomaly_detection_service` provides pure, deterministic detectors for
+  unusual volume, tool usage, data access, timing, and chain risk, plus async
+  list/acknowledge/summary helpers. Risk scores reuse `risk_band`.
+- `exfiltration_detection_service` detects large reads, rapid reads, and
+  sensitive data leaving the boundary (reusing the trusted-external-service
+  set from the MCP tool-chain service).
+- `prompt_injection_scan_service` wraps the existing pure `scan_content` and
+  persists findings for files, repos, and MCP resources. Only a truncated
+  content preview (≤500 chars) is stored — never full raw content.
+- `guardian_service` implements the enforcement loop: it evaluates open
+  anomalies/findings/exfiltration events against a severity→action policy
+  (`critical`→block, `high`→revoke, `medium`→quarantine, `low`→alert) and
+  executes remediation (agent status changes + alert dispatch). The loop can
+  run on demand via the API.
+- API surface: `GET/POST /agentic-security/anomalies...`,
+  `GET/POST /agentic-security/prompt-injection...`,
+  `GET/POST /agentic-security/exfiltration...`,
+  `GET/POST /agentic-security/guardian...`.
+- The Agentic Security UI at `/agentic-security` shows summary cards and
+  tabbed feeds for anomalies, prompt-injection findings, exfiltration events,
+  and guardian actions, with acknowledge/execute actions.
