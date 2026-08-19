@@ -1269,6 +1269,9 @@ export const api = {
   getDataProtectionOverview: (token: string) =>
     apiFetch<ApiDataProtectionOverview>("/data-protection/overview", {}, token),
 
+  scanDataProtectionContent: (token: string, body: { content: string }) =>
+    apiFetch<ApiDlpScanResponse>("/data-protection/scan", { method: "POST", body: JSON.stringify(body) }, token),
+
   getSecurityOverview: (token: string) =>
     apiFetch<ApiSecurityOverview>("/security/overview", {}, token),
 
@@ -2615,6 +2618,16 @@ export interface ApiDataProtectionOverview {
   total_scanned: number;
   pii_redactions: number;
   blocked_events: number;
+}
+
+export interface ApiDlpScanResponse {
+  classifications: string[];
+  sensitivity_labels: string[];
+  highest_sensitivity: string | null;
+  has_pii: boolean;
+  region: string;
+  match_count: number;
+  redacted_content: string | null;
 }
 
 export interface ApiSecurityThreatBreakdown {

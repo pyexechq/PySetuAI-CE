@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -7,12 +9,39 @@ import { LayoutDashboard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataResidencyMap } from "@/components/data-protection/data-residency-map";
+import { DlpScannerTab } from "@/components/data-protection/dlp-scanner-tab";
+import { DataMovementPolicyPanel } from "@/components/data-protection/data-movement-policy-panel";
+import { PolicyExemptionPanel } from "@/components/compliance/policy-exemption-panel";
+import { SectionTabBar } from "@/components/shared/section-chrome";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 import { formatNumber } from "@/lib/utils";
 
+type DataProtectionTab = "overview" | "dlp-scanner" | "movement-policy" | "exemptions";
+
+const TABS: { id: DataProtectionTab; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "dlp-scanner", label: "DLP Scanner" },
+  { id: "movement-policy", label: "Movement Policy" },
+  { id: "exemptions", label: "Exemptions" },
+];
+
+const TAB_IDS = new Set<string>(TABS.map((t) => t.id));
+
+const POLICY_EDIT_ROLES = ["tenant_admin", "security_admin", "platform_admin"];
+
 export function DataProtectionView() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const initialTab: DataProtectionTab =
+    requestedTab && TAB_IDS.has(requestedTab) ? (requestedTab as DataProtectionTab) : "overview";
+
+  const [activeTab, setActiveTab] = useState<DataProtectionTab>(initialTab);
   const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const canEditPolicy = Boolean(user?.role && POLICY_EDIT_ROLES.includes(user.role));
+
   const { data, isLoading } = useQuery({
     queryKey: ["data-protection-overview", token],
     queryFn: () => api.getDataProtectionOverview(token!),
@@ -20,25 +49,36 @@ export function DataProtectionView() {
     staleTime: 30_000,
   });
 
+  useEffect(() => {
+    const next = searchParams.get("tab");
+    if (next && TAB_IDS.has(next)) setActiveTab(next as DataProtectionTab);
+  }, [searchParams]);
+
+  function selectTab(next: DataProtectionTab) {
+    setActiveTab(next);
+    router.replace(`/data-protection?tab=${next}`, { scroll: false });
+  }
+
   const dataClassifications = data?.classifications ?? [];
   const regions = data?.regions ?? [];
   const total = dataClassifications.reduce((sum, d) => sum + d.count, 0);
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
-        <p className="text-sm text-muted-foreground">
-          Classification inventory and residency map — executive PII redaction KPIs live on the Dashboard.
-        </p>
-        <Button variant="outline" size="sm" className="gap-1.5" asChild>
-          <Link href="/">
-            <LayoutDashboard className="h-3.5 w-3.5" />
-            Dashboard KPIs
-          </Link>
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SectionTabBar tabs={TABS} active={activeTab} onChange={selectTab} />
+        {activeTab === "overview" && (
+          <Button variant="outline" size="sm" className="gap-1.5" asChild>
+            <Link href="/">
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Dashboard KPIs
+            </Link>
+          </Button>
+        )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {activeTab === "overview" && (
+        <div className="grid gap-4 lg:grid-cols-2">
       <Card className="border-border/60 bg-card/50">
         <CardHeader>
           <CardTitle>Classification Inventory</CardTitle>
@@ -106,7 +146,17 @@ export function DataProtectionView() {
           </p>
         </CardContent>
       </Card>
-      </div>
+        </div>
+      )}
+
+      {activeTab === "dlp-scanner" && <DlpScannerTab token={token} />}
+
+      {activeTab === "movement-policy" && (
+        <DataMovementPolicyPanel token={token} canEdit={canEditPolicy} onSaved={() => {}} />
+      )}
+
+      {activeTab === "exemptions" && <PolicyExemptionPanel />}
     </div>
   );
 }
+

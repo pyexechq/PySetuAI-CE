@@ -17,11 +17,19 @@ interface DataMovementPolicyModalProps {
   onSaved: () => void;
 }
 
+export interface DataMovementPolicyBodyProps {
+  token: string | null;
+  canEdit: boolean;
+  onSaved: () => void;
+  /** Shows a Cancel button and is called when clicked; omit to hide it (e.g. inline, non-modal usage). */
+  onCancel?: () => void;
+}
+
 function toggleValue(values: string[], value: string): string[] {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
 
-export function DataMovementPolicyModal({ open, token, canEdit, onClose, onSaved }: DataMovementPolicyModalProps) {
+export function DataMovementPolicyBody({ token, canEdit, onSaved, onCancel }: DataMovementPolicyBodyProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +39,7 @@ export function DataMovementPolicyModal({ open, token, canEdit, onClose, onSaved
   const [neverExemptLabels, setNeverExemptLabels] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!open || !token) return;
+    if (!token) return;
     let cancelled = false;
 
     async function load() {
@@ -58,7 +66,7 @@ export function DataMovementPolicyModal({ open, token, canEdit, onClose, onSaved
     return () => {
       cancelled = true;
     };
-  }, [open, token]);
+  }, [token]);
 
   async function handleSave() {
     if (!token || !canEdit) return;
@@ -73,7 +81,6 @@ export function DataMovementPolicyModal({ open, token, canEdit, onClose, onSaved
         },
       });
       onSaved();
-      onClose();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to save data-movement policy");
     } finally {
@@ -99,15 +106,8 @@ export function DataMovementPolicyModal({ open, token, canEdit, onClose, onSaved
     }
   }
 
-  if (!open) return null;
-
   return (
-    <AppModal
-      title={canEdit ? "Configure data-movement policy" : "Data-movement policy"}
-      description="Define which sensitivity labels cannot reach vector destinations. OPA enforces these rules during governed RAG ingest."
-      onClose={onClose}
-      size="2xl"
-    >
+    <>
       {loading && (
         <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -201,9 +201,11 @@ export function DataMovementPolicyModal({ open, token, canEdit, onClose, onSaved
                 Reset defaults
               </Button>
             )}
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
+            {onCancel && (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cancel
+              </Button>
+            )}
             {canEdit && (
               <Button type="button" disabled={saving} onClick={() => void handleSave()}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save policy"}
@@ -212,6 +214,21 @@ export function DataMovementPolicyModal({ open, token, canEdit, onClose, onSaved
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+export function DataMovementPolicyModal({ open, token, canEdit, onClose, onSaved }: DataMovementPolicyModalProps) {
+  if (!open) return null;
+
+  return (
+    <AppModal
+      title={canEdit ? "Configure data-movement policy" : "Data-movement policy"}
+      description="Define which sensitivity labels cannot reach vector destinations. OPA enforces these rules during governed RAG ingest."
+      onClose={onClose}
+      size="2xl"
+    >
+      <DataMovementPolicyBody token={token} canEdit={canEdit} onSaved={onSaved} onCancel={onClose} />
     </AppModal>
   );
 }
