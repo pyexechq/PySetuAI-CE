@@ -52,7 +52,7 @@ export function usePolicyRules(policyId?: string) {
           })
         )
       ),
-    enabled: Boolean(token && policyId),
+    enabled: Boolean(token),
     staleTime: 60_000,
   });
 
