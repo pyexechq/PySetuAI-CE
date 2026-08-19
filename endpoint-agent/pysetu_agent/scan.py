@@ -55,6 +55,8 @@ def scan_directory(
     detector: Callable[[str], ScanResult] = detect,
     *,
     max_files: int = MAX_FILES,
+    enforce: bool = False,
+    quarantine_dir: str | None = None,
 ) -> list[FileScanEvent]:
     events: list[FileScanEvent] = []
     scanned = 0
@@ -65,7 +67,12 @@ def scan_directory(
             if scanned >= max_files:
                 return events
             scanned += 1
-            event = scan_file(os.path.join(dirpath, filename), policy, detector)
+            path = os.path.join(dirpath, filename)
+            event = scan_file(path, policy, detector)
             if event is not None:
+                if enforce:
+                    from .enforce import enforce_file
+
+                    enforce_file(path, policy, detector, quarantine_dir=quarantine_dir)
                 events.append(event)
     return events

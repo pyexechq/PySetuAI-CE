@@ -1,8 +1,10 @@
 # PySetu Endpoint Agent
 
-Lightweight discovery + telemetry daemon for the PySetu AI Control Plane.
-Phase 1 scope: register the endpoint, heartbeat, discover installed AI tools, and
-ingest discovery events. Enforcement (file/shell/MCP) is a later phase.
+Discovery + telemetry + enforcement daemon for the PySetu AI Control Plane.
+Registers the endpoint, heartbeats, discovers installed AI tools and MCP
+servers, ingests discovery events, and enforces local DLP: file
+redaction/quarantine, shell-command interception via PATH shims, and clipboard
+monitoring.
 
 Standard library only — no third-party runtime dependencies.
 
@@ -30,8 +32,20 @@ python -m pysetu_agent
 # scan a directory for secrets/PII and ingest findings
 python -m pysetu_agent --scan-dir /path/to/project --policy-file policy.json
 
+# scan AND enforce: redact PII files in place, quarantine blocked files
+python -m pysetu_agent --scan-dir /path/to/project --policy-file policy.json --enforce
+
 # watch a directory continuously and ingest findings as they appear
 python -m pysetu_agent --watch /path/to/project --policy-file policy.json
+
+# watch AND enforce (redact/quarantine on change)
+python -m pysetu_agent --watch /path/to/project --policy-file policy.json --enforce
+
+# install PATH shims to intercept claude/cursor/code invocations
+python -m pysetu_agent --wrap-shell
+
+# run the clipboard DLP monitor (macOS)
+python -m pysetu_agent --clipboard
 ```
 
 ## Run as a background service
@@ -74,9 +88,56 @@ to include `--watch /path/to/project`.
 - `scan.py` — directory scanner that skips `.git`, `node_modules`, and build dirs.
 - `shell.py` — shell command classifier (allow / approval / block).
 - `watcher.py` — portable polling file watcher (snapshot diff → scan changed files).
+- `enforce.py` — real enforcement: redacts PII files in place (with a
+  `*.pysetu.bak` backup) and quarantines blocked files to `~/.pysetu/quarantine`.
+- `wrapper.py` — PATH shim that intercepts `claude`/`cursor`/`code` invocations,
+  scanning argv and piped stdin for secrets/PII before the real binary runs.
+- `clipboard.py` — macOS clipboard DLP monitor (`pbpaste`/`pbcopy`) that redacts
+  or clears sensitive content copied to the clipboard.
 
 When `--policy-file` is provided, `--scan-dir` fetches the effective policy from
 the control plane (`GET /agentic/policy`) and caches it locally.
+
+## Enforcement
+
+### File redaction & quarantine (`--enforce`)
+
+During `--scan-dir` or `--watch`, `--enforce` turns policy decisions into real
+on-disk actions:
+
+- **redact** — the file is rewritten with the redacted content; the original is
+  preserved as `*.pysetu.bak`.
+- **block** — the file is moved to the quarantine directory
+  (`--quarantine-dir`, default `~/.pysetu/quarantine`).
+
+Writes are atomic (temp file + `os.replace`), so a crash never leaves a partial
+file.
+
+### Shell-command interception (`--wrap-shell`)
+
+Installs executable shims for `claude`, `cursor`, and `code` into a directory
+(default `~/.pysetu/bin`). Add that directory to the front of your `PATH`:
+
+```bash
+python -m pysetu_agent --wrap-shell
+export PATH="$HOME/.pysetu/bin:$PATH"
+```
+
+Every invocation of a wrapped binary is scanned before the real binary runs:
+
+- **argv** containing secrets/PII is **blocked** (argv cannot be safely
+  rewritten).
+- **piped stdin** containing PII is **redacted** before being passed to the real
+  binary; stdin containing a blocked secret is **blocked**.
+
+Recursion is prevented two ways: the shim directory is excluded when resolving
+the real binary, and a `PYSETU_WRAPPER_ACTIVE` marker env var forces a
+pass-through if the wrapper is ever re-entered.
+
+### Clipboard monitor (`--clipboard`, macOS)
+
+Polls the system clipboard and, when sensitive content is detected, redacts it
+in place (or clears it for a block decision). Uses `pbpaste`/`pbcopy`.
 
 ## Tests
 
@@ -90,3 +151,8 @@ python -m unittest discover -s tests
   restriction, since the daemon calls the control plane server-to-server.
 - No raw file contents are uploaded; the agent sends tool names, paths,
   classifications, decisions, and metadata only.
+- Redaction writes a `*.pysetu.bak` backup before rewriting; blocked files are
+  moved to `~/.pysetu/quarantine` (never deleted).
+- Sensitive data in argv is **blocked**, not rewritten — argv cannot be safely
+  mutated without breaking the command.
+- The clipboard monitor is macOS-only and depends on `pbpaste`/`pbcopy`.

@@ -49,11 +49,18 @@ def scan_changes(
     paths: list[str],
     policy: LocalPolicy,
     detector: Callable[[str], ScanResult] = detect,
+    *,
+    enforce: bool = False,
+    quarantine_dir: str | None = None,
 ) -> list[FileScanEvent]:
     events: list[FileScanEvent] = []
     for path in paths:
         event = scan_file(path, policy, detector)
         if event is not None:
+            if enforce:
+                from .enforce import enforce_file
+
+                enforce_file(path, policy, detector, quarantine_dir=quarantine_dir)
             events.append(event)
     return events
 
@@ -66,6 +73,8 @@ def watch_directory(
     *,
     poll_interval: float = 2.0,
     stop: Callable[[], bool] | None = None,
+    enforce: bool = False,
+    quarantine_dir: str | None = None,
 ) -> None:
     """Poll ``root`` until ``stop()`` returns True, invoking ``on_events`` for findings."""
     current = snapshot(root)
@@ -77,6 +86,6 @@ def watch_directory(
         current = snapshot(root)
         changed = diff_snapshots(previous, current)
         if changed:
-            events = scan_changes(changed, policy, detector)
+            events = scan_changes(changed, policy, detector, enforce=enforce, quarantine_dir=quarantine_dir)
             if events:
                 on_events(events)

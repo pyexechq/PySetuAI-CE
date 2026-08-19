@@ -1,7 +1,8 @@
-"""PySetu Endpoint Agent — lightweight discovery and telemetry daemon.
+"""PySetu Endpoint Agent — discovery, telemetry, and enforcement daemon.
 
-Phase 1 scope: endpoint registration, heartbeat, AI tool discovery, and
-telemetry ingestion. Enforcement (file/shell/MCP) is a later phase.
+Discovery + telemetry (endpoint registration, heartbeat, AI tool discovery,
+MCP discovery) plus local enforcement: file redaction/quarantine, shell-command
+interception via PATH shims, and clipboard DLP monitoring.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

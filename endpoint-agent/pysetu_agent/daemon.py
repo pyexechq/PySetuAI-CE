@@ -19,6 +19,7 @@ from . import __version__
 from .client import ControlPlaneClient, ControlPlaneError
 from .config import AgentConfig, missing_fields
 from .discovery import DiscoveredMcpServer, DiscoveredTool, discover_mcp_servers, discover_tools
+from .enforce import DEFAULT_QUARANTINE_DIR
 from .policy import LocalPolicy, PolicyCache, policy_from_payload
 from .scan import FileScanEvent, scan_directory
 from .watcher import watch_directory
@@ -180,7 +181,14 @@ def load_policy(client: ControlPlaneClient, policy_file: str | None) -> LocalPol
     return policy
 
 
-def run_scan(config: AgentConfig, scan_dir: str, policy_file: str | None = None) -> dict[str, Any]:
+def run_scan(
+    config: AgentConfig,
+    scan_dir: str,
+    policy_file: str | None = None,
+    *,
+    enforce: bool = False,
+    quarantine_dir: str | None = None,
+) -> dict[str, Any]:
     client = ControlPlaneClient(config.backend_url, config.api_key)
     policy = load_policy(client, policy_file)
 
@@ -196,7 +204,7 @@ def run_scan(config: AgentConfig, scan_dir: str, policy_file: str | None = None)
     )
     endpoint_id = str(endpoint["id"])
 
-    events = scan_directory(scan_dir, policy)
+    events = scan_directory(scan_dir, policy, enforce=enforce, quarantine_dir=quarantine_dir)
     for event in events:
         client.ingest_event(file_event_payload(endpoint_id, event))
 
@@ -204,7 +212,14 @@ def run_scan(config: AgentConfig, scan_dir: str, policy_file: str | None = None)
     return {"endpoint_id": endpoint_id, "events": len(events)}
 
 
-def run_watch(config: AgentConfig, watch_dir: str, policy_file: str | None = None) -> None:
+def run_watch(
+    config: AgentConfig,
+    watch_dir: str,
+    policy_file: str | None = None,
+    *,
+    enforce: bool = False,
+    quarantine_dir: str | None = None,
+) -> None:
     client = ControlPlaneClient(config.backend_url, config.api_key)
     policy = load_policy(client, policy_file)
 
@@ -230,8 +245,34 @@ def run_watch(config: AgentConfig, watch_dir: str, policy_file: str | None = Non
             except ControlPlaneError as exc:
                 print(f"[{datetime.now(UTC).isoformat()}] control plane unavailable: {exc}")
 
-    print(f"Watching {watch_dir} for sensitive file changes…")
-    watch_directory(watch_dir, policy, on_events)
+    print(f"Watching {watch_dir} for sensitive file changes...")
+    watch_directory(watch_dir, policy, on_events, enforce=enforce, quarantine_dir=quarantine_dir)
+
+
+def run_wrap_shell(shim_dir: str) -> None:
+    """Install PATH shims for wrapped AI binaries and print PATH instructions."""
+    from .wrapper import install_shim
+
+    created = install_shim(shim_dir)
+    print(f"Installed {len(created)} shim(s) in {shim_dir}:")
+    for path in created:
+        print(f"  {path}")
+    print(f"\nAdd the shim directory to your PATH (e.g. in ~/.zshrc):")
+    print(f'  export PATH="{shim_dir}:$PATH"')
+
+
+def run_clipboard(config: AgentConfig, policy_file: str | None = None) -> None:
+    """Run the clipboard DLP monitor loop."""
+    from .clipboard import monitor_clipboard
+
+    client = ControlPlaneClient(config.backend_url, config.api_key)
+    policy = load_policy(client, policy_file)
+
+    def on_event(decision) -> None:
+        print(f"[{datetime.now(UTC).isoformat()}] clipboard {decision.action}: {', '.join(decision.classifications)}")
+
+    print("Monitoring clipboard for sensitive content (Ctrl-C to stop)...")
+    monitor_clipboard(policy, on_event=on_event)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -241,6 +282,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scan-dir", help="Scan a directory for secrets/PII and ingest findings")
     parser.add_argument("--watch", help="Watch a directory continuously for sensitive file changes")
     parser.add_argument("--policy-file", help="Path to a local policy cache JSON file")
+    parser.add_argument("--enforce", action="store_true", help="Apply redaction/quarantine during scan or watch")
+    parser.add_argument("--quarantine-dir", default=DEFAULT_QUARANTINE_DIR, help="Quarantine directory for blocked files")
+    parser.add_argument("--wrap-shell", action="store_true", help="Install PATH shims for claude/cursor/code")
+    parser.add_argument("--wrap-shell-dir", default=os.path.join(os.path.expanduser("~"), ".pysetu", "bin"), help="Shim directory")
+    parser.add_argument("--clipboard", action="store_true", help="Run the clipboard DLP monitor (macOS)")
     args = parser.parse_args(argv)
 
     config = AgentConfig.load(args.config)
@@ -249,9 +295,21 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Missing required configuration: {', '.join(missing)}. Set PYSETU_API_KEY and PYSETU_HOSTNAME.")
         return 2
 
+    if args.wrap_shell:
+        run_wrap_shell(args.wrap_shell_dir)
+        return 0
+
+    if args.clipboard:
+        try:
+            run_clipboard(config, args.policy_file)
+        except ControlPlaneError as exc:
+            print(f"Control plane error: {exc}")
+            return 1
+        return 0
+
     if args.scan_dir:
         try:
-            result = run_scan(config, args.scan_dir, args.policy_file)
+            result = run_scan(config, args.scan_dir, args.policy_file, enforce=args.enforce, quarantine_dir=args.quarantine_dir)
         except ControlPlaneError as exc:
             print(f"Control plane error: {exc}")
             return 1
@@ -260,7 +318,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.watch:
         try:
-            run_watch(config, args.watch, args.policy_file)
+            run_watch(config, args.watch, args.policy_file, enforce=args.enforce, quarantine_dir=args.quarantine_dir)
         except ControlPlaneError as exc:
             print(f"Control plane error: {exc}")
             return 1
