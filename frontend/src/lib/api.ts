@@ -1485,6 +1485,9 @@ export const api = {
   getPolicyBundles: (token: string) =>
     apiFetch<ApiPolicyBundle[]>("/policy-bundles", {}, token),
 
+  getFrameworkRulePacks: (token: string) =>
+    apiFetch<ApiFrameworkRulePack[]>("/policy-bundles/framework-packs", {}, token),
+
   createPolicyBundle: (token: string, body: ApiPolicyBundleCreateRequest) =>
     apiFetch<ApiPolicyBundle>("/policy-bundles", { method: "POST", body: JSON.stringify(body) }, token),
 
@@ -2896,6 +2899,7 @@ export interface ApiPolicyBundle {
   policy_ids: string[];
   custom_intent_ids: string[];
   policy_names: string[];
+  framework_rule_packs: string[];
   created_at: string;
 }
 
@@ -2906,6 +2910,7 @@ export interface ApiPolicyBundleCreateRequest {
   is_default?: boolean;
   policy_ids?: string[];
   custom_intent_ids?: string[];
+  framework_rule_packs?: string[];
 }
 
 export interface ApiPolicyBundleUpdateRequest {
@@ -2915,6 +2920,15 @@ export interface ApiPolicyBundleUpdateRequest {
   is_default?: boolean;
   policy_ids?: string[];
   custom_intent_ids?: string[];
+  framework_rule_packs?: string[];
+}
+
+export interface ApiFrameworkRulePack {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  rule_count: number;
 }
 
 export interface ApiClientApiKey {

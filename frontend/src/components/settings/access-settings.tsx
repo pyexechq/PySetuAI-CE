@@ -58,6 +58,7 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
   const [newBundleDesc, setNewBundleDesc] = useState("");
   const [newBundlePolicyIds, setNewBundlePolicyIds] = useState<string[]>([]);
   const [newBundleCustomIntentIds, setNewBundleCustomIntentIds] = useState<string[]>([]);
+  const [newBundleFrameworkPacks, setNewBundleFrameworkPacks] = useState<string[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyType, setNewKeyType] = useState<"pysetu" | "mirrored">("pysetu");
   const [newMirroredKey, setNewMirroredKey] = useState("");
@@ -87,6 +88,12 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
   const { data: bundles = [], isLoading: bundlesLoading } = useQuery({
     queryKey: ["policy-bundles", token],
     queryFn: () => api.getPolicyBundles(token!),
+    enabled: Boolean(token),
+  });
+
+  const { data: frameworkPacks = [] } = useQuery({
+    queryKey: ["framework-rule-packs", token],
+    queryFn: () => api.getFrameworkRulePacks(token!),
     enabled: Boolean(token),
   });
 
@@ -125,6 +132,7 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
         description: newBundleDesc,
         policy_ids: newBundlePolicyIds,
         custom_intent_ids: newBundleCustomIntentIds,
+        framework_rule_packs: newBundleFrameworkPacks,
         is_default: bundles.length === 0,
       }),
     onSuccess: () => {
@@ -133,6 +141,7 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
       setNewBundleDesc("");
       setNewBundlePolicyIds([]);
       setNewBundleCustomIntentIds([]);
+      setNewBundleFrameworkPacks([]);
     },
   });
 
@@ -296,8 +305,16 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
                         </Badge>
                       );
                     })}
-                    {bundle.policy_ids.length === 0 && (bundle.custom_intent_ids || []).length === 0 && (
-                      <span className="text-xs text-muted-foreground">No policies or intents attached</span>
+                    {(bundle.framework_rule_packs || []).map((packId, i) => {
+                      const pack = frameworkPacks.find((p) => p.id === packId);
+                      return (
+                        <Badge key={`pack-${bundle.id}-${i}`} variant="outline" className="text-xs border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                          {pack ? pack.name : packId}
+                        </Badge>
+                      );
+                    })}
+                    {bundle.policy_ids.length === 0 && (bundle.custom_intent_ids || []).length === 0 && (bundle.framework_rule_packs || []).length === 0 && (
+                      <span className="text-xs text-muted-foreground">No policies, intents, or rule packs attached</span>
                     )}
                   </div>
                 </div>
@@ -370,6 +387,31 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
                     </label>
                   ))}
                   {customIntents.length === 0 && <span className="text-xs text-muted-foreground">No custom intents available</span>}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Framework rule packs</p>
+                <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-input p-2">
+                  {frameworkPacks.map((pack) => (
+                    <label key={pack.id} className="flex items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={newBundleFrameworkPacks.includes(pack.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setNewBundleFrameworkPacks((ids) => [...ids, pack.id]);
+                          else setNewBundleFrameworkPacks((ids) => ids.filter((id) => id !== pack.id));
+                        }}
+                      />
+                      <span>
+                        <span className="font-medium">{pack.name}</span>
+                        <span className="ml-1 text-xs text-muted-foreground">v{pack.version} · {pack.rule_count} rules</span>
+                        <span className="block text-xs text-muted-foreground">{pack.description}</span>
+                      </span>
+                    </label>
+                  ))}
+                  {frameworkPacks.length === 0 && <span className="text-xs text-muted-foreground">No framework rule packs available</span>}
                 </div>
               </div>
               <Button
