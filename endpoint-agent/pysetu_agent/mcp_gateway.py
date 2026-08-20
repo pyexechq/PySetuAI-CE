@@ -5,6 +5,8 @@ stdio. This gateway sits between the tool and a real MCP server: the tool is
 pointed at the gateway as if it were an MCP server, and the gateway spawns the
 real server as a subprocess and forwards JSON-RPC messages. Every ``tools/call``
 is scanned for secrets/PII and either blocked, redacted, or passed through.
+Tool *responses* are scanned too, so sensitive data returned by a tool (e.g. an
+HR database query) is redacted before it reaches the client.
 
 MCP stdio uses newline-delimited JSON-RPC 2.0 (one JSON object per line).
 HTTP/SSE uses ``Content-Length`` framing; helpers are provided for future use.
@@ -128,6 +130,88 @@ def decide_tool_call(
     return GatewayDecision(action="allow", reason="No sensitive data detected")
 
 
+@dataclass(frozen=True)
+class ResponseDecision:
+    action: str  # "block" | "redact" | "allow"
+    reason: str
+    redacted_result: dict | None = None
+    classifications: list[str] = field(default_factory=list)
+
+
+def _text_blocks(result: dict) -> list[tuple[dict, str, str]]:
+    """Return (container, key, text) for each redactable text block in an MCP result.
+
+    MCP ``tools/call`` results carry ``content`` as a list of blocks. Text lives
+    in ``{type: text, text: ...}`` blocks and in ``{type: resource, resource:
+    {text: ...}}`` blocks. Each returned tuple lets the caller rewrite the text
+    in place on a deep copy.
+    """
+    blocks: list[tuple[dict, str, str]] = []
+    content = result.get("content")
+    if isinstance(content, list):
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text" and isinstance(block.get("text"), str):
+                blocks.append((block, "text", block["text"]))
+            elif isinstance(block, dict) and block.get("type") == "resource":
+                resource = block.get("resource")
+                if isinstance(resource, dict) and isinstance(resource.get("text"), str):
+                    blocks.append((resource, "text", resource["text"]))
+    return blocks
+
+
+def decide_tool_response(
+    server_name: str,
+    tool_name: str,
+    result: dict,
+    policy: LocalPolicy,
+    *,
+    detector: Callable[[str], ScanResult] = detect,
+) -> ResponseDecision:
+    """Scan tool response text and decide block/redact/allow.
+
+    Unlike arguments, a response has already left the server, so redaction is
+    the primary mechanism; ``block`` is returned only when the policy resolves
+    to block for the tool's resource path.
+    """
+    blocks = _text_blocks(result)
+    if not blocks:
+        return ResponseDecision(action="allow", reason="No text content in response")
+
+    redacted_result = json.loads(json.dumps(result))
+    redacted_blocks = _text_blocks(redacted_result)
+
+    all_classifications: list[str] = []
+    any_redacted = False
+    for (container, key, text), (redacted_container, redacted_key, _) in zip(blocks, redacted_blocks):
+        scan = detector(text)
+        if not scan.has_sensitive:
+            continue
+        all_classifications.extend(scan.classifications)
+        if scan.redacted_content is not None:
+            redacted_container[redacted_key] = scan.redacted_content
+            any_redacted = True
+
+    if not all_classifications:
+        return ResponseDecision(action="allow", reason="No sensitive data in response")
+
+    resource = f"mcp://{server_name}/{tool_name}"
+    decision = evaluate(policy, resource, all_classifications)
+    if decision == "block":
+        return ResponseDecision(
+            action="block",
+            reason="Sensitive data in tool response",
+            classifications=all_classifications,
+        )
+    if decision == "redact" and any_redacted:
+        return ResponseDecision(
+            action="redact",
+            reason="Redacted sensitive data in tool response",
+            redacted_result=redacted_result,
+            classifications=all_classifications,
+        )
+    return ResponseDecision(action="allow", reason="No sensitive data detected")
+
+
 # ---------------------------------------------------------------------------
 # Upstream server process
 # ---------------------------------------------------------------------------
@@ -187,6 +271,7 @@ def handle_tool_call(
     upstream,
     *,
     detector: Callable[[str], ScanResult] = detect,
+    redact_responses: bool = True,
 ) -> dict:
     """Intercept tools/call. Returns the response to write back to the tool."""
     params = message.get("params") or {}
@@ -205,7 +290,23 @@ def handle_tool_call(
         message["params"] = params
 
     upstream.write(message)
-    return upstream.read()
+    response = upstream.read()
+
+    if redact_responses and response is not None and isinstance(response, dict):
+        result = response.get("result")
+        if isinstance(result, dict):
+            response_decision = decide_tool_response(
+                server.name, tool_name, result, policy, detector=detector
+            )
+            if response_decision.action == "block":
+                return jsonrpc_error(
+                    request_id, -32000, f"blocked by PySetu policy: {response_decision.reason}"
+                )
+            if response_decision.action == "redact" and response_decision.redacted_result is not None:
+                response = dict(response)
+                response["result"] = response_decision.redacted_result
+
+    return response
 
 
 def handle_message(
@@ -215,11 +316,14 @@ def handle_message(
     upstream,
     *,
     detector: Callable[[str], ScanResult] = detect,
+    redact_responses: bool = True,
 ) -> dict | None:
     """Route one client message. Returns a response to write, or None for notifications."""
     method = message.get("method")
     if method == "tools/call":
-        return handle_tool_call(message, server, policy, upstream, detector=detector)
+        return handle_tool_call(
+            message, server, policy, upstream, detector=detector, redact_responses=redact_responses
+        )
 
     upstream.write(message)
     if "id" in message:
@@ -235,6 +339,7 @@ def run_gateway(
     writer=None,
     server_factory: Callable = McpServerProcess,
     detector: Callable[[str], ScanResult] = detect,
+    redact_responses: bool = True,
 ) -> int:
     """Proxy loop: read client message -> handle -> write response. Returns 0."""
     reader = reader if reader is not None else sys.stdin
@@ -247,7 +352,9 @@ def run_gateway(
             message = read_message(reader)
             if message is None:
                 break
-            response = handle_message(message, server, policy, upstream, detector=detector)
+            response = handle_message(
+                message, server, policy, upstream, detector=detector, redact_responses=redact_responses
+            )
             if response is not None:
                 write_message(writer, response)
     finally:

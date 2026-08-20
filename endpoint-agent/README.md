@@ -96,7 +96,7 @@ to include `--watch /path/to/project`.
   or clears sensitive content copied to the clipboard.
 - `mcp_gateway.py` — local MCP gateway that intercepts tool-call traffic for AI
   desktop clients (Claude Code, Claude Desktop, Cursor, VSCode), scanning
-  `tools/call` arguments and blocking/redacting/passing through.
+  `tools/call` arguments and responses and blocking/redacting/passing through.
 
 When `--policy-file` is provided, `--scan-dir` fetches the effective policy from
 the control plane (`GET /agentic/policy`) and caches it locally.
@@ -171,6 +171,12 @@ Behavior on `tools/call`:
 - **redact** — the tool arguments are rewritten with `[REDACTED]` before being
   forwarded to the real server.
 - **allow** — the call is forwarded unchanged.
+
+Tool **responses** are scanned too. Sensitive data returned by a tool (e.g. an
+HR database query) is redacted in the `content` text/resource blocks before it
+reaches the client, so secrets/PII cannot exfiltrate through tool results.
+Response redaction can be disabled with `redact_responses=False` on
+`handle_tool_call` / `handle_message` / `run_gateway`.
 
 Only stdio upstreams are proxied; HTTP/SSE servers are skipped by the config
 generator. The proxy is a synchronous request/response forwarder.

@@ -9,6 +9,7 @@ import unittest
 from pysetu_agent.discovery import DiscoveredMcpServer
 from pysetu_agent.mcp_gateway import (
     decide_tool_call,
+    decide_tool_response,
     gateway_config,
     handle_message,
     handle_tool_call,
@@ -92,6 +93,110 @@ class DecideToolCallTest(unittest.TestCase):
 
         decision = decide_tool_call("github", "set", {"ssn": "123-45-6789"}, LocalPolicy.defaults(), detector=bad_detector)
         self.assertEqual(decision.action, "block")
+
+
+class DecideToolResponseTest(unittest.TestCase):
+    def test_redacts_pii_in_text_block(self) -> None:
+        result = {"content": [{"type": "text", "text": "Customer email is john@example.com"}]}
+        decision = decide_tool_response("github", "get_user", result, LocalPolicy.defaults())
+        self.assertEqual(decision.action, "redact")
+        self.assertIsNotNone(decision.redacted_result)
+        text = decision.redacted_result["content"][0]["text"]
+        self.assertNotIn("john@example.com", text)
+        self.assertIn("[REDACTED]", text)
+
+    def test_redacts_resource_text_block(self) -> None:
+        result = {
+            "content": [
+                {"type": "resource", "resource": {"uri": "db://hr", "text": "SSN 123-45-6789"}}
+            ]
+        }
+        decision = decide_tool_response("hr", "query", result, LocalPolicy.defaults())
+        self.assertEqual(decision.action, "redact")
+        text = decision.redacted_result["content"][0]["resource"]["text"]
+        self.assertNotIn("123-45-6789", text)
+
+    def test_blocks_secret_in_response(self) -> None:
+        result = {"content": [{"type": "text", "text": "key: AKIAIOSFODNN7EXAMPLE"}]}
+        decision = decide_tool_response("github", "get_secret", result, LocalPolicy.defaults())
+        self.assertEqual(decision.action, "block")
+
+    def test_allows_clean_response(self) -> None:
+        result = {"content": [{"type": "text", "text": "All good"}]}
+        decision = decide_tool_response("github", "get_user", result, LocalPolicy.defaults())
+        self.assertEqual(decision.action, "allow")
+
+    def test_allows_when_no_text_blocks(self) -> None:
+        decision = decide_tool_response("github", "get_user", {"ok": True}, LocalPolicy.defaults())
+        self.assertEqual(decision.action, "allow")
+
+    def test_does_not_mutate_original_result(self) -> None:
+        result = {"content": [{"type": "text", "text": "email john@example.com"}]}
+        decide_tool_response("github", "get_user", result, LocalPolicy.defaults())
+        self.assertIn("john@example.com", result["content"][0]["text"])
+
+
+class HandleToolCallResponseRedactionTest(unittest.TestCase):
+    def test_redacts_sensitive_response_before_returning(self) -> None:
+        upstream = FakeServer(
+            [
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {"content": [{"type": "text", "text": "email john@example.com"}]},
+                }
+            ]
+        )
+        message = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": "get_user", "arguments": {"id": 1}},
+        }
+        response = handle_tool_call(message, SERVER, LocalPolicy.defaults(), upstream)
+        text = response["result"]["content"][0]["text"]
+        self.assertNotIn("john@example.com", text)
+        self.assertIn("[REDACTED]", text)
+
+    def test_redact_responses_false_passes_through(self) -> None:
+        upstream = FakeServer(
+            [
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {"content": [{"type": "text", "text": "email john@example.com"}]},
+                }
+            ]
+        )
+        message = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": "get_user", "arguments": {"id": 1}},
+        }
+        response = handle_tool_call(
+            message, SERVER, LocalPolicy.defaults(), upstream, redact_responses=False
+        )
+        self.assertIn("john@example.com", response["result"]["content"][0]["text"])
+
+    def test_blocks_sensitive_response(self) -> None:
+        upstream = FakeServer(
+            [
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {"content": [{"type": "text", "text": "token AKIAIOSFODNN7EXAMPLE"}]},
+                }
+            ]
+        )
+        message = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": "get_secret", "arguments": {}},
+        }
+        response = handle_tool_call(message, SERVER, LocalPolicy.defaults(), upstream)
+        self.assertIn("error", response)
 
 
 class HandleToolCallTest(unittest.TestCase):
