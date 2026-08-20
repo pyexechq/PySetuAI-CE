@@ -105,6 +105,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Run backend tests in image
+        run: |
+          docker run --rm pysetu/backend:ci python -m pytest -q
+
       - name: Build frontend image
         uses: docker/build-push-action@v6
         with:
