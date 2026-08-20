@@ -164,6 +164,16 @@ Run the gateway proxying one discovered server:
 python -m pysetu_agent --mcp-gateway --server github --policy-file policy.json
 ```
 
+Run the **multiplexer** — one process proxying every discovered stdio server:
+
+```bash
+python -m pysetu_agent --mcp-gateway --policy-file policy.json
+```
+
+In multiplex mode each incoming message is routed to the upstream named by its
+`server` field (a PySetu extension to the JSON-RPC envelope); messages without a
+`server` field route to the first discovered server.
+
 Behavior on `tools/call`:
 
 - **block** — a JSON-RPC error is returned to the tool and the real server is

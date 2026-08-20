@@ -189,11 +189,22 @@ def load_local_policy(policy_file: str | None) -> LocalPolicy:
     return PolicyCache(policy_file).load_or_defaults()
 
 
-def run_mcp_gateway(config: AgentConfig, server_name: str, policy_file: str | None = None) -> int:
-    """Run the stdio MCP gateway proxying one discovered server."""
-    from .mcp_gateway import run_gateway
+def run_mcp_gateway(config: AgentConfig, server_name: str | None, policy_file: str | None = None) -> int:
+    """Run the stdio MCP gateway.
+
+    With ``server_name``, proxies one discovered server. Without it, runs the
+    multiplexer over all discovered stdio servers in a single process.
+    """
+    from .mcp_gateway import run_gateway, run_multiplex_gateway
 
     servers = discover_mcp_servers()
+    if server_name is None:
+        stdio_servers = [s for s in servers if s.transport == "stdio" and s.command]
+        if not stdio_servers:
+            print("pysetu: no stdio MCP servers discovered to multiplex", file=sys.stderr)
+            return 1
+        return run_multiplex_gateway(stdio_servers, load_local_policy(policy_file))
+
     server = next((s for s in servers if s.name == server_name), None)
     if server is None:
         print(f"pysetu: unknown MCP server: {server_name}", file=sys.stderr)
@@ -335,9 +346,7 @@ def main(argv: list[str] | None = None) -> int:
         return run_mcp_gateway_config(config, args.mcp_gateway_config)
 
     if args.mcp_gateway:
-        if not args.server:
-            print("pysetu: --mcp-gateway requires --server NAME", file=sys.stderr)
-            return 2
+        # Without --server, multiplex all discovered stdio servers in one process.
         return run_mcp_gateway(config, args.server, args.policy_file)
 
     missing = missing_fields(config)

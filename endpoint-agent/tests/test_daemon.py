@@ -95,11 +95,14 @@ class CliWiringTest(unittest.TestCase):
         finally:
             _restore_env(previous)
 
-    def test_mcp_gateway_requires_server(self) -> None:
+    def test_mcp_gateway_without_server_runs_multiplexer(self) -> None:
+        # Without --server, --mcp-gateway runs the multiplexer over discovered
+        # stdio servers. In the test environment none are discovered, so it
+        # returns 1 (no servers to multiplex) rather than erroring on the flag.
         previous = _set_env(PYSETU_API_KEY=None, PYSETU_HOSTNAME=None)
         try:
             code = main(["--mcp-gateway"])
-            self.assertEqual(code, 2)
+            self.assertEqual(code, 1)
         finally:
             _restore_env(previous)
 

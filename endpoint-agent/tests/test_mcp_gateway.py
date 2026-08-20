@@ -8,6 +8,7 @@ import unittest
 
 from pysetu_agent.discovery import DiscoveredMcpServer
 from pysetu_agent.mcp_gateway import (
+    McpServerPool,
     decide_tool_call,
     decide_tool_response,
     gateway_config,
@@ -16,6 +17,7 @@ from pysetu_agent.mcp_gateway import (
     read_http_message,
     read_message,
     run_gateway,
+    run_multiplex_gateway,
     write_gateway_config,
     write_http_message,
     write_message,
@@ -297,6 +299,115 @@ class RunGatewayTest(unittest.TestCase):
         self.assertIn("error", output[1])
         # clean tool call -> result
         self.assertIn("ok", output[2])
+
+
+class McpServerPoolTest(unittest.TestCase):
+    def test_pool_starts_and_stops_all(self) -> None:
+        server2 = DiscoveredMcpServer(name="hr", source="test", command="npx", args=("-y", "server-hr"))
+        pool = McpServerPool([SERVER, server2], server_factory=lambda _s: FakeServer([]))
+        pool.start()
+        self.assertTrue(pool.get("github").started)
+        self.assertTrue(pool.get("hr").started)
+        self.assertEqual(pool.default_name(), "github")
+        self.assertEqual(pool.names(), ["github", "hr"])
+        pool.stop()
+        self.assertTrue(pool.get("github").stopped)
+        self.assertTrue(pool.get("hr").stopped)
+
+    def test_pool_unknown_server_returns_none(self) -> None:
+        pool = McpServerPool([SERVER], server_factory=lambda _s: FakeServer([]))
+        self.assertIsNone(pool.get("nope"))
+        self.assertIsNone(pool.server("nope"))
+
+
+class RunMultiplexGatewayTest(unittest.TestCase):
+    def test_routes_by_server_field(self) -> None:
+        server2 = DiscoveredMcpServer(name="hr", source="test", command="npx", args=("-y", "server-hr"))
+        reader = io.StringIO(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "server": "github",
+                    "method": "tools/call",
+                    "params": {"name": "create_issue", "arguments": {"title": "hello"}},
+                }
+            )
+            + "\n"
+            + json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "server": "hr",
+                    "method": "tools/call",
+                    "params": {"name": "query", "arguments": {"q": "all"}},
+                }
+            )
+            + "\n"
+        )
+        writer = io.StringIO()
+        upstreams = {
+            "github": FakeServer([{"jsonrpc": "2.0", "id": 1, "result": {"ok": "gh"}}]),
+            "hr": FakeServer([{"jsonrpc": "2.0", "id": 2, "result": {"ok": "hr"}}]),
+        }
+
+        def factory(server):
+            return upstreams[server.name]
+
+        code = run_multiplex_gateway(
+            [SERVER, server2], LocalPolicy.defaults(), reader=reader, writer=writer, server_factory=factory
+        )
+        self.assertEqual(code, 0)
+        self.assertTrue(upstreams["github"].started)
+        self.assertTrue(upstreams["hr"].started)
+        self.assertTrue(upstreams["github"].stopped)
+        self.assertTrue(upstreams["hr"].stopped)
+        output = writer.getvalue().strip().split("\n")
+        self.assertEqual(len(output), 2)
+        self.assertIn("gh", output[0])
+        self.assertIn("hr", output[1])
+
+    def test_unknown_server_returns_error(self) -> None:
+        reader = io.StringIO(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "server": "nope",
+                    "method": "tools/call",
+                    "params": {"name": "x", "arguments": {}},
+                }
+            )
+            + "\n"
+        )
+        writer = io.StringIO()
+        code = run_multiplex_gateway(
+            [SERVER], LocalPolicy.defaults(), reader=reader, writer=writer, server_factory=lambda _s: FakeServer([])
+        )
+        self.assertEqual(code, 0)
+        output = writer.getvalue().strip()
+        self.assertIn("error", output)
+        self.assertIn("unknown MCP server", output)
+
+    def test_defaults_to_first_server_without_server_field(self) -> None:
+        reader = io.StringIO(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {"name": "create_issue", "arguments": {"title": "hello"}},
+                }
+            )
+            + "\n"
+        )
+        writer = io.StringIO()
+        upstream = FakeServer([{"jsonrpc": "2.0", "id": 1, "result": {"ok": True}}])
+        code = run_multiplex_gateway(
+            [SERVER], LocalPolicy.defaults(), reader=reader, writer=writer, server_factory=lambda _s: upstream
+        )
+        self.assertEqual(code, 0)
+        self.assertIn("ok", writer.getvalue())
 
 
 class GatewayConfigTest(unittest.TestCase):

@@ -363,6 +363,86 @@ def run_gateway(
 
 
 # ---------------------------------------------------------------------------
+# Multiplexing (single process, multiple upstream servers)
+# ---------------------------------------------------------------------------
+
+class McpServerPool:
+    """Manage multiple upstream MCP server processes, keyed by server name."""
+
+    def __init__(self, servers: list[DiscoveredMcpServer], *, server_factory: Callable = McpServerProcess) -> None:
+        self._servers = {server.name: server for server in servers}
+        self._procs = {server.name: server_factory(server) for server in servers}
+        self._order = [server.name for server in servers]
+
+    def start(self) -> None:
+        for proc in self._procs.values():
+            proc.start()
+
+    def get(self, name: str):
+        return self._procs.get(name)
+
+    def server(self, name: str) -> DiscoveredMcpServer | None:
+        return self._servers.get(name)
+
+    def default_name(self) -> str | None:
+        return self._order[0] if self._order else None
+
+    def names(self) -> list[str]:
+        return list(self._order)
+
+    def stop(self) -> None:
+        for proc in self._procs.values():
+            proc.stop()
+
+
+def run_multiplex_gateway(
+    servers: list[DiscoveredMcpServer],
+    policy: LocalPolicy,
+    *,
+    reader=None,
+    writer=None,
+    server_factory: Callable = McpServerProcess,
+    detector: Callable[[str], ScanResult] = detect,
+    redact_responses: bool = True,
+) -> int:
+    """Proxy loop for multiple servers in one process.
+
+    Each incoming message is routed to the upstream named by its ``server``
+    field (a PySetu extension to the JSON-RPC envelope). Messages without a
+    ``server`` field route to the first server. Returns 0.
+    """
+    reader = reader if reader is not None else sys.stdin
+    writer = writer if writer is not None else sys.stdout
+
+    pool = McpServerPool(servers, server_factory=server_factory)
+    pool.start()
+    try:
+        while True:
+            message = read_message(reader)
+            if message is None:
+                break
+            server_name = message.get("server") or pool.default_name()
+            upstream = pool.get(server_name) if server_name else None
+            server = pool.server(server_name) if server_name else None
+            if upstream is None or server is None:
+                response = jsonrpc_error(message.get("id"), -32000, f"unknown MCP server: {server_name}")
+            else:
+                response = handle_message(
+                    message,
+                    server,
+                    policy,
+                    upstream,
+                    detector=detector,
+                    redact_responses=redact_responses,
+                )
+            if response is not None:
+                write_message(writer, response)
+    finally:
+        pool.stop()
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Config generation
 # ---------------------------------------------------------------------------
 
