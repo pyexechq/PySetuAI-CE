@@ -1,8 +1,14 @@
 # DevOps Agent Handoff
 
-**Last Updated:** Aug 15, 2026
+**Last Updated:** Aug 20, 2026
 
-## Work Completed
+## Work Completed (Aug 20)
+
+- Rebuilt and recreated `backend` and `frontend` containers after Sprint 24 changes (MCP gateway, policy dry-run, Data Protection tabs)
+- Diagnosed and worked around the macOS AppleDouble `._*` build-context issue (see KI-010) — `find . -name "._*" -delete` before `docker compose build`
+- Restarted Docker Desktop after it became unresponsive during a rebuild; all 9 containers healthy afterward
+
+## Work Completed (Aug 15)
 
 - Created Docker Compose stack with postgres, redis, vault, opa, backend, frontend, celery worker/beat
 - Kubernetes Helm chart at `deploy/helm/pysetu` (S4-35 / BL-031)

@@ -1,6 +1,6 @@
 # Agent Control Plane Roadmap
 
-> Phased rollout of the Unified AI Agent Control Plane. Phases 1-5 are complete and committed.
+> Phased rollout of the Unified AI Agent Control Plane. Phases 1-6 are complete and committed.
 
 ## Phase 1 — Foundation (done)
 
@@ -49,6 +49,17 @@
 - Exfiltration detection — done (large read, rapid read, sensitive boundary exit)
 - Guardian policy enforcement loop — done (severity→action evaluation + on-demand run + Celery beat schedule `run_guardian_loop_all_tenants`)
 - Automated remediation — done (block agent, revoke access, quarantine, alert)
+
+## Phase 6 — Endpoint MCP Gateway (done)
+
+- Local MCP gateway (`mcp_gateway.py`) — JSON-RPC framing (newline + Content-Length), `GatewayDecision`, `decide_tool_call`, `McpServerProcess`, `handle_tool_call`, `handle_message`, `run_gateway`, `gateway_config`, `write_gateway_config` — done
+- `DiscoveredMcpServer.args` field + `_mcp_server_args()` so the gateway spawns `npx -y @server-github` correctly — done
+- Daemon CLI flags `--mcp-gateway`, `--server`, `--mcp-gateway-config`; offline dispatch before `missing_fields` check — done
+- MCP gateway tests (`test_mcp_gateway.py`, 15 tests) + daemon CLI wiring tests — done
+- Policy dry-run against API key bundles — `POST /policies/test` accepts `api_key_id`/`bundle_id`, returns per-rule `rule_results`; `GET /policies/rules` accepts `bundle_id`/`default_bundle` — done
+- Governance Sandbox API key selector + real-time evaluation + active-rule highlighting + triggered-rule progress bar — done
+- Policy engine honors regex flags in `content.matches(/.../i)` — done
+- Data Protection Center tabs (DLP scanner, movement policy, exemptions) — done
 
 ## Compliance mapping
 

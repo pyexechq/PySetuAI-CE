@@ -1,6 +1,13 @@
 # Frontend Agent Handoff
 
-**Last Updated:** Aug 15, 2026
+**Last Updated:** Aug 20, 2026
+
+## Work Completed (Aug 20 — Sprint 24)
+
+- **Governance Sandbox Policy Dry Run** — API key selector (`use-client-api-keys.ts`), real-time evaluation (300 ms debounce) against the selected key's bundle, active-rule highlighting (green=passed, red=block, amber=redact, blue=alert, gray=disabled), triggered-rule progress bar
+- **`usePolicyRules`** — supports `bundleId`/`defaultBundle`; loads bundle rules for the selected API key
+- **Data Protection Center tabs** — DLP scanner (`dlp-scanner-tab.tsx`), movement policy (`data-movement-policy-panel.tsx`), exemptions; `api.scanDataProtectionContent` → `POST /data-protection/scan`
+- **API client** — `getPolicyRules` accepts `bundleId`/`defaultBundle`; `testPolicyRules` accepts `api_key_id`/`bundle_id`; added `ApiPolicyPolicyRuleEvaluationResult`
 
 ## Work Completed (Aug 15 — Compliance UX)
 

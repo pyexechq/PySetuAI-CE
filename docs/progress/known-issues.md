@@ -10,6 +10,7 @@
 | KI-006 | RBAC enforced client-side only | Medium | Auth | Mitigated — backend RBAC module, API permission checks, sidebar nav filtering, Settings user management UI |
 | KI-007 | Recharts Pie label TypeScript warnings possible | Low | Dashboard | Monitoring |
 | KI-009 | Port 8001 may be shadowed by a stale local uvicorn (IPv4) while Docker holds IPv6 — causes 404 on new endpoints via `127.0.0.1` | Low | DevOps | Resolved Aug 13 — kill stale `uvicorn app.main:app --port 8001` process, then `docker restart pysetuai-backend-1` |
+| KI-010 | Docker build fails with `failed to xattr .../._<file>: operation not permitted` on macOS volumes — AppleDouble `._*` files break the build context sender before `.dockerignore` applies | Medium | DevOps | Workaround — run `find . -name "._*" -delete` in the build directory before `docker compose build`; macOS regenerates them on file writes |
 
 ## Resolution Plan
 

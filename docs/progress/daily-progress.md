@@ -1,4 +1,23 @@
-# Daily Progress — Aug 13, 2026
+# Daily Progress — Aug 20, 2026
+
+## Completed Today
+
+### Sprint 24 — Endpoint MCP Gateway + Sandbox Policy Dry-Run
+
+- **S24-01–04** Endpoint MCP gateway (`endpoint-agent/pysetu_agent/mcp_gateway.py`) — JSON-RPC framing, `GatewayDecision`, `decide_tool_call`, `McpServerProcess`, `handle_tool_call`, `handle_message`, `run_gateway`, `gateway_config`, `write_gateway_config`; `DiscoveredMcpServer.args` field; daemon CLI flags `--mcp-gateway`, `--server`, `--mcp-gateway-config`; 15 gateway tests + daemon CLI wiring tests
+- **S24-05–06** Policy dry-run against API key bundles — `POST /policies/test` accepts `api_key_id`/`bundle_id` and returns per-rule `rule_results`; `GET /policies/rules` accepts `bundle_id`/`default_bundle`
+- **S24-07** Governance Sandbox API key selector + real-time evaluation (300 ms debounce) + active-rule highlighting (passed/block/redact/alert) + triggered-rule progress bar
+- **S24-08** Policy engine honors regex flags in `content.matches(/.../i)`
+- **S24-09** Data Protection Center tabs (DLP scanner, movement policy, exemptions)
+
+### Aug 19 — Unified AI Agent Control Plane (M17)
+
+- **S23-01–09** Advanced Agentic Security — anomaly/exfiltration/injection detectors, Guardian loop, Celery beat schedule
+- **S22-01–07** Microsoft Copilot governance
+- **S21-01–10** MCP governance depth + endpoint discovery
+- **S20-01–10** Endpoint enforcement (detection, policy, scan, approval, shell, clipboard)
+
+## Prior — Aug 13, 2026
 
 ## Completed Today
 

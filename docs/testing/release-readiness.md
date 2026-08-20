@@ -1,9 +1,11 @@
 # PySetu AI — Release Readiness Assessment
 
-**Assessment Date:** Aug 11, 2026  
-**Test Cycle:** QA-001  
+**Assessment Date:** Aug 20, 2026  
+**Test Cycle:** QA-001 (updated)  
 **Target Release:** M5 — Production Ready (Dec 2026)  
 **Assessed By:** Principal QA & Validation Agent
+
+> **Update (Aug 20):** Backend suite now 464 tests passing, endpoint-agent 89 tests passing, frontend typecheck + production build green. Sprint 24 (MCP gateway, policy dry-run against API key bundles, Data Protection Center tabs) delivered and containers rebuilt. See [current-sprint.md](../planning/current-sprint.md).
 
 ---
 

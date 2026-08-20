@@ -261,6 +261,17 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 - [x] Guardian policy enforcement loop (severity→action evaluation + on-demand run + Celery beat schedule `run_guardian_loop_all_tenants`)
 - [x] Automated remediation (block agent, revoke access, quarantine, alert)
 
+### Phase 16f — Endpoint MCP Gateway (complete)
+
+- [x] Local MCP gateway (`endpoint-agent/pysetu_agent/mcp_gateway.py`) — JSON-RPC framing (newline + Content-Length), `GatewayDecision`, `decide_tool_call`, `McpServerProcess`, `handle_tool_call`, `handle_message`, `run_gateway`, `gateway_config`, `write_gateway_config`
+- [x] `DiscoveredMcpServer.args` field + `_mcp_server_args()` so the gateway spawns `npx -y @server-github` correctly
+- [x] Daemon CLI flags `--mcp-gateway`, `--server`, `--mcp-gateway-config`; offline dispatch before `missing_fields` check
+- [x] MCP gateway tests (`test_mcp_gateway.py`, 15 tests) + daemon CLI wiring tests
+- [x] Policy dry-run against API key bundles — `POST /policies/test` accepts `api_key_id`/`bundle_id`, returns per-rule `rule_results`; `GET /policies/rules` accepts `bundle_id`/`default_bundle`
+- [x] Governance Sandbox API key selector + real-time evaluation + active-rule highlighting + triggered-rule progress bar
+- [x] Policy engine honors regex flags in `content.matches(/.../i)`
+- [x] Data Protection Center tabs (DLP scanner, movement policy, exemptions)
+
 ## Milestones
 
 | Milestone | Target | Status |
@@ -282,3 +293,4 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 | M15: GenAI DLP Gateway | Aug 14, 2026 | ✅ Complete — BL-109–BL-115 ([genai-dlp-gateway-roadmap.md](./genai-dlp-gateway-roadmap.md)) |
 | M16: Compliance UX & config | Aug 15, 2026 | ✅ Complete — BL-116–BL-122 ([aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md)) |
 | M17: Unified AI Agent Control Plane | Aug 19, 2026 | ✅ Complete — Phases 16a–16e (endpoint enforcement, MCP governance depth, Copilot, agentic security, Guardian loop) ([agentic-control-plane-roadmap.md](./agentic-control-plane-roadmap.md)) |
+| M18: Endpoint MCP Gateway + Sandbox Policy Dry-Run | Aug 20, 2026 | ✅ Complete — Phase 16f (MCP gateway, policy dry-run against API key bundles, Data Protection Center tabs) ([current-sprint.md](./current-sprint.md)) |

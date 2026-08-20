@@ -1,10 +1,34 @@
-# Current Sprint — Sprint 23 (Phase 5, Advanced Agentic Security)
+# Current Sprint — Sprint 24 (Endpoint MCP Gateway + Sandbox Policy Dry-Run)
 
-**Updated:** Aug 19, 2026  
-**Active focus:** Unified AI Agent Control Plane Phase 5 — anomaly detection, prompt-injection scanning, exfiltration detection, and the Guardian enforcement loop.
+**Updated:** Aug 20, 2026  
+**Active focus:** Endpoint MCP gateway (intercepting tool-call traffic) and Governance Sandbox policy dry-run against API key bundles.
 
 > Architecture: [agentic-control-plane.md](../architecture/agentic-control-plane.md)  
 > Roadmap: [agentic-control-plane-roadmap.md](./agentic-control-plane-roadmap.md)
+
+## Sprint 24 — Endpoint MCP Gateway + Sandbox Policy Dry-Run
+
+| ID | Task | Status |
+|----|------|--------|
+| S24-01 | MCP gateway (`endpoint-agent/pysetu_agent/mcp_gateway.py`) — JSON-RPC framing, `GatewayDecision`, `decide_tool_call`, `McpServerProcess`, `handle_tool_call`, `handle_message`, `run_gateway`, `gateway_config`, `write_gateway_config` | Done |
+| S24-02 | `DiscoveredMcpServer.args` field + `_mcp_server_args()` so the gateway spawns `npx -y @server-github` correctly | Done |
+| S24-03 | Daemon CLI flags `--mcp-gateway`, `--server`, `--mcp-gateway-config`; offline dispatch before `missing_fields` check | Done |
+| S24-04 | MCP gateway tests (`test_mcp_gateway.py`, 15 tests) + daemon CLI wiring tests | Done |
+| S24-05 | Policy dry-run against API key bundles — `POST /policies/test` accepts `api_key_id`/`bundle_id`, returns per-rule `rule_results` | Done |
+| S24-06 | `GET /policies/rules` accepts `bundle_id`/`default_bundle` to return bundle rules | Done |
+| S24-07 | Governance Sandbox API key selector + real-time evaluation (300 ms debounce) + active-rule highlighting (passed/block/redact/alert) + triggered-rule progress bar | Done |
+| S24-08 | Policy engine honors regex flags in `content.matches(/.../i)` | Done |
+| S24-09 | Data Protection Center tabs (DLP scanner, movement policy, exemptions) | Done |
+
+## Exit criteria
+
+- MCP gateway intercepts every `tools/call` from Claude Desktop / Cursor / VSCode and applies the local policy (secrets→block, PII→redact).
+- Policy dry-run evaluates against the selected API key's attached bundle and highlights each active rule in real time.
+- `content.matches(/pattern/flags)` conditions evaluate correctly (case-insensitive, multiline, dotall, verbose).
+
+## Prior sprint (closed)
+
+Sprint 23 (S23-01–S23-09) — Advanced Agentic Security.
 
 ## Sprint 23 — Advanced Agentic Security
 

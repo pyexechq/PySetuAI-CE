@@ -18,6 +18,8 @@
 | M14 | MCP compliance pipeline | Policy bundle MCP scope, gated audit path, framework packs | Sprint 18–20 | In progress — [mcp-policy-pipeline-design.md](../planning/mcp-policy-pipeline-design.md) |
 | M15 | GenAI DLP Gateway | Sensitivity labels, OPA data-movement, governed RAG, evidence bundles, exemptions | Aug 14, 2026 | Complete — [genai-dlp-gateway-roadmap.md](../planning/genai-dlp-gateway-roadmap.md) |
 | M16 | Compliance UX & config | Tabbed Compliance Center, IaC/data-movement config UI, Reports preview, Help fixes, Vault default-on | Aug 15, 2026 | Complete — [aug-15-compliance-ux-update.md](./aug-15-compliance-ux-update.md) |
+| M17 | Unified AI Agent Control Plane | Endpoint enforcement, MCP governance depth, Microsoft Copilot, advanced agentic security, Guardian loop | Aug 19, 2026 | Complete — [agentic-control-plane-roadmap.md](../planning/agentic-control-plane-roadmap.md) |
+| M18 | Endpoint MCP Gateway + Sandbox Policy Dry-Run | MCP gateway intercepting tool-call traffic, policy dry-run against API key bundles, Data Protection Center tabs | Aug 20, 2026 | Complete — [current-sprint.md](../planning/current-sprint.md) |
 
 > Parity detail: [gateway-parity-roadmap.md](../planning/gateway-parity-roadmap.md)
 
