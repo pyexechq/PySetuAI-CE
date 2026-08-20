@@ -24,6 +24,7 @@ class PolicyBundleResponse(BaseModel):
     policy_names: list[str] = []
     mcp_scope: McpScopeConfig | None = None
     target_domains: list[str] = []
+    framework_rule_packs: list[str] = []
     created_at: str
 
 
@@ -36,6 +37,7 @@ class PolicyBundleCreateRequest(BaseModel):
     custom_intent_ids: list[str] = []
     mcp_scope: McpScopeConfig | None = None
     target_domains: list[str] = []
+    framework_rule_packs: list[str] = []
 
 
 class PolicyBundleUpdateRequest(BaseModel):
@@ -47,6 +49,15 @@ class PolicyBundleUpdateRequest(BaseModel):
     custom_intent_ids: list[str] | None = None
     mcp_scope: McpScopeConfig | None = None
     target_domains: list[str] | None = None
+    framework_rule_packs: list[str] | None = None
+
+
+class FrameworkRulePackResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    version: str
+    rule_count: int
 
 
 class ClientApiKeyResponse(BaseModel):

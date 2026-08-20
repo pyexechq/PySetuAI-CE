@@ -98,6 +98,13 @@ async def load_bundle_rules(db: AsyncSession, tenant_id: uuid.UUID, bundle: Poli
         for rule in policy.rules:
             if isinstance(rule, dict) and rule.get("enabled", True):
                 merged.append({**rule, "policy_name": policy.name})
+
+    # Merge config-driven framework rule packs attached to the bundle.
+    pack_ids = bundle.framework_rule_packs if isinstance(bundle.framework_rule_packs, list) else []
+    if pack_ids:
+        from app.services.framework_rule_packs import resolve_framework_rules
+
+        merged.extend(resolve_framework_rules(pack_ids))
     return merged
 
 

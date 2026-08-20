@@ -20,6 +20,7 @@ from app.schemas.access import (
     ClientApiKeyRevealResponse,
     ClientApiKeyResponse,
     ClientApiKeyUpdateRequest,
+    FrameworkRulePackResponse,
     McpScopeConfig,
     PolicyBundleCreateRequest,
     PolicyBundleResponse,
@@ -38,6 +39,7 @@ from app.services.client_api_key_service import (
     validate_api_origins,
     validate_bundle_for_tenant,
 )
+from app.services.framework_rule_packs import list_framework_rule_packs
 from app.services.policy_bundle_service import clear_other_defaults, get_policy_bundle
 
 router = APIRouter()
@@ -59,6 +61,7 @@ def _bundle_response(bundle: PolicyBundle, policy_names: dict[str, str] | None =
     mcp_scope = None
     if bundle.mcp_scope and isinstance(bundle.mcp_scope, dict):
         mcp_scope = McpScopeConfig.model_validate(bundle.mcp_scope)
+    packs = bundle.framework_rule_packs if isinstance(bundle.framework_rule_packs, list) else []
     return PolicyBundleResponse(
         id=str(bundle.id),
         name=bundle.name,
@@ -68,6 +71,7 @@ def _bundle_response(bundle: PolicyBundle, policy_names: dict[str, str] | None =
         policy_ids=[str(i) for i in ids],
         custom_intent_ids=[str(i) for i in c_ids],
         policy_names=names,
+        framework_rule_packs=[str(p) for p in packs],
         mcp_scope=mcp_scope,
         target_domains=list(bundle.target_domains) if isinstance(bundle.target_domains, list) else [],
         created_at=bundle.created_at.isoformat() if bundle.created_at else "",
@@ -117,6 +121,24 @@ async def _validate_mcp_scope(
             }
         )
     return {"mode": "allowlist", "entries": entries}
+
+
+def _validate_framework_packs(pack_ids: list[str]) -> list[str]:
+    """Validate framework rule pack ids against the catalog."""
+    from app.services.framework_rule_packs import get_framework_rule_pack
+
+    if not pack_ids:
+        return []
+    seen: list[str] = []
+    for raw in pack_ids:
+        pack_id = str(raw).strip()
+        if not pack_id:
+            continue
+        if get_framework_rule_pack(pack_id) is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown framework rule pack: {pack_id}")
+        if pack_id not in seen:
+            seen.append(pack_id)
+    return seen
 
 
 async def _policy_name_map(db: AsyncSession, tenant_id: uuid.UUID) -> dict[str, str]:
@@ -183,6 +205,14 @@ async def list_policy_bundles(
     return [_bundle_response(b, names) for b in bundles]
 
 
+@router.get("/policy-bundles/framework-packs", response_model=list[FrameworkRulePackResponse])
+async def list_framework_packs(
+    _current_user: Annotated[User, Depends(_require_policy_admin)],
+) -> list[FrameworkRulePackResponse]:
+    """List the available config-driven framework rule packs."""
+    return [FrameworkRulePackResponse(**pack) for pack in list_framework_rule_packs()]
+
+
 @router.post("/policy-bundles", response_model=PolicyBundleResponse, status_code=status.HTTP_201_CREATED)
 async def create_policy_bundle(
     payload: PolicyBundleCreateRequest,
@@ -206,6 +236,7 @@ async def create_policy_bundle(
         custom_intent_ids=custom_intent_ids,
         mcp_scope=await _validate_mcp_scope(db, current_user.tenant_id, payload.mcp_scope),
         target_domains=payload.target_domains,
+        framework_rule_packs=_validate_framework_packs(payload.framework_rule_packs),
     )
     db.add(bundle)
     await db.commit()
@@ -241,6 +272,8 @@ async def update_policy_bundle(
         bundle.mcp_scope = await _validate_mcp_scope(db, current_user.tenant_id, payload.mcp_scope)
     if payload.target_domains is not None:
         bundle.target_domains = [domain.strip().lower() for domain in payload.target_domains if domain.strip()]
+    if payload.framework_rule_packs is not None:
+        bundle.framework_rule_packs = _validate_framework_packs(payload.framework_rule_packs)
     if payload.is_default is not None:
         if payload.is_default:
             await clear_other_defaults(db, current_user.tenant_id, except_id=bundle.id)

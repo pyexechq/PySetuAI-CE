@@ -274,6 +274,7 @@ class PolicyBundle(Base):
     mcp_scope: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     target_domains: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     file_governance_rules: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    framework_rule_packs: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
