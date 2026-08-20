@@ -6,4 +6,4 @@ interception via PATH shims, clipboard DLP monitoring, and an MCP gateway that
 intercepts tool-call traffic for AI desktop clients.
 """
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"

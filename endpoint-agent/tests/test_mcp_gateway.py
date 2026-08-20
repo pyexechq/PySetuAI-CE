@@ -8,12 +8,14 @@ import unittest
 
 from pysetu_agent.discovery import DiscoveredMcpServer
 from pysetu_agent.mcp_gateway import (
+    HttpSseServerProcess,
     McpServerPool,
     decide_tool_call,
     decide_tool_response,
     gateway_config,
     handle_message,
     handle_tool_call,
+    make_upstream,
     read_http_message,
     read_message,
     run_gateway,
@@ -410,16 +412,103 @@ class RunMultiplexGatewayTest(unittest.TestCase):
         self.assertIn("ok", writer.getvalue())
 
 
+class HttpSseServerProcessTest(unittest.TestCase):
+    def test_make_upstream_returns_http_for_http_server(self) -> None:
+        http_server = DiscoveredMcpServer(name="remote", source="test", url="https://example.com/mcp", transport="http")
+        upstream = make_upstream(http_server)
+        self.assertIsInstance(upstream, HttpSseServerProcess)
+
+    def test_make_upstream_returns_stdio_for_stdio_server(self) -> None:
+        upstream = make_upstream(SERVER, server_factory=lambda _s: FakeServer([]))
+        self.assertIsInstance(upstream, FakeServer)
+
+    def test_write_posts_json_rpc_and_reads_sse_response(self) -> None:
+        http_server = DiscoveredMcpServer(name="remote", source="test", url="https://example.com/mcp", transport="http")
+
+        class FakeResponse:
+            def __init__(self, payload):
+                self._payload = payload
+                self._offset = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self, size=-1):
+                if size is None or size < 0:
+                    size = len(self._payload) - self._offset
+                chunk = self._payload[self._offset : self._offset + size]
+                self._offset += len(chunk)
+                return chunk
+
+        sse_payload = b'data: {"jsonrpc":"2.0","id":1,"result":{"ok":true}}\n\n'
+        posted = {}
+
+        def fake_urlopen(request, timeout=None):
+            if request.method == "POST":
+                posted["body"] = request.data
+                return FakeResponse(b"")
+            return FakeResponse(sse_payload)
+
+        proc = HttpSseServerProcess(http_server, urlopen=fake_urlopen)
+        proc.start()
+        proc.write({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {}})
+        response = proc.read()
+        proc.stop()
+        self.assertEqual(response["result"], {"ok": True})
+        self.assertIn(b"tools/call", posted["body"])
+
+    def test_write_handles_http_error_with_json_body(self) -> None:
+        import urllib.error
+
+        http_server = DiscoveredMcpServer(name="remote", source="test", url="https://example.com/mcp", transport="http")
+
+        class FakeHttpError(urllib.error.HTTPError):
+            def __init__(self):
+                super().__init__("https://example.com/mcp", 400, "Bad Request", {}, None)
+                self._body = b'{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"nope"}}'
+
+            def read(self):
+                return self._body
+
+        class EmptyResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self, size=-1):
+                return b""
+
+        def fake_urlopen(request, timeout=None):
+            if request.method == "POST":
+                raise FakeHttpError()
+            return EmptyResponse()
+
+        proc = HttpSseServerProcess(http_server, urlopen=fake_urlopen)
+        proc.start()
+        proc.write({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {}})
+        response = proc.read()
+        proc.stop()
+        self.assertIn("error", response)
+
+
 class GatewayConfigTest(unittest.TestCase):
-    def test_maps_stdio_servers_and_skips_http(self) -> None:
+    def test_maps_stdio_and_http_servers(self) -> None:
         http_server = DiscoveredMcpServer(name="remote", source="test", url="https://example.com", transport="http")
         config = gateway_config([SERVER, http_server], launcher="/usr/bin/python3")
         self.assertIn("github", config["mcpServers"])
-        self.assertNotIn("remote", config["mcpServers"])
+        self.assertIn("remote", config["mcpServers"])
         entry = config["mcpServers"]["github"]
         self.assertEqual(entry["command"], "/usr/bin/python3")
         self.assertIn("--server", entry["args"])
         self.assertIn("github", entry["args"])
+        http_entry = config["mcpServers"]["remote"]
+        self.assertIn("--server", http_entry["args"])
+        self.assertIn("remote", http_entry["args"])
 
     def test_write_gateway_config(self) -> None:
         import tempfile

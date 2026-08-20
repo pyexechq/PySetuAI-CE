@@ -15,8 +15,12 @@ HTTP/SSE uses ``Content-Length`` framing; helpers are provided for future use.
 from __future__ import annotations
 
 import json
+import queue
 import subprocess
 import sys
+import threading
+import urllib.error
+import urllib.request
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -252,6 +256,104 @@ class McpServerProcess:
                 self._proc.kill()
 
 
+class HttpSseServerProcess:
+    """Upstream MCP server over HTTP/SSE.
+
+    MCP's HTTP transport POSTs JSON-RPC messages to the server URL and receives
+    responses/notifications over a Server-Sent Events stream. This class uses
+    only the standard library: ``urllib`` for the POST and a background thread
+    that reads the SSE stream into a queue. ``read()`` blocks until the next
+    message arrives.
+    """
+
+    def __init__(
+        self,
+        server: DiscoveredMcpServer,
+        *,
+        urlopen: Callable = urllib.request.urlopen,
+        timeout: float = 30.0,
+    ) -> None:
+        self.server = server
+        self._urlopen = urlopen
+        self._timeout = timeout
+        self._queue: "queue.Queue[dict | None]" = queue.Queue()
+        self._thread: threading.Thread | None = None
+        self._stop_event = threading.Event()
+        self._error: str | None = None
+
+    def start(self) -> None:
+        self._thread = threading.Thread(target=self._sse_reader, daemon=True)
+        self._thread.start()
+
+    def _sse_reader(self) -> None:
+        """Open the SSE stream and enqueue each ``data:`` JSON payload."""
+        try:
+            request = urllib.request.Request(
+                self.server.url,
+                headers={"Accept": "text/event-stream"},
+                method="GET",
+            )
+            with self._urlopen(request, timeout=self._timeout) as response:
+                buffer = ""
+                while not self._stop_event.is_set():
+                    chunk = response.read(1)
+                    if not chunk:
+                        break
+                    buffer += chunk.decode("utf-8", errors="replace")
+                    if buffer.endswith("\n"):
+                        for line in buffer.splitlines():
+                            if line.startswith("data:"):
+                                payload = line[5:].strip()
+                                if payload:
+                                    try:
+                                        self._queue.put(json.loads(payload))
+                                    except ValueError:
+                                        pass
+                        buffer = ""
+        except Exception as exc:  # noqa: BLE001 - surface any transport failure
+            self._error = str(exc)
+            self._queue.put(None)
+
+    def write(self, message: dict) -> None:
+        """POST a JSON-RPC message to the server."""
+        body = json.dumps(message).encode("utf-8")
+        request = urllib.request.Request(
+            self.server.url,
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with self._urlopen(request, timeout=self._timeout) as response:
+                response.read()
+        except urllib.error.HTTPError as exc:
+            # Some servers return the JSON-RPC response in the HTTP body.
+            payload = exc.read().decode("utf-8", errors="replace")
+            if payload:
+                try:
+                    self._queue.put(json.loads(payload))
+                except ValueError:
+                    pass
+        except Exception as exc:  # noqa: BLE001
+            self._error = str(exc)
+            self._queue.put(None)
+
+    def read(self) -> dict | None:
+        return self._queue.get()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=5)
+
+
+def make_upstream(server: DiscoveredMcpServer, *, server_factory: Callable = McpServerProcess) -> object:
+    """Return the appropriate upstream process for a server's transport."""
+    if server.transport == "http" and server.url:
+        return HttpSseServerProcess(server)
+    return server_factory(server)
+
+
 # ---------------------------------------------------------------------------
 # Message handling (the proxy core)
 # ---------------------------------------------------------------------------
@@ -341,11 +443,15 @@ def run_gateway(
     detector: Callable[[str], ScanResult] = detect,
     redact_responses: bool = True,
 ) -> int:
-    """Proxy loop: read client message -> handle -> write response. Returns 0."""
+    """Proxy loop: read client message -> handle -> write response. Returns 0.
+
+    ``server_factory`` is used for stdio servers; HTTP/SSE servers are handled
+    by ``HttpSseServerProcess`` automatically.
+    """
     reader = reader if reader is not None else sys.stdin
     writer = writer if writer is not None else sys.stdout
 
-    upstream = server_factory(server)
+    upstream = make_upstream(server, server_factory=server_factory)
     upstream.start()
     try:
         while True:
@@ -371,7 +477,7 @@ class McpServerPool:
 
     def __init__(self, servers: list[DiscoveredMcpServer], *, server_factory: Callable = McpServerProcess) -> None:
         self._servers = {server.name: server for server in servers}
-        self._procs = {server.name: server_factory(server) for server in servers}
+        self._procs = {server.name: make_upstream(server, server_factory=server_factory) for server in servers}
         self._order = [server.name for server in servers]
 
     def start(self) -> None:
@@ -451,16 +557,25 @@ def gateway_config(
     *,
     launcher: str | None = None,
 ) -> dict:
-    """Build an MCP config mapping each stdio server to a gateway entry."""
+    """Build an MCP config mapping each server to a gateway entry.
+
+    Stdio servers are proxied by spawning the real server; HTTP/SSE servers are
+    proxied by the gateway connecting to their URL. Both are exposed to the tool
+    as a single gateway process (multiplex mode).
+    """
     launcher = launcher if launcher is not None else sys.executable
     entries: dict[str, dict] = {}
     for server in servers:
-        if server.transport != "stdio" or not server.command:
-            continue
-        entries[server.name] = {
-            "command": launcher,
-            "args": ["-m", "pysetu_agent", "--mcp-gateway", "--server", server.name],
-        }
+        if server.transport == "stdio" and server.command:
+            entries[server.name] = {
+                "command": launcher,
+                "args": ["-m", "pysetu_agent", "--mcp-gateway", "--server", server.name],
+            }
+        elif server.transport == "http" and server.url:
+            entries[server.name] = {
+                "command": launcher,
+                "args": ["-m", "pysetu_agent", "--mcp-gateway", "--server", server.name],
+            }
     return {"mcpServers": entries}
 
 

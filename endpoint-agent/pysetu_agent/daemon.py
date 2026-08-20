@@ -199,18 +199,18 @@ def run_mcp_gateway(config: AgentConfig, server_name: str | None, policy_file: s
 
     servers = discover_mcp_servers()
     if server_name is None:
-        stdio_servers = [s for s in servers if s.transport == "stdio" and s.command]
-        if not stdio_servers:
-            print("pysetu: no stdio MCP servers discovered to multiplex", file=sys.stderr)
+        proxiable = [s for s in servers if (s.transport == "stdio" and s.command) or (s.transport == "http" and s.url)]
+        if not proxiable:
+            print("pysetu: no proxiable MCP servers discovered to multiplex", file=sys.stderr)
             return 1
-        return run_multiplex_gateway(stdio_servers, load_local_policy(policy_file))
+        return run_multiplex_gateway(proxiable, load_local_policy(policy_file))
 
     server = next((s for s in servers if s.name == server_name), None)
     if server is None:
         print(f"pysetu: unknown MCP server: {server_name}", file=sys.stderr)
         return 1
-    if server.transport != "stdio":
-        print(f"pysetu: server {server_name} uses {server.transport}; only stdio is supported", file=sys.stderr)
+    if not ((server.transport == "stdio" and server.command) or (server.transport == "http" and server.url)):
+        print(f"pysetu: server {server_name} uses {server.transport}; only stdio and http are supported", file=sys.stderr)
         return 1
     return run_gateway(server, load_local_policy(policy_file))
 
