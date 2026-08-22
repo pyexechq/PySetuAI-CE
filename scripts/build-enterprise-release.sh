@@ -10,7 +10,7 @@ ENTERPRISE_REMOTE=${ENTERPRISE_REMOTE:-"git@github.com:pyexechq/PySetuAI-Enterpr
 
 echo "Creating a temporary clone for Enterprise export..."
 TEMP_DIR=$(mktemp -d)
-git clone . "$TEMP_DIR"
+git clone --no-local . "$TEMP_DIR"
 cd "$TEMP_DIR"
 
 echo "Injecting Enterprise License..."
@@ -25,7 +25,7 @@ if ! command -v git-filter-repo &> /dev/null; then
 fi
 
 # Only strip the PySetu Cloud specific components
-git filter-repo \
+git filter-repo --force \
   --path frontend/src/components/marketing/ --invert-paths \
   --path frontend/src/app/platform/ --invert-paths \
   --path backend/app/api/v1/platform.py --invert-paths
