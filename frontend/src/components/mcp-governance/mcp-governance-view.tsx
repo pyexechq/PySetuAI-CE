@@ -6,7 +6,7 @@ import {
   Activity, AlertTriangle, ArrowRight, CheckCircle2,
   Filter, MoreHorizontal, Plus, Search,
   Server, Settings2, Trash2, Users,
-  XCircle, Network, Wifi, Globe, Wand2,
+  XCircle, Network, Wifi, Globe, Wand2, Shield, Key,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import { McpPortalSettingsCard } from "@/components/mcp-governance/mcp-portal-se
 import { McpUrlFilterCard } from "@/components/mcp-governance/mcp-url-filter-card";
 import { McpToolDenyListCard } from "@/components/mcp-governance/mcp-tool-deny-list-card";
 import { McpSsoInjectionCard } from "@/components/mcp-governance/mcp-sso-injection-card";
+import { McpDeveloperGrantsCard } from "@/components/mcp-governance/mcp-developer-grants-card";
 import { RestToMcpWizardModal } from "@/components/mcp-governance/rest-to-mcp-wizard-modal";
 import { McpPortalView } from "@/components/mcp-portal/mcp-portal-view";
 import { useMcpServers } from "@/hooks/use-mcp-servers";
@@ -33,26 +34,23 @@ import { usePreferencesStore } from "@/stores/preferences-store";
 
 // ─── types & helpers ──────────────────────────────────────────────────────────
 
-type Tab = "overview" | "servers" | "portal" | "tools" | "access" | "settings";
+type Tab = "overview" | "servers" | "tools" | "access" | "settings";
 
 const ALL_TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "servers", label: "MCP Servers" },
-  { id: "portal", label: "Portal" },
   { id: "tools", label: "Tools" },
   { id: "access", label: "Access & RBAC" },
   { id: "settings", label: "Platform Settings" },
 ];
 
-const PORTAL_ONLY_TABS: { id: Tab; label: string }[] = [{ id: "portal", label: "Portal" }];
+const PORTAL_ONLY_TABS: { id: Tab; label: string }[] = [{ id: "overview", label: "Overview" }];
 
 const TAB_IDS = new Set<string>(ALL_TABS.map((tab) => tab.id));
 
 function parseTabParam(value: string | null, portalOnly: boolean): Tab | null {
   if (!value || !TAB_IDS.has(value)) return null;
-  const tab = value as Tab;
-  if (portalOnly && tab !== "portal") return null;
-  return tab;
+  return value as Tab;
 }
 
 const statusVariant = {
@@ -149,9 +147,9 @@ export function McpGovernanceView() {
     user?.role === "tenant_admin" ||
     user?.role === "security_admin" ||
     user?.role === "platform_admin";
-  const portalOnly = user?.role === "developer";
-  const tabs = portalOnly ? PORTAL_ONLY_TABS : ALL_TABS;
-  const defaultTab: Tab = portalOnly ? "portal" : "overview";
+  const portalOnly = false;
+  const tabs = ALL_TABS;
+  const defaultTab: Tab = "overview";
 
   const [activeTab, setActiveTab] = useState<Tab>(
     () => parseTabParam(searchParams.get("tab"), portalOnly) ?? defaultTab
@@ -307,6 +305,15 @@ export function McpGovernanceView() {
               <Plus className="h-4 w-4" />
               Register MCP
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10 font-bold"
+              onClick={() => window.open('/developer-portal', '_blank')}
+            >
+              <Globe className="h-4 w-4" />
+              Developer Portal ↗
+            </Button>
           </div>
         )}
       </div>
@@ -314,9 +321,6 @@ export function McpGovernanceView() {
       {actionError && <p className="mb-3 text-sm text-red-400">{actionError}</p>}
 
       <TabBar tabs={tabs} active={activeTab} onChange={handleTabChange} />
-
-      {/* ── PORTAL ────────────────────────────────────────────────────────────── */}
-      {activeTab === "portal" && <McpPortalView />}
 
       {/* ── OVERVIEW ──────────────────────────────────────────────────────────── */}
       {canGovern && activeTab === "overview" && (
@@ -678,12 +682,44 @@ export function McpGovernanceView() {
 
       {/* ── ACCESS & RBAC ─────────────────────────────────────────────────────── */}
       {canGovern && activeTab === "access" && (
-        <div className="space-y-6">
-          <McpSsoInjectionCard canEdit={canEdit} />
-          <McpOAuthBrokerCard canEdit={canEdit} />
-          <McpAgentTogglesCard canEdit={canEdit} />
-          <McpToolRiskCard canEdit={canEdit} />
-          <McpToolDenyListCard canEdit={canEdit} />
+        <div className="space-y-8">
+          {/* 1. Developer Portal Access Grants & Authorized Users */}
+          <McpDeveloperGrantsCard canEdit={canEdit} />
+
+          {/* 2. Identity & Credential Broker Section */}
+          <div className="pt-2">
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Key className="w-4 h-4 text-primary" />
+                Identity &amp; Credential Broker
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Configure user identity forwarding, SSO context propagation, and OAuth2 broker settings for downstream MCP servers.
+              </p>
+            </div>
+            <div className="space-y-6">
+              <McpSsoInjectionCard canEdit={canEdit} />
+              <McpOAuthBrokerCard canEdit={canEdit} />
+            </div>
+          </div>
+
+          {/* 3. Agent Policies & Tool Guardrails Section */}
+          <div className="pt-2">
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" />
+                Agent Policies &amp; Tool Guardrails
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Enforce risk tiers, per-agent capability toggles, and global tool deny lists.
+              </p>
+            </div>
+            <div className="space-y-6">
+              <McpAgentTogglesCard canEdit={canEdit} />
+              <McpToolRiskCard canEdit={canEdit} />
+              <McpToolDenyListCard canEdit={canEdit} />
+            </div>
+          </div>
         </div>
       )}
 

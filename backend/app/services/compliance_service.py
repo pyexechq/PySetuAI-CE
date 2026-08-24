@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.governance import AuditLog, LLMProvider, MCPServer, Policy, PromptTemplate
+from app.models.governance import AuditLog, LLMProvider, MCPServer, Policy, PolicyBundle, PromptTemplate
 from app.models.tenant import Tenant
 from app.schemas.dashboard import DashboardComplianceControl, DashboardComplianceFramework
 
 ControlStatus = str  # met | not_met | in_progress
+
+# Audit rows carrying one of these statuses represent a request that was actually
+# inspected/decisioned by the DLP or policy engine (allowed, blocked, or redacted).
+# Everything else (e.g. "logged" telemetry from endpoint tool/MCP discovery, pending
+# "review"/"approval" states) is not a DLP-gated request and must be excluded from
+# compliance/success-rate denominators so it can't dilute those metrics.
+GATED_AUDIT_STATUSES: tuple[str, ...] = ("allowed", "blocked", "redacted")
 
 
 @dataclass(frozen=True)
@@ -30,6 +37,7 @@ class TenantComplianceSignals:
     block_rate: float
     request_log_retention_days: int = 0
     prompt_template_count: int = 0
+    active_framework_pack_ids: set[str] = field(default_factory=set)
 
 
 async def load_tenant_compliance_signals(
@@ -83,6 +91,17 @@ async def load_tenant_compliance_signals(
     )
     prompt_template_count = prompt_count_result.scalar() or 0
 
+    bundle_rows = await db.execute(
+        select(PolicyBundle.framework_rule_packs).where(
+            PolicyBundle.tenant_id == tenant_id,
+            PolicyBundle.status == "active",
+        )
+    )
+    active_framework_pack_ids: set[str] = set()
+    for row in bundle_rows.all():
+        packs = row[0] if isinstance(row[0], list) else []
+        active_framework_pack_ids.update(str(p) for p in packs)
+
     return TenantComplianceSignals(
         active_policy_names=active_policy_names,
         draft_policy_count=draft_policy_count,
@@ -97,6 +116,7 @@ async def load_tenant_compliance_signals(
         block_rate=block_rate,
         request_log_retention_days=request_log_retention_days,
         prompt_template_count=prompt_template_count,
+        active_framework_pack_ids=active_framework_pack_ids,
     )
 
 
@@ -274,6 +294,19 @@ def _build_gdpr_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             remediation="Export Audit Explorer logs for automated decisions; lawful-basis tags are not a separate Reports field today.",
             pysetu_module="Audit Explorer",
         ),
+        _control(
+            id="gdpr-rule-pack",
+            title="GDPR framework rule pack",
+            requirement="Enforce GDPR personal-data redaction rules at the gateway.",
+            status="met" if "gdpr" in signals.active_framework_pack_ids else "not_met",
+            evidence=(
+                "GDPR framework rule pack is attached to an active policy bundle."
+                if "gdpr" in signals.active_framework_pack_ids
+                else "Attach the GDPR framework rule pack to an active policy bundle."
+            ),
+            remediation="In Policy Bundles, attach the GDPR framework rule pack to an active bundle.",
+            pysetu_module="Policy Bundles",
+        ),
     ]
 
 
@@ -394,6 +427,19 @@ def _build_hipaa_controls(signals: TenantComplianceSignals) -> list[DashboardCom
             evidence=retention_evidence,
             remediation="Set request-log retention and purge expired bodies in Audit Explorer → Export & SIEM.",
             pysetu_module="Audit Explorer",
+        ),
+        _control(
+            id="hipaa-rule-pack",
+            title="HIPAA framework rule pack",
+            requirement="Enforce HIPAA PHI redaction rules at the gateway.",
+            status="met" if "hipaa" in signals.active_framework_pack_ids else "not_met",
+            evidence=(
+                "HIPAA framework rule pack is attached to an active policy bundle."
+                if "hipaa" in signals.active_framework_pack_ids
+                else "Attach the HIPAA framework rule pack to an active policy bundle."
+            ),
+            remediation="In Policy Bundles, attach the HIPAA framework rule pack to an active bundle.",
+            pysetu_module="Policy Bundles",
         ),
     ]
 
@@ -517,6 +563,19 @@ def _build_soc2_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             evidence=incident_evidence,
             remediation="Triage blocked requests on Monitoring → Security.",
             pysetu_module="Security Center",
+        ),
+        _control(
+            id="soc2-rule-pack",
+            title="SOC 2 framework rule pack",
+            requirement="Enforce SOC 2 credential-exfiltration and confidentiality rules at the gateway.",
+            status="met" if "soc2" in signals.active_framework_pack_ids else "not_met",
+            evidence=(
+                "SOC 2 framework rule pack is attached to an active policy bundle."
+                if "soc2" in signals.active_framework_pack_ids
+                else "Attach the SOC 2 framework rule pack to an active policy bundle."
+            ),
+            remediation="In Policy Bundles, attach the SOC 2 framework rule pack to an active bundle.",
+            pysetu_module="Policy Bundles",
         ),
     ]
 
@@ -642,6 +701,19 @@ def _build_iso_controls(signals: TenantComplianceSignals) -> list[DashboardCompl
             remediation="Review captured incidents on Monitoring → Security.",
             pysetu_module="Security Center",
         ),
+        _control(
+            id="iso-rule-pack",
+            title="OWASP LLM Top 10 rule pack",
+            requirement="Enforce OWASP LLM Top 10 injection and disclosure rules at the gateway.",
+            status="met" if "owasp-llm-top10" in signals.active_framework_pack_ids else "not_met",
+            evidence=(
+                "OWASP LLM Top 10 framework rule pack is attached to an active policy bundle."
+                if "owasp-llm-top10" in signals.active_framework_pack_ids
+                else "Attach the OWASP LLM Top 10 framework rule pack to an active policy bundle."
+            ),
+            remediation="In Policy Bundles, attach the OWASP LLM Top 10 framework rule pack to an active bundle.",
+            pysetu_module="Policy Bundles",
+        ),
     ]
 
 
@@ -763,6 +835,19 @@ def _build_nist_controls(signals: TenantComplianceSignals) -> list[DashboardComp
             evidence=manage2_evidence,
             remediation="Review weighted pools and the scheduled rebalance job in LLM Router.",
             pysetu_module="LLM Router",
+        ),
+        _control(
+            id="nist-rule-pack",
+            title="OWASP LLM Top 10 rule pack",
+            requirement="Enforce OWASP LLM Top 10 injection and disclosure rules at the gateway.",
+            status="met" if "owasp-llm-top10" in signals.active_framework_pack_ids else "not_met",
+            evidence=(
+                "OWASP LLM Top 10 framework rule pack is attached to an active policy bundle."
+                if "owasp-llm-top10" in signals.active_framework_pack_ids
+                else "Attach the OWASP LLM Top 10 framework rule pack to an active policy bundle."
+            ),
+            remediation="In Policy Bundles, attach the OWASP LLM Top 10 framework rule pack to an active bundle.",
+            pysetu_module="Policy Bundles",
         ),
     ]
 

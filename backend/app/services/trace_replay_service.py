@@ -300,6 +300,8 @@ def build_trace_from_audit_log(log: AuditLog) -> dict[str, Any]:
         spans = _llm_trace_spans(log, details, usage, total_ms)
 
     trace_id = extract_trace_id(details, log.id)
+    true_duration = max((s.get("offset_ms", 0) + s.get("duration_ms", 0) for s in spans), default=total_ms)
+
     return {
         "id": str(log.id),
         "trace_id": trace_id,
@@ -309,7 +311,7 @@ def build_trace_from_audit_log(log: AuditLog) -> dict[str, Any]:
         "resource": log.resource,
         "status": log.status,
         "risk": log.risk,
-        "duration_ms": total_ms,
+        "duration_ms": true_duration,
         "span_count": len(spans),
         "spans": spans,
         "otel_trace_id": trace_id if len(trace_id) == 32 else None,

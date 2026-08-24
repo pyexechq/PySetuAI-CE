@@ -131,16 +131,46 @@ async def ingest_audit_events(
 
     duplicates = 0
     to_insert: list[AuditLog] = []
+
+    recent_discoveries: set[tuple[str, str]] = set()
+    if any(e.action == "endpoint.tool.discover" for e in normalized):
+        from datetime import timedelta
+        since = datetime.now(UTC) - timedelta(days=1)
+        res = await db.execute(
+            select(AuditLog.actor, AuditLog.resource).where(
+                AuditLog.tenant_id == tenant_id,
+                AuditLog.action == "endpoint.tool.discover",
+                AuditLog.timestamp >= since,
+            )
+        )
+        recent_discoveries = {(row.actor, row.resource) for row in res.all()}
+
     for source, events in by_source.items():
         external_ids = [e.external_id for e in events if e.external_id]
         existing = await _existing_external_ids(db, tenant_id, source, external_ids)
         seen_batch: set[str] = set()
+        seen_discoveries: set[tuple[str, str]] = set()
+        
         for event in events:
+            is_duplicate = False
+            
             if event.external_id:
                 if event.external_id in existing or event.external_id in seen_batch:
-                    duplicates += 1
-                    continue
-                seen_batch.add(event.external_id)
+                    is_duplicate = True
+                else:
+                    seen_batch.add(event.external_id)
+                    
+            if event.action == "endpoint.tool.discover":
+                discovery_key = (event.actor, event.resource)
+                if discovery_key in recent_discoveries or discovery_key in seen_discoveries:
+                    is_duplicate = True
+                else:
+                    seen_discoveries.add(discovery_key)
+
+            if is_duplicate:
+                duplicates += 1
+                continue
+
             to_insert.append(
                 AuditLog(
                     tenant_id=tenant_id,

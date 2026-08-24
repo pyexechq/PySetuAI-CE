@@ -4,6 +4,13 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.agentic import (
+    AgentAnomalyRecord,
+    ExfiltrationEvent,
+    GuardianAction,
+    MCPToolChainEvent,
+    PromptInjectionFinding,
+)
 from app.models.governance import AuditLog, LLMProvider, MCPServer, Policy
 from app.schemas.auth import DashboardMetricsResponse
 from app.models.uag import UagTranslationEvent
@@ -22,7 +29,7 @@ from app.schemas.dashboard import (
     DashboardUagMetrics,
     DashboardUagRouteItem,
 )
-from app.services.compliance_service import build_compliance_frameworks, overall_compliance_score
+from app.services.compliance_service import GATED_AUDIT_STATUSES, build_compliance_frameworks, overall_compliance_score
 from app.services.cost_analytics_service import build_cost_analytics, llm_usage_items_from_models
 from app.services.token_saving_service import summarize_token_saving
 
@@ -48,13 +55,48 @@ async def _count_period(
     *,
     status: str | None = None,
     action_contains: str | None = None,
+    gated_only: bool = False,
 ) -> int:
     filters = [AuditLog.tenant_id == tenant_id, AuditLog.timestamp >= start, AuditLog.timestamp < end]
     if status:
         filters.append(AuditLog.status == status)
+    elif gated_only:
+        # Exclude non-decisioned rows (endpoint tool/MCP discovery telemetry, etc.) so they
+        # can't dilute compliance/success-rate metrics that assume a DLP-gated request.
+        filters.append(AuditLog.status.in_(GATED_AUDIT_STATUSES))
     if action_contains:
         filters.append(AuditLog.action.ilike(f"%{action_contains}%"))
     result = await db.execute(select(func.count(AuditLog.id)).where(*filters))
+    return result.scalar() or 0
+
+
+async def _count_agentic_security_events(
+    db: AsyncSession, tenant_id: UUID, start: datetime, end: datetime
+) -> int:
+    models = (AgentAnomalyRecord, ExfiltrationEvent, PromptInjectionFinding, GuardianAction)
+    total = 0
+    for model in models:
+        result = await db.execute(
+            select(func.count(model.id)).where(
+                model.tenant_id == tenant_id,
+                model.created_at >= start,
+                model.created_at < end,
+            )
+        )
+        total += result.scalar() or 0
+    return total
+
+
+async def _count_mcp_tool_chain_events(
+    db: AsyncSession, tenant_id: UUID, start: datetime, end: datetime
+) -> int:
+    result = await db.execute(
+        select(func.count(MCPToolChainEvent.id)).where(
+            MCPToolChainEvent.tenant_id == tenant_id,
+            MCPToolChainEvent.created_at >= start,
+            MCPToolChainEvent.created_at < end,
+        )
+    )
     return result.scalar() or 0
 
 
@@ -70,8 +112,8 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
     current_start = today_end - timedelta(days=30)
     previous_start = current_start - timedelta(days=30)
 
-    total_current = await _count_period(db, tenant_id, current_start, today_end)
-    total_previous = await _count_period(db, tenant_id, previous_start, current_start)
+    total_current = await _count_period(db, tenant_id, current_start, today_end, gated_only=True)
+    total_previous = await _count_period(db, tenant_id, previous_start, current_start, gated_only=True)
     blocked_current = await _count_period(db, tenant_id, current_start, today_end, status="blocked")
     blocked_previous = await _count_period(db, tenant_id, previous_start, current_start, status="blocked")
     allowed_current = await _count_period(db, tenant_id, current_start, today_end, status="allowed")
@@ -80,11 +122,22 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
     pii_previous = await _count_period(db, tenant_id, previous_start, current_start, action_contains="PII")
     policy_violations = blocked_current
     policy_violations_previous = blocked_previous
-    mcp_current = await _count_period(db, tenant_id, current_start, today_end, action_contains="MCP")
-    mcp_previous = await _count_period(db, tenant_id, previous_start, current_start, action_contains="MCP")
+    # MCP violations = blocked MCP tool invocations (not all MCP traffic).
+    mcp_current = await _count_period(
+        db, tenant_id, current_start, today_end, status="blocked", action_contains="MCP"
+    )
+    mcp_previous = await _count_period(
+        db, tenant_id, previous_start, current_start, status="blocked", action_contains="MCP"
+    )
+    agentic_current = await _count_agentic_security_events(db, tenant_id, current_start, today_end)
+    agentic_previous = await _count_agentic_security_events(db, tenant_id, previous_start, current_start)
+    toolchain_current = await _count_mcp_tool_chain_events(db, tenant_id, current_start, today_end)
+    toolchain_previous = await _count_mcp_tool_chain_events(db, tenant_id, previous_start, current_start)
 
-    success_rate = round((allowed_current / total_current * 100) if total_current else 0.0, 1)
-    success_rate_previous = round((allowed_previous / total_previous * 100) if total_previous else 0.0, 1)
+    # Success rate = non-blocked requests (allowed, redacted, alerted, etc.) / total.
+    # Blocking is the platform's protective action; it should be the only "failure" outcome.
+    success_rate = round((1 - blocked_current / total_current) * 100 if total_current else 0.0, 1)
+    success_rate_previous = round((1 - blocked_previous / total_previous) * 100 if total_previous else 0.0, 1)
     traffic_compliance_score = max(
         0.0, min(100.0, round(100 - (blocked_current / total_current * 100) if total_current else 92.0, 1))
     )
@@ -98,11 +151,15 @@ async def build_dashboard_overview(db: AsyncSession, tenant_id: UUID) -> Dashboa
         cost_savings=0.0,
         compliance_score=traffic_compliance_score,
         success_rate=success_rate,
+        agentic_security_events=agentic_current,
+        mcp_tool_chain_events=toolchain_current,
         total_requests_change_pct=_pct_change(total_current, total_previous),
         blocked_requests_change_pct=_pct_change(blocked_current, blocked_previous),
         pii_redactions_change_pct=_pct_change(pii_current, pii_previous),
         policy_violations_change_pct=_pct_change(policy_violations, policy_violations_previous),
         mcp_violations_change_pct=_pct_change(mcp_current, mcp_previous),
+        agentic_security_events_change_pct=_pct_change(agentic_current, agentic_previous),
+        mcp_tool_chain_events_change_pct=_pct_change(toolchain_current, toolchain_previous),
         compliance_score_change_pts=0.0,
         success_rate_change_pts=round(success_rate - success_rate_previous, 1),
     )

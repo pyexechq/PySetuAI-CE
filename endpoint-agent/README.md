@@ -15,7 +15,7 @@ Standard library only — no third-party runtime dependencies.
 | `PYSETU_API_KEY` | — | Client API key (required) |
 | `PYSETU_HOSTNAME` | `socket.gethostname()` | Endpoint identity |
 | `PYSETU_BACKEND_URL` | `http://localhost:8001` | Control plane base URL |
-| `PYSETU_POLL_INTERVAL` | `60` | Heartbeat/discovery interval (seconds) |
+| `PYSETU_POLL_INTERVAL` | `300` | Heartbeat/discovery interval (seconds) |
 | `PYSETU_TELEMETRY_FILE` | `pysetu-agent-telemetry.jsonl` | Local offline event buffer |
 
 A JSON config file is also supported via `PYSETU_CONFIG_FILE` or `--config`.

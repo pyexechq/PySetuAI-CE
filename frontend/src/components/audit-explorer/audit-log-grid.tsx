@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useEffect, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { AllCommunityModule, ModuleRegistry, type ColDef, type GridApi, type GridReadyEvent } from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry, type ColDef, type GridApi, type GridReadyEvent, type PaginationChangedEvent } from "ag-grid-community";
 import { useTheme } from "next-themes";
 import type { AuditLogEntry } from "@/lib/types/domain";
 import { resolveAuditRoutingRule } from "@/lib/audit-routing";
@@ -20,9 +20,10 @@ interface AuditLogGridProps {
   quickFilterText?: string;
   onGridReady?: (api: GridApi<AuditLogEntry>) => void;
   onRowSelect?: (entry: AuditLogEntry | null) => void;
+  onLoadMore?: () => void;
 }
 
-export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridReady, onRowSelect }: AuditLogGridProps) {
+export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridReady, onRowSelect, onLoadMore }: AuditLogGridProps) {
   const timezone = usePreferencesStore((s) => s.timezone);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -110,6 +111,17 @@ export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridRead
     [onGridReady]
   );
 
+  const handlePaginationChanged = useCallback(
+    (event: PaginationChangedEvent<AuditLogEntry>) => {
+      if (!event.newPage) return; // Only care if the page actually changed
+      const api = event.api;
+      if (api.paginationGetCurrentPage() === api.paginationGetTotalPages() - 1) {
+        onLoadMore?.();
+      }
+    },
+    [onLoadMore]
+  );
+
   if (!mounted) {
     return null;
   }
@@ -118,12 +130,13 @@ export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridRead
   const themeClass = isDark ? "ag-theme-quartz-dark" : "ag-theme-quartz";
 
   return (
-    <div className={`audit-log-grid ${themeClass} w-full rounded-md border border-border/60`}>
+    <div className={`audit-log-grid ${themeClass} w-full h-[600px] rounded-md border border-border/60`}>
       <AgGridReact<AuditLogEntry>
         key={timezone}
         rowData={rows}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
+        getRowId={(params) => params.data.id}
         animateRows
         pagination
         paginationPageSize={50}
@@ -132,6 +145,7 @@ export function AuditLogGrid({ rows, recentIds, quickFilterText = "", onGridRead
         getRowClass={getRowClass}
         suppressCellFocus
         onGridReady={handleGridReady}
+        onPaginationChanged={handlePaginationChanged}
         onRowClicked={(event) => onRowSelect?.(event.data ?? null)}
         domLayout="normal"
         rowHeight={44}

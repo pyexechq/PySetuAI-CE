@@ -23,6 +23,7 @@ from app.api.v1.mcp_governance import router as mcp_governance_router
 from app.api.v1.mcp_security import router as mcp_security_router
 from app.api.v1.observability import router as observability_router
 from app.api.v1.oidc import router as oidc_router
+from app.api.v1.blog import router as blog_router
 from app.api.v1.platform import router as platform_router
 from app.api.v1.prompt_templates import router as prompt_templates_router
 from app.api.v1.qa import router as qa_router
@@ -95,6 +96,7 @@ app.add_middleware(
 app.add_middleware(AuthRateLimitMiddleware)
 
 app.include_router(auth_router, prefix=settings.api_prefix)
+app.include_router(blog_router, prefix=settings.api_prefix)
 app.include_router(platform_router, prefix=settings.api_prefix)
 app.include_router(governance_router, prefix=settings.api_prefix)
 app.include_router(audit_router, prefix=settings.api_prefix)

@@ -10,6 +10,7 @@ from app.models.agentic import (
     PromptInjectionFinding,
     SecurityEvent,
 )
+from app.models.blog import BlogArticle
 from app.models.copilot import (
     CopilotBaseline,
     CopilotConnector,

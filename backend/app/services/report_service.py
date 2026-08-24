@@ -98,13 +98,61 @@ BUILTIN_REPORTS: list[dict[str, Any]] = [
         "category": "Compliance",
         "format": "PDF",
         "query": {
-            "source": "audit_logs",
-            "filters": {"days_back": 90, "action_contains": "DLP"},
-            "limit": 3000,
+            "source": "data_residency",
+            "filters": {"days_back": 90},
+            "limit": 100,
         },
         "schedule_frequency": "quarterly",
         "schedule_enabled": False,
         "schedule_time": "09:00",
+        "schedule_day_of_month": 1,
+    },
+    {
+        "slug": "agentic-security",
+        "name": "Agentic Security Posture",
+        "description": "Anomalies, exfiltration, prompt-injection findings, and guardian actions",
+        "category": "Security",
+        "format": "PDF",
+        "query": {"source": "agentic_security", "filters": {"days_back": 30}, "limit": 2000},
+        "schedule_frequency": "weekly",
+        "schedule_enabled": False,
+        "schedule_time": "08:00",
+        "schedule_day_of_week": 1,
+    },
+    {
+        "slug": "copilot-governance",
+        "name": "Microsoft Copilot Governance",
+        "description": "Copilot instances, connectors, and governance drift findings",
+        "category": "Compliance",
+        "format": "CSV",
+        "query": {"source": "copilot_governance", "filters": {}, "limit": 1000},
+        "schedule_frequency": "monthly",
+        "schedule_enabled": False,
+        "schedule_time": "07:00",
+        "schedule_day_of_month": 1,
+    },
+    {
+        "slug": "mcp-tool-chains",
+        "name": "MCP Tool Chain & Attack Surface",
+        "description": "Tool chain events, chain risk scores, and per-tool policy coverage",
+        "category": "Security",
+        "format": "CSV",
+        "query": {"source": "mcp_tool_chains", "filters": {"days_back": 30}, "limit": 2000},
+        "schedule_frequency": "weekly",
+        "schedule_enabled": False,
+        "schedule_time": "07:30",
+        "schedule_day_of_week": 1,
+    },
+    {
+        "slug": "framework-rule-packs",
+        "name": "Framework Rule Pack Coverage",
+        "description": "Enforced compliance rule packs and their rule counts",
+        "category": "Compliance",
+        "format": "PDF",
+        "query": {"source": "framework_rule_packs", "filters": {}, "limit": 100},
+        "schedule_frequency": "monthly",
+        "schedule_enabled": False,
+        "schedule_time": "06:00",
         "schedule_day_of_month": 1,
     },
 ]
@@ -152,6 +200,42 @@ QUERY_TEMPLATES = [
         "filter_fields": [
             {"key": "days_back", "label": "Lookback (days)", "type": "number", "default": 30},
         ],
+    },
+    {
+        "source": "data_residency",
+        "label": "Data Residency",
+        "description": "Regional data placement computed from residency policies and audit logs",
+        "filter_fields": [
+            {"key": "days_back", "label": "Lookback (days)", "type": "number", "default": 90},
+        ],
+    },
+    {
+        "source": "agentic_security",
+        "label": "Agentic Security",
+        "description": "Anomalies, exfiltration, prompt-injection findings, and guardian actions",
+        "filter_fields": [
+            {"key": "days_back", "label": "Lookback (days)", "type": "number", "default": 30},
+        ],
+    },
+    {
+        "source": "copilot_governance",
+        "label": "Microsoft Copilot Governance",
+        "description": "Copilot instances, connectors, and governance drift findings",
+        "filter_fields": [],
+    },
+    {
+        "source": "mcp_tool_chains",
+        "label": "MCP Tool Chains",
+        "description": "Tool chain events and chain risk scores",
+        "filter_fields": [
+            {"key": "days_back", "label": "Lookback (days)", "type": "number", "default": 30},
+        ],
+    },
+    {
+        "source": "framework_rule_packs",
+        "label": "Framework Rule Packs",
+        "description": "Enforced compliance rule packs and their rule counts",
+        "filter_fields": [],
     },
 ]
 
@@ -427,6 +511,144 @@ async def execute_report_query(
         )
         summary = summarize_compounding_savings([row[0] for row in usage_rows.all()])
         return compounding_table(summary)
+
+    if source == "data_residency":
+        from app.services.data_protection_service import build_data_protection_overview
+
+        overview = await build_data_protection_overview(db, tenant_id)
+        columns = ["region", "name", "records", "percentage", "status", "hubs", "policy"]
+        data = [
+            [
+                r.id,
+                r.name,
+                r.records,
+                r.percentage,
+                r.status,
+                " · ".join(r.hubs),
+                r.policy,
+            ]
+            for r in overview.regions
+        ]
+        return columns, data
+
+    if source == "agentic_security":
+        from datetime import timedelta as _td
+        from app.models.agentic import (
+            AgentAnomalyRecord,
+            ExfiltrationEvent,
+            GuardianAction,
+            PromptInjectionFinding,
+        )
+
+        days_back = int(filters.get("days_back") or 30)
+        cutoff = datetime.now(UTC) - _td(days=days_back)
+        base = (AuditLog.tenant_id == tenant_id, AuditLog.timestamp >= cutoff)
+        anomaly_n = (
+            await db.execute(
+                select(func.count(AgentAnomalyRecord.id)).where(
+                    AgentAnomalyRecord.tenant_id == tenant_id,
+                    AgentAnomalyRecord.created_at >= cutoff,
+                )
+            )
+        ).scalar() or 0
+        exfil_n = (
+            await db.execute(
+                select(func.count(ExfiltrationEvent.id)).where(
+                    ExfiltrationEvent.tenant_id == tenant_id,
+                    ExfiltrationEvent.created_at >= cutoff,
+                )
+            )
+        ).scalar() or 0
+        injection_n = (
+            await db.execute(
+                select(func.count(PromptInjectionFinding.id)).where(
+                    PromptInjectionFinding.tenant_id == tenant_id,
+                    PromptInjectionFinding.created_at >= cutoff,
+                )
+            )
+        ).scalar() or 0
+        guardian_n = (
+            await db.execute(
+                select(func.count(GuardianAction.id)).where(
+                    GuardianAction.tenant_id == tenant_id,
+                    GuardianAction.created_at >= cutoff,
+                )
+            )
+        ).scalar() or 0
+        columns = ["metric", "count"]
+        data = [
+            ["Anomalies detected", anomaly_n],
+            ["Exfiltration events", exfil_n],
+            ["Prompt injection findings", injection_n],
+            ["Guardian actions", guardian_n],
+        ]
+        return columns, data
+
+    if source == "copilot_governance":
+        from app.models.copilot import CopilotConnector, CopilotDriftRecord, CopilotInstance
+
+        inst_rows = await db.execute(
+            select(CopilotInstance).where(CopilotInstance.tenant_id == tenant_id).limit(limit)
+        )
+        conn_rows = await db.execute(
+            select(CopilotConnector).where(CopilotConnector.tenant_id == tenant_id).limit(limit)
+        )
+        drift_rows = await db.execute(
+            select(CopilotDriftRecord).where(CopilotDriftRecord.tenant_id == tenant_id).limit(limit)
+        )
+        columns = ["entity", "name", "status", "risk_score", "detail"]
+        data = [
+            ["instance", r.name, r.status, r.risk_score, r.instance_type]
+            for r in inst_rows.scalars().all()
+        ]
+        data += [
+            ["connector", r.name, r.status, r.risk_score, r.connector_type]
+            for r in conn_rows.scalars().all()
+        ]
+        data += [
+            ["drift", r.entity_name, r.status, 0, f"{r.drift_type}: {r.description[:120]}"]
+            for r in drift_rows.scalars().all()
+        ]
+        return columns, data
+
+    if source == "mcp_tool_chains":
+        from app.models.agentic import MCPToolChainEvent
+
+        days_back = int(filters.get("days_back") or 30)
+        cutoff = datetime.now(UTC) - timedelta(days=days_back)
+        rows = await db.execute(
+            select(MCPToolChainEvent)
+            .where(
+                MCPToolChainEvent.tenant_id == tenant_id,
+                MCPToolChainEvent.created_at >= cutoff,
+            )
+            .order_by(MCPToolChainEvent.created_at.desc())
+            .limit(limit)
+        )
+        columns = ["timestamp", "server", "tool", "decision", "chain_risk", "policy"]
+        data = [
+            [
+                r.created_at.isoformat(),
+                r.mcp_server_name,
+                r.tool_name,
+                r.decision,
+                r.chain_risk_score,
+                r.policy_name,
+            ]
+            for r in rows.scalars().all()
+        ]
+        return columns, data
+
+    if source == "framework_rule_packs":
+        from app.services.framework_rule_packs import list_framework_rule_packs
+
+        packs = list_framework_rule_packs()
+        columns = ["pack_id", "name", "version", "rule_count", "description"]
+        data = [
+            [p["id"], p["name"], p["version"], p["rule_count"], p["description"]]
+            for p in packs
+        ]
+        return columns, data
 
     return [], []
 

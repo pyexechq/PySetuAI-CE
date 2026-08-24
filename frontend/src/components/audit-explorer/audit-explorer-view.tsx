@@ -15,7 +15,7 @@ import { RequestLogPanel } from "@/components/audit-explorer/request-log-panel";
 import { RequestLogSettingsCard } from "@/components/audit-explorer/request-log-settings-card";
 import { TraceReplayPanel } from "@/components/audit-explorer/trace-replay-panel";
 import { QuickLinkPills, SectionHeading, SectionTabBar } from "@/components/shared/section-chrome";
-import { useAuditLogs } from "@/hooks/use-audit-logs";
+import { useAuditLogs, useAuditSummary } from "@/hooks/use-audit-logs";
 import type { AuditLogEntry } from "@/lib/types/domain";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
@@ -70,6 +70,7 @@ export function AuditExplorerView() {
   const timezone = usePreferencesStore((s) => s.timezone);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [actionFilter, setActionFilter] = useState<string>("all");
   const [live, setLive] = useState(true);
   const [gridApi, setGridApi] = useState<GridApi<AuditLogEntry> | null>(null);
@@ -81,11 +82,12 @@ export function AuditExplorerView() {
   const [detailTab, setDetailTab] = useState<DetailTab>(
     requestedTab === "integrations" ? "integrations" : "inspect"
   );
-  const { data: logs = [], recentIds, isFetching, isLoading, isError, dataUpdatedAt } = useAuditLogs(
+  const { data: logs = [], recentIds, isFetching, isLoading, isError, dataUpdatedAt, hasNextPage, fetchNextPage } = useAuditLogs(
     actionFilter === "rag" ? "RAG" : search,
     statusFilter,
     live,
-    auditIdParam
+    auditIdParam,
+    sourceFilter
   );
 
   const { data: ingestSources = [] } = useQuery({
@@ -101,15 +103,27 @@ export function AuditExplorerView() {
     [selectedLog]
   );
 
+  const { data: summaryData } = useAuditSummary(
+    actionFilter === "rag" ? "RAG" : search,
+    statusFilter,
+    auditIdParam,
+    sourceFilter
+  );
+
   const statusCounts = useMemo(() => {
-    const counts = { allowed: 0, blocked: 0, review: 0 };
+    if (summaryData) {
+      return summaryData;
+    }
+    // Fallback while loading
+    const counts = { total: 0, allowed: 0, blocked: 0, review: 0 };
     for (const log of logs) {
+      counts.total += 1;
       if (log.status === "allowed") counts.allowed += 1;
       else if (log.status === "blocked") counts.blocked += 1;
       else if (log.status === "review") counts.review += 1;
     }
     return counts;
-  }, [logs]);
+  }, [logs, summaryData]);
 
   useEffect(() => {
     const next = searchParams.get("tab");
@@ -136,7 +150,7 @@ export function AuditExplorerView() {
           items={[
             {
               title: "Total events",
-              value: logs.length,
+              value: statusCounts.total || logs.length,
               change: 0,
               icon: Activity,
               iconColor: "text-blue-400",
@@ -198,6 +212,22 @@ export function AuditExplorerView() {
               </button>
             ))}
           </div>
+          <label className="sr-only" htmlFor="audit-source-filter">
+            Filter by source type
+          </label>
+          <select
+            id="audit-source-filter"
+            value={sourceFilter}
+            onChange={(event) => setSourceFilter(event.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="all">All sources</option>
+            {ingestSources.map((item) => (
+              <option key={item.source} value={item.source}>
+                {item.source} ({item.count})
+              </option>
+            ))}
+          </select>
           <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border/60 bg-muted/30 p-1">
             {[
               { id: "all", label: "All actions" },
@@ -282,6 +312,7 @@ export function AuditExplorerView() {
               quickFilterText={search}
               onGridReady={setGridApi}
               onRowSelect={setSelectedLog}
+              onLoadMore={() => hasNextPage && fetchNextPage()}
             />
           )}
 

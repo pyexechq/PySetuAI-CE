@@ -32,7 +32,6 @@ git filter-repo --force \
   --path frontend/src/app/platform/ --invert-paths \
   --path backend/app/api/v1/platform.py --invert-paths \
   --path backend/app/api/v1/oidc.py --invert-paths \
-  --path backend/app/api/v1/data_protection.py --invert-paths \
   --path backend/app/api/v1/compliance.py --invert-paths
 
 echo ""

@@ -71,10 +71,10 @@ export const useAuthStore = create<AuthState>()(
 export const roleRouteAccess: Record<UserRole, string[]> = {
   platform_admin: ["*"],
   tenant_admin: ["*"],
-  security_admin: ["/", "/ai-gateway", "/compatibility-center", "/mcp-governance", "/llm-router", "/policy-studio", "/governance-graph", "/data-protection", "/monitoring", "/audit-explorer", "/qa-dashboard", "/settings", "/help"],
-  compliance_officer: ["/", "/compliance", "/audit-explorer", "/data-protection", "/reports", "/qa-dashboard", "/settings", "/help"],
-  auditor: ["/", "/audit-explorer", "/compliance", "/reports", "/monitoring", "/qa-dashboard", "/help"],
-  developer: ["/", "/studio", "/mcp-governance", "/mcp-portal", "/llm-router", "/policy-studio", "/governance-graph", "/monitoring", "/qa-dashboard", "/settings", "/help"],
+  security_admin: ["/", "/ai-gateway", "/compatibility-center", "/mcp-governance", "/llm-router", "/policy-studio", "/governance-graph", "/data-protection", "/monitoring", "/audit-explorer", "/qa-dashboard", "/settings", "/help", "/developer-portal"],
+  compliance_officer: ["/", "/compliance", "/audit-explorer", "/data-protection", "/reports", "/qa-dashboard", "/settings", "/help", "/developer-portal"],
+  auditor: ["/", "/audit-explorer", "/compliance", "/reports", "/monitoring", "/qa-dashboard", "/help", "/developer-portal"],
+  developer: ["/", "/studio", "/mcp-governance", "/mcp-portal", "/llm-router", "/policy-studio", "/governance-graph", "/monitoring", "/qa-dashboard", "/settings", "/help", "/developer-portal"],
 };
 
 export function canAccessRoute(role: UserRole, path: string): boolean {

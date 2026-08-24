@@ -3,6 +3,7 @@ export interface TenantFeatures {
   compatibility_center: boolean;
   governance_sandbox: boolean;
   reports: boolean;
+  developer_portal: boolean;
 }
 
 export interface TenantFeaturePolicyEntry {
@@ -16,6 +17,7 @@ export const DEFAULT_TENANT_FEATURES: TenantFeatures = {
   compatibility_center: true,
   governance_sandbox: true,
   reports: true,
+  developer_portal: true,
 };
 
 export const ROUTE_FEATURE_MAP: Record<string, keyof TenantFeatures> = {
@@ -23,6 +25,7 @@ export const ROUTE_FEATURE_MAP: Record<string, keyof TenantFeatures> = {
   "/compatibility-center": "compatibility_center",
   "/studio": "governance_sandbox",
   "/reports": "reports",
+  "/developer-portal": "developer_portal",
 };
 
 export const FEATURE_NAV_LABELS: Record<keyof TenantFeatures, { label: string; description: string }> = {
@@ -41,6 +44,10 @@ export const FEATURE_NAV_LABELS: Record<keyof TenantFeatures, { label: string; d
   reports: {
     label: "Reports",
     description: "Scheduled compliance and governance report exports.",
+  },
+  developer_portal: {
+    label: "Developer Portal",
+    description: "Self-service MCP catalogue, API key provisioning, and Agent Playground.",
   },
 };
 

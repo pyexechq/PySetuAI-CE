@@ -32,7 +32,7 @@ from app.schemas.reports import (
     ReportSchedulerStatus,
     ReportUpdateRequest,
 )
-from app.services.compliance_service import build_compliance_frameworks, overall_compliance_score
+from app.services.compliance_service import GATED_AUDIT_STATUSES, build_compliance_frameworks, overall_compliance_score
 from app.services.compounding_cost_service import summarize_compounding_savings
 from app.services.report_export_service import build_report_download
 from app.services.report_service import (
@@ -90,11 +90,14 @@ async def executive_summary(
 
     base = AuditLog.tenant_id == tenant_id
     range_filter = (AuditLog.timestamp >= range_start, AuditLog.timestamp < range_end)
+    # Only count requests the DLP/policy engine actually decisioned; excludes discovery,
+    # heartbeat, and other non-gated telemetry rows that would dilute the metrics below.
+    gated = AuditLog.status.in_(GATED_AUDIT_STATUSES)
 
-    total = await db.execute(select(func.count(AuditLog.id)).where(base, *range_filter))
-    blocked = await db.execute(select(func.count(AuditLog.id)).where(base, *range_filter, AuditLog.status == "blocked"))
-    allowed = await db.execute(select(func.count(AuditLog.id)).where(base, *range_filter, AuditLog.status == "allowed"))
-    high_risk = await db.execute(select(func.count(AuditLog.id)).where(base, *range_filter, AuditLog.risk == "high"))
+    total = await db.execute(select(func.count(AuditLog.id)).where(base, *range_filter, gated))
+    blocked = await db.execute(select(func.count(AuditLog.id)).where(base, *range_filter, gated, AuditLog.status == "blocked"))
+    allowed = await db.execute(select(func.count(AuditLog.id)).where(base, *range_filter, gated, AuditLog.status == "allowed"))
+    high_risk = await db.execute(select(func.count(AuditLog.id)).where(base, *range_filter, gated, AuditLog.risk == "high"))
 
     total_n = total.scalar() or 0
     blocked_n = blocked.scalar() or 0
@@ -107,12 +110,52 @@ async def executive_summary(
         min(100.0, round(100 - (blocked_n / total_n * 100) if total_n else 92.0, 1)),
     )
     pii_result = await db.execute(
-        select(func.count(AuditLog.id)).where(base, *range_filter, AuditLog.action.ilike("%PII%"))
+        select(func.count(AuditLog.id)).where(base, *range_filter, gated, AuditLog.action.ilike("%PII%"))
     )
     pii_n = pii_result.scalar() or 0
 
+    # Compute period-over-period change from the immediately preceding window.
+    period_len = range_end - range_start
+    prev_start = range_start - period_len
+    prev_filter = (AuditLog.timestamp >= prev_start, AuditLog.timestamp < range_start)
+    prev_total = (await db.execute(select(func.count(AuditLog.id)).where(base, *prev_filter, gated))).scalar() or 0
+    prev_blocked = (
+        await db.execute(select(func.count(AuditLog.id)).where(base, *prev_filter, gated, AuditLog.status == "blocked"))
+    ).scalar() or 0
+    prev_allowed = (
+        await db.execute(select(func.count(AuditLog.id)).where(base, *prev_filter, gated, AuditLog.status == "allowed"))
+    ).scalar() or 0
+    prev_high_risk = (
+        await db.execute(select(func.count(AuditLog.id)).where(base, *prev_filter, gated, AuditLog.risk == "high"))
+    ).scalar() or 0
+
+    def _pct(current: int, previous: int) -> float:
+        if previous <= 0:
+            return 0.0 if current <= 0 else 100.0
+        return round(((current - previous) / previous) * 100, 1)
+
+    total_change = _pct(total_n, prev_total)
+    blocked_change = _pct(blocked_n, prev_blocked)
+    allowed_change = _pct(allowed_n, prev_allowed)
+    high_risk_change = _pct(high_risk_n, prev_high_risk)
+
+    # Derive top risks from actual blocked events rather than a static list.
+    top_risk_rows = await db.execute(
+        select(AuditLog.details, func.count(AuditLog.id))
+        .where(base, *range_filter, gated, AuditLog.status == "blocked")
+        .group_by(AuditLog.details)
+        .order_by(func.count(AuditLog.id).desc())
+        .limit(3)
+    )
+    top_risks = [
+        (row[0][:80] if row[0] else "Blocked request")
+        for row in top_risk_rows.all()
+    ]
+    if not top_risks:
+        top_risks = ["No blocked events in this period"]
+
     usage_rows = await db.execute(
-        select(AuditLog.usage_metadata).where(base, *range_filter, AuditLog.usage_metadata.is_not(None))
+        select(AuditLog.usage_metadata).where(base, *range_filter, gated, AuditLog.usage_metadata.is_not(None))
     )
     cost_optimization = CompoundingCostSummary(**summarize_compounding_savings([row[0] for row in usage_rows.all()]))
 
@@ -130,13 +173,37 @@ async def executive_summary(
     avg_score = overall_compliance_score(frameworks) if frameworks else compliance_score
     frameworks_compliant = sum(1 for f in frameworks if f.status == "compliant")
 
+    def _trend(value: float, *, invert: bool = False) -> str:
+        good = value <= 0 if invert else value >= 0
+        return "up" if value > 0 else "down" if value < 0 else "flat"
+
     return ExecutiveSummaryResponse(
         period=period_label,
         kpis=[
-            ReportKpiResponse(label="AI Requests", value=f"{total_n:,}", change="+12.4%", trend="up"),
-            ReportKpiResponse(label="Policy Blocks", value=f"{blocked_n:,}", change=f"{block_rate}%", trend="down"),
-            ReportKpiResponse(label="Allowed Actions", value=f"{allowed_n:,}", change="+8.1%", trend="up"),
-            ReportKpiResponse(label="High-Risk Events", value=f"{high_risk_n:,}", change="-3.2%", trend="down"),
+            ReportKpiResponse(
+                label="AI Requests",
+                value=f"{total_n:,}",
+                change=f"{total_change:+.1f}%",
+                trend=_trend(total_change),
+            ),
+            ReportKpiResponse(
+                label="Policy Blocks",
+                value=f"{blocked_n:,}",
+                change=f"{blocked_change:+.1f}%",
+                trend=_trend(blocked_change, invert=True),
+            ),
+            ReportKpiResponse(
+                label="Allowed Actions",
+                value=f"{allowed_n:,}",
+                change=f"{allowed_change:+.1f}%",
+                trend=_trend(allowed_change),
+            ),
+            ReportKpiResponse(
+                label="High-Risk Events",
+                value=f"{high_risk_n:,}",
+                change=f"{high_risk_change:+.1f}%",
+                trend=_trend(high_risk_change, invert=True),
+            ),
             ReportKpiResponse(
                 label="Stacked cost savings",
                 value=f"${cost_optimization.total_estimated_usd:,.2f}",
@@ -147,11 +214,7 @@ async def executive_summary(
         compliance_score=avg_score,
         frameworks_compliant=frameworks_compliant,
         frameworks_total=len(frameworks) or 5,
-        top_risks=[
-            "Prompt injection attempts",
-            "PII redaction in EU workloads",
-            "MCP tool allowlist violations",
-        ],
+        top_risks=top_risks,
         cost_optimization=cost_optimization,
     )
 

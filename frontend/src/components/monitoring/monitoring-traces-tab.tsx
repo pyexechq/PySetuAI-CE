@@ -31,6 +31,10 @@ function SpanRow({ span, totalMs }: { span: ApiTraceSpan; totalMs: number }) {
   const width = Math.max(totalMs, 1);
   const barPct = Math.min(100, Math.round((span.duration_ms / width) * 100));
   const leftPct = Math.min(100, Math.round(((span.offset_ms ?? 0) / width) * 100));
+  
+  const safeWidth = Math.max(barPct, 1);
+  const safeLeft = Math.min(leftPct, 100 - safeWidth);
+
   return (
     <div className="space-y-1 rounded-md border border-border/40 p-2">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -44,10 +48,10 @@ function SpanRow({ span, totalMs }: { span: ApiTraceSpan; totalMs: number }) {
           </Badge>
         </div>
       </div>
-      <div className="relative h-2 rounded-full bg-muted/50">
+      <div className="relative h-2 rounded-full bg-muted/50 overflow-hidden">
         <div
           className={cn("absolute top-0 h-2 rounded-full", stageColors[span.stage ?? ""] ?? "bg-primary/60")}
-          style={{ left: `${leftPct}%`, width: `${Math.max(barPct, 4)}%` }}
+          style={{ left: `${safeLeft}%`, width: `${safeWidth}%` }}
         />
       </div>
       {span.detail && <p className="text-[11px] text-muted-foreground">{span.detail}</p>}

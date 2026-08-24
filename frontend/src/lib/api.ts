@@ -111,11 +111,15 @@ export interface ApiDashboardMetrics {
   cost_savings: number;
   compliance_score: number;
   success_rate?: number;
+  agentic_security_events?: number;
+  mcp_tool_chain_events?: number;
   total_requests_change_pct?: number;
   blocked_requests_change_pct?: number;
   pii_redactions_change_pct?: number;
   policy_violations_change_pct?: number;
   mcp_violations_change_pct?: number;
+  agentic_security_events_change_pct?: number;
+  mcp_tool_chain_events_change_pct?: number;
   compliance_score_change_pts?: number;
   success_rate_change_pts?: number;
   comparison_period?: string;
@@ -438,6 +442,59 @@ export interface ApiPlatformConfig {
   platform_tenant_slug: string;
 }
 
+export interface ApiBlogContentSection {
+  heading: string;
+  body: string[];
+}
+
+export interface ApiBlogArticle {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  feature: string;
+  date: string;
+  read_time: string;
+  author: string;
+  tags: string[];
+  content: ApiBlogContentSection[];
+  image_url: string | null;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiBlogArticleCreateRequest {
+  slug: string;
+  title: string;
+  excerpt?: string;
+  category?: string;
+  feature?: string;
+  date: string;
+  read_time?: string;
+  author?: string;
+  tags?: string[];
+  content?: ApiBlogContentSection[];
+  image_url?: string | null;
+  published?: boolean;
+}
+
+export interface ApiBlogArticleUpdateRequest {
+  slug?: string;
+  title?: string;
+  excerpt?: string;
+  category?: string;
+  feature?: string;
+  date?: string;
+  read_time?: string;
+  author?: string;
+  tags?: string[];
+  content?: ApiBlogContentSection[];
+  image_url?: string | null;
+  published?: boolean;
+}
+
 export interface ApiPublicSiteConfig {
   slug: string;
   name: string;
@@ -455,6 +512,7 @@ export interface ApiTenantFeatures {
   compatibility_center: boolean;
   governance_sandbox: boolean;
   reports: boolean;
+  developer_portal: boolean;
 }
 
 export interface ApiTenantFeaturePolicyEntry {
@@ -815,6 +873,34 @@ export const api = {
       body: JSON.stringify(body),
     }, token),
 
+  getPublishedBlogArticles: () => apiFetch<ApiBlogArticle[]>("/blog"),
+
+  getPublishedBlogArticle: (slug: string) =>
+    apiFetch<ApiBlogArticle>(`/blog/${encodeURIComponent(slug)}`),
+
+  listBlogArticles: (token: string) => apiFetch<ApiBlogArticle[]>("/platform/blogs", {}, token),
+
+  createBlogArticle: (token: string, body: ApiBlogArticleCreateRequest) =>
+    apiFetch<ApiBlogArticle>("/platform/blogs", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  updateBlogArticle: (token: string, articleId: string, body: ApiBlogArticleUpdateRequest) =>
+    apiFetch<ApiBlogArticle>(`/platform/blogs/${articleId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }, token),
+
+  publishBlogArticle: (token: string, articleId: string) =>
+    apiFetch<ApiBlogArticle>(`/platform/blogs/${articleId}/publish`, { method: "POST" }, token),
+
+  unpublishBlogArticle: (token: string, articleId: string) =>
+    apiFetch<ApiBlogArticle>(`/platform/blogs/${articleId}/unpublish`, { method: "POST" }, token),
+
+  deleteBlogArticle: (token: string, articleId: string) =>
+    apiFetch<void>(`/platform/blogs/${articleId}`, { method: "DELETE" }, token),
+
   previewInvite: (inviteToken: string) =>
     apiFetch<ApiInvitePreview>(`/auth/invite/${encodeURIComponent(inviteToken)}`),
 
@@ -1149,16 +1235,30 @@ export const api = {
       body: JSON.stringify(body),
     }, token),
 
-  getAuditLogs: (token: string, params?: { search?: string; status?: string; since?: string; limit?: number; from_date?: string; to_date?: string; audit_id?: string }) => {
+  getAuditLogs: (token: string, params?: { search?: string; status?: string; source?: string; since?: string; limit?: number; offset?: number; from_date?: string; to_date?: string; audit_id?: string }) => {
     const query = new URLSearchParams();
     if (params?.search) query.set("search", params.search);
     if (params?.audit_id) query.set("audit_id", params.audit_id);
     if (params?.status) query.set("status", params.status);
+    if (params?.source) query.set("source", params.source);
     if (params?.since) query.set("since", params.since);
     if (params?.limit) query.set("limit", String(params.limit));
+    if (params?.offset !== undefined) query.set("offset", String(params.offset));
     appendDateRange(query, params);
     const qs = query.toString();
     return apiFetch<ApiAuditLog[]>(`/audit/logs${qs ? `?${qs}` : ""}`, {}, token);
+  },
+
+  getAuditSummary: (token: string, params?: { search?: string; status?: string; source?: string; since?: string; from_date?: string; to_date?: string; audit_id?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.set("search", params.search);
+    if (params?.audit_id) query.set("audit_id", params.audit_id);
+    if (params?.status) query.set("status", params.status);
+    if (params?.source) query.set("source", params.source);
+    if (params?.since) query.set("since", params.since);
+    appendDateRange(query, params);
+    const qs = query.toString();
+    return apiFetch<ApiAuditSummary>(`/audit/logs/summary${qs ? `?${qs}` : ""}`, {}, token);
   },
 
   getAuditLogBody: (token: string, auditId: string) =>
@@ -1509,11 +1609,23 @@ export const api = {
   getEndpoints: (token: string) =>
     apiFetch<ApiEndpoint[]>("/endpoints", {}, token),
 
-  getSecurityEvents: (token: string, limit = 200) =>
-    apiFetch<ApiSecurityEvent[]>(`/security-events?limit=${limit}`, {}, token),
+  getSecurityEvents: (token: string, limit = 200, action?: string) => {
+    const query = new URLSearchParams({ limit: limit.toString() });
+    if (action) query.set("action", action);
+    return apiFetch<ApiSecurityEvent[]>(`/security-events?${query.toString()}`, {}, token);
+  },
 
   getSecurityEventSummary: (token: string) =>
     apiFetch<ApiSecurityEventSummary>("/security-events/summary", {}, token),
+
+  listSanctionedAiTools: (token: string) =>
+    apiFetch<ApiSanctionedAiTool[]>("/sanctioned-tools", {}, token),
+
+  addSanctionedAiTool: (token: string, body: ApiSanctionedAiToolCreateRequest) =>
+    apiFetch<ApiSanctionedAiTool>("/sanctioned-tools", { method: "POST", body: JSON.stringify(body) }, token),
+
+  deleteSanctionedAiTool: (token: string, toolId: string) =>
+    apiFetch<void>(`/sanctioned-tools/${toolId}`, { method: "DELETE" }, token),
 
   getApprovals: (token: string, status: string = "pending") =>
     apiFetch<ApiApprovalRequest[]>(`/approvals?status=${status}`, {}, token),
@@ -1758,9 +1870,16 @@ export const api = {
     return apiFetch<ApiObservabilityOverview>(`/observability/overview${qs ? `?${qs}` : ""}`, {}, token);
   },
 
-  getObservabilityTraces: (token: string, limit = 20, params?: ApiDateRangeParams) => {
-    const query = new URLSearchParams({ limit: String(limit) });
-    appendDateRange(query, params);
+  getObservabilityTraces: (
+    token: string,
+    limit = 20,
+    options?: { from_date?: string; to_date?: string; dlp_only?: boolean }
+  ) => {
+    const query = new URLSearchParams();
+    query.set("limit", limit.toString());
+    if (options?.from_date) query.set("from_date", options.from_date);
+    if (options?.to_date) query.set("to_date", options.to_date);
+    if (options?.dlp_only) query.set("dlp_only", "true");
     return apiFetch<ApiTraceSummary[]>(`/observability/traces?${query.toString()}`, {}, token);
   },
 
@@ -2372,6 +2491,7 @@ export interface ApiNotificationListResponse {
 export interface ApiAuditLog {
   id: string;
   timestamp: string;
+  source: string;
   actor: string;
   action: string;
   resource: string;
@@ -2391,6 +2511,13 @@ export interface ApiAuditLogBody {
   guardrail_events: Record<string, unknown> | null;
   tool_events: Array<Record<string, unknown>> | null;
   created_at: string | null;
+}
+
+export interface ApiAuditSummary {
+  total: number;
+  allowed: number;
+  blocked: number;
+  review: number;
 }
 
 export interface ApiRequestLogSettings {
@@ -2890,6 +3017,16 @@ export interface ChatCompletionResponse {
   };
 }
 
+export interface ApiMcpScopeEntry {
+  server_id: string;
+  tool_names: string[];
+}
+
+export interface ApiMcpScopeConfig {
+  mode: "all" | "allowlist" | "denylist";
+  entries: ApiMcpScopeEntry[];
+}
+
 export interface ApiPolicyBundle {
   id: string;
   name: string;
@@ -2900,6 +3037,7 @@ export interface ApiPolicyBundle {
   custom_intent_ids: string[];
   policy_names: string[];
   framework_rule_packs: string[];
+  mcp_scope?: ApiMcpScopeConfig | null;
   created_at: string;
 }
 
@@ -2911,6 +3049,7 @@ export interface ApiPolicyBundleCreateRequest {
   policy_ids?: string[];
   custom_intent_ids?: string[];
   framework_rule_packs?: string[];
+  mcp_scope?: ApiMcpScopeConfig | null;
 }
 
 export interface ApiPolicyBundleUpdateRequest {
@@ -2921,6 +3060,7 @@ export interface ApiPolicyBundleUpdateRequest {
   policy_ids?: string[];
   custom_intent_ids?: string[];
   framework_rule_packs?: string[];
+  mcp_scope?: ApiMcpScopeConfig | null;
 }
 
 export interface ApiFrameworkRulePack {
@@ -2975,6 +3115,7 @@ export interface ApiAgent {
   id: string;
   tenant_id: string;
   endpoint_id: string | null;
+  endpoint: { hostname: string } | null;
   name: string;
   agent_type: string;
   vendor: string;
@@ -3010,6 +3151,7 @@ export interface ApiSecurityEvent {
   policy_name: string;
   metadata_json: Record<string, unknown> | null;
   created_at: string;
+  endpoint?: { hostname: string } | null;
 }
 
 export interface ApiSecurityEventSummary {
@@ -3020,6 +3162,18 @@ export interface ApiSecurityEventSummary {
   high_risk: number;
   by_decision: Record<string, number>;
   by_type: Record<string, number>;
+}
+
+export interface ApiSanctionedAiTool {
+  id: string;
+  tenant_id: string;
+  name: string;
+  added_by: string;
+  created_at: string | null;
+}
+
+export interface ApiSanctionedAiToolCreateRequest {
+  name: string;
 }
 
 export interface ApiApprovalRequest {
@@ -3042,6 +3196,9 @@ export interface ApiApprovalRequest {
   decided_at: string | null;
   expires_at: string | null;
   created_at: string;
+  requested_mcp_tool?: string | null;
+  requested_mcp_tools?: string[] | null;
+  requested_bundle_id?: string | null;
 }
 
 export interface ApiMcpToolPolicy {

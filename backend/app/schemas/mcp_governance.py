@@ -87,3 +87,25 @@ class GraphEdge(BaseModel):
 class MCPToolChainGraphResponse(BaseModel):
     nodes: list[GraphNode] = Field(default_factory=list)
     edges: list[GraphEdge] = Field(default_factory=list)
+
+class MCPPortalServerResponse(BaseModel):
+    id: str
+    name: str
+    category: str
+    status: str
+    transport: str = "sse"
+    endpoint_url: str | None = None
+    tools_count: int = 0
+    tool_names: list[str] = Field(default_factory=list)
+    description: str = ""
+    features: list[str] = Field(default_factory=list)
+    requires_approval: bool = True
+    server_config: dict | None = None
+
+class MCPPortalCatalogResponse(BaseModel):
+    servers: list[MCPPortalServerResponse] = Field(default_factory=list)
+
+class MCPPortalRequestStatusResponse(BaseModel):
+    status: str
+    api_key: str | None = None
+    mcp_config: dict | None = None

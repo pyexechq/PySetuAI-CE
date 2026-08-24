@@ -29,6 +29,8 @@ import {
   ArrowRightLeft,
   Lock,
   Radar,
+  Bot,
+  Workflow,
 } from "lucide-react";
 
 const QUICK_LINKS = [
@@ -168,6 +170,26 @@ export function DashboardContent() {
                 icon: Server,
                 iconColor: "text-violet-400",
                 insightKey: "mcp_violations",
+              },
+              {
+                title: "Agentic Security Events",
+                value: metrics.agenticSecurityEvents,
+                change: metrics.agenticSecurityEventsChange,
+                periodLabel,
+                invertTrend: true,
+                icon: Bot,
+                iconColor: "text-rose-400",
+                insightKey: "agentic_security_events",
+              },
+              {
+                title: "MCP Tool Chain Events",
+                value: metrics.mcpToolChainEvents,
+                change: metrics.mcpToolChainEventsChange,
+                periodLabel,
+                invertTrend: true,
+                icon: Workflow,
+                iconColor: "text-sky-400",
+                insightKey: "mcp_tool_chain_events",
               },
               {
                 title: "Total LLM Spend",

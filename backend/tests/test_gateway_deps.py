@@ -42,7 +42,7 @@ def _client_key_record(
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_gateway_context_enforces_per_key_origins(monkeypatch: pytest.MonkeyPatch) -> None:
     record = _client_key_record(origins=["https://spa.example.com"])
     tenant = SimpleNamespace(allowed_api_origins=["https://tenant.example.com"])
@@ -69,7 +69,7 @@ async def test_get_gateway_context_enforces_per_key_origins(monkeypatch: pytest.
     assert ctx.client_api_key_name == "test-key"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_gateway_context_sets_ingress_token_for_mirrored_pass_through(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -93,7 +93,7 @@ async def test_get_gateway_context_sets_ingress_token_for_mirrored_pass_through(
     assert ctx.ingress_bearer_token == raw
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_gateway_context_rejects_opaque_non_key_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(gateway_deps, "resolve_client_api_key", AsyncMock(return_value=None))
     db = AsyncMock()

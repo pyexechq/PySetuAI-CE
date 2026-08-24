@@ -1,4 +1,38 @@
-# Daily Progress — Aug 20, 2026
+# Daily Progress — Aug 24, 2026
+
+- **Agent Inventory UI Refactor**: Introduced dynamic grouping by Hostname, Agent Type, and Vendor. Added collapsible group views, search bar filtering, and risk-based color coding.
+- **Monitoring Discover Tab Redundancy Fix**: Deduplicated endpoint tools by hostname and tool name/source, wrapping host tools in collapsible cards to eliminate massive redundant data in logs.
+- **Agent Package Downloads**: Added a download menu to the Agent Inventory page serving macOS, Windows (`.exe`), Linux (`.zip`) endpoint agents and Chrome (`.crx`), Edge (`.crx`), Firefox (`.xpi`) browser extensions.
+- **Endpoint Agent Optimization**: Increased the default heartbeat/discovery polling interval from 60 seconds to 300 seconds (5 minutes) in `pysetu_agent/config.py` and updated `README.md` and `deploy/agent-config.example.json` accordingly.
+
+## Prior — Aug 21, 2026
+## Completed Today
+
+### SaaS Platform Blog Management
+
+- Added a `BlogArticle` model, schemas, and service for the marketing blog.
+- Added a public blog API (`GET /api/v1/blog`, `GET /api/v1/blog/{slug}`) returning only published articles.
+- Added platform-admin blog management endpoints under `/api/v1/platform/blogs` (list, create, update, publish, unpublish, delete), all guarded by `require_platform_admin`.
+- Added a platform admin **Blog management** page at `/platform/blogs` with create/edit forms, publish/unpublish toggles, and delete.
+- Updated the public `/blog` and `/blog/[slug]` pages to fetch published articles from the backend instead of static data.
+- Seeded 21 initial articles (published) via `seed_blog.py`; added migrations `073_blog_articles` and `074_framework_rule_packs` (schema-drift fix for the missing `policy_bundles.framework_rule_packs` column).
+
+## Prior — Reports / Dashboard / Policy Engine Sync
+
+### Reports / Dashboard / Policy Engine Sync
+
+- **Gap 2** Data Residency report now uses the real residency computation (`build_data_protection_overview`) instead of a mislabeled audit export.
+- **Gap 3** Framework rule packs surfaced in compliance scoring — `TenantComplianceSignals.active_framework_pack_ids` + a rule-pack control per framework (GDPR/HIPAA/SOC2/ISO/NIST).
+- **Gap 4** Executive-summary KPIs/risks computed from data (period-over-period deltas + top blocked-event risks) instead of hardcoded.
+- **Gap 5** Dashboard metrics for agentic security events and MCP tool chain events (backend + frontend cards + insights).
+- **Gap 6** New report types: agentic security, Copilot governance, MCP tool chains, framework rule packs.
+- **Gap 8** MCP per-tool policy editing UI on the MCP Tool Chains page.
+- **Gap 9** `mcp_violations` now counts only blocked MCP invocations, not all MCP traffic.
+- **Gap 1 (S18-06)** Bundle MCP scope editor UI (mode toggle + per-server tool multiselect) + badge on existing bundles.
+
+> Full detail: [reports-dashboard-policy-sync.md](./reports-dashboard-policy-sync.md)
+
+## Prior — Aug 20, 2026
 
 ## Completed Today
 

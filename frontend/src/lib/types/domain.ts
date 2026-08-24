@@ -9,6 +9,10 @@ export interface DashboardMetrics {
   policyViolationsChange: number;
   mcpViolations: number;
   mcpViolationsChange: number;
+  agenticSecurityEvents: number;
+  agenticSecurityEventsChange: number;
+  mcpToolChainEvents: number;
+  mcpToolChainEventsChange: number;
   costSavings: number;
   costSavingsChange: number;
   complianceScore: number;
@@ -119,6 +123,7 @@ export interface McpServer {
 export interface AuditLogEntry {
   id: string;
   timestamp: string;
+  source: string;
   actor: string;
   action: string;
   resource: string;

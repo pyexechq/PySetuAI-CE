@@ -10,6 +10,7 @@ class TenantFeaturesResponse(BaseModel):
     compatibility_center: bool = True
     governance_sandbox: bool = True
     reports: bool = True
+    developer_portal: bool = True
 
 
 class TenantFeaturePolicyResponse(BaseModel):
@@ -17,3 +18,4 @@ class TenantFeaturePolicyResponse(BaseModel):
     compatibility_center: TenantFeaturePolicyEntry = Field(default_factory=TenantFeaturePolicyEntry)
     governance_sandbox: TenantFeaturePolicyEntry = Field(default_factory=TenantFeaturePolicyEntry)
     reports: TenantFeaturePolicyEntry = Field(default_factory=TenantFeaturePolicyEntry)
+    developer_portal: TenantFeaturePolicyEntry = Field(default_factory=TenantFeaturePolicyEntry)

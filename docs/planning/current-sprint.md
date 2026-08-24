@@ -19,12 +19,21 @@
 | S24-07 | Governance Sandbox API key selector + real-time evaluation (300 ms debounce) + active-rule highlighting (passed/block/redact/alert) + triggered-rule progress bar | Done |
 | S24-08 | Policy engine honors regex flags in `content.matches(/.../i)` | Done |
 | S24-09 | Data Protection Center tabs (DLP scanner, movement policy, exemptions) | Done |
+| S24-10 | Developer Portal (`/developer-portal`) — MCP Access Request submission + status UI | Done |
+| S24-11 | API key auto-provisioning for approved MCP access requests | Done |
+| S24-12 | Secure API Key and Claude Desktop `mcp.json` retrieval endpoint | Done |
+| S24-13 | MCP Governance Access & RBAC table redesign — live Developer Portal grants table (`McpDeveloperGrantsCard`), granted operation chips, and revoke actions | Done |
+| S24-14 | Consolidation of legacy Self-Service MCP Portal tab into unified Developer Portal (`/developer-portal`), per-server visibility controls, and `/mcp-portal` redirect | Done |
+| S24-15 | SaaS Admin / Platform Operator Module Entitlement (`developer_portal` feature flag in `/platform`) and Tenant-Level portal disablement guard | Done |
 
 ## Exit criteria
 
 - MCP gateway intercepts every `tools/call` from Claude Desktop / Cursor / VSCode and applies the local policy (secrets→block, PII→redact).
 - Policy dry-run evaluates against the selected API key's attached bundle and highlights each active rule in real time.
 - `content.matches(/pattern/flags)` conditions evaluate correctly (case-insensitive, multiline, dotall, verbose).
+- External developers can submit MCP Access Requests via the Developer Portal, and retrieve auto-provisioned API keys upon approval.
+- Tenant administrators can govern Developer Portal grants and individual MCP Server visibility (`Published`/`Hidden`).
+- SaaS Platform Admins can license/entitle the Developer Portal per tenant from Platform Ops (`/platform`).
 
 ## Prior sprint (closed)
 
@@ -168,7 +177,7 @@ Sprint 18 (BL-098–BL-103) — MCP compliance pipeline Layer 1.
 | S18-03 | Multiplex `tools/list` / `tools/call` gate + audit | Done |
 | S18-04 | Chat path uses shared MCP access filter | Done |
 | S18-05 | `select_model` honors `routing_rule_client_keys` | Done |
-| S18-06 | Bundle MCP scope UI in Policy Studio | Pending |
+| S18-06 | Bundle MCP scope UI in Policy Studio | Done |
 | S18-07 | Tests + test-plan / release-readiness updates | Done (mcp_access + multiplex tests; RAG DLP suite) |
 
 ## Exit criteria

@@ -478,6 +478,7 @@ class PolicyAssistResponse(BaseModel):
 class AuditLogResponse(BaseModel):
     id: str
     timestamp: str
+    source: str
     actor: str
     action: str
     resource: str
@@ -497,6 +498,13 @@ class AuditLogBodyResponse(BaseModel):
     guardrail_events: dict | None = None
     tool_events: list[dict] | None = None
     created_at: str | None = None
+
+
+class AuditSummaryResponse(BaseModel):
+    total: int
+    allowed: int
+    blocked: int
+    review: int
 
 
 class RequestLogSettingsResponse(BaseModel):

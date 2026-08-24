@@ -6,6 +6,7 @@ import { Activity, LayoutDashboard, Radar, Search, ShieldAlert } from "lucide-re
 import { MonitoringOverviewTab } from "@/components/monitoring/monitoring-overview-tab";
 import { MonitoringSecurityTab } from "@/components/monitoring/monitoring-security-tab";
 import { MonitoringTracesTab } from "@/components/monitoring/monitoring-traces-tab";
+import { MonitoringDiscoverTab } from "@/components/monitoring/monitoring-discover-tab";
 import { QuickLinkPills, SectionTabBar } from "@/components/shared/section-chrome";
 import { useAuthStore, type UserRole } from "@/stores/auth-store";
 
@@ -18,6 +19,7 @@ const tabs = [
   { id: "overview", label: "Overview", icon: Activity },
   { id: "security", label: "Security", icon: ShieldAlert },
   { id: "traces", label: "Traces", icon: Radar },
+  { id: "discover", label: "Discover", icon: Search },
 ] as const;
 
 type MonitoringTab = (typeof tabs)[number]["id"];
@@ -30,6 +32,7 @@ function roleCanViewTab(role: UserRole | undefined, tab: MonitoringTab): boolean
   if (tab === "overview") return true;
   if (tab === "security") return SECURITY_ROLES.includes(role);
   if (tab === "traces") return TRACES_ROLES.includes(role);
+  if (tab === "discover") return SECURITY_ROLES.includes(role);
   return false;
 }
 
@@ -69,6 +72,7 @@ export function MonitoringView() {
       {tab === "overview" && <MonitoringOverviewTab />}
       {tab === "security" && <MonitoringSecurityTab />}
       {tab === "traces" && <MonitoringTracesTab />}
+      {tab === "discover" && <MonitoringDiscoverTab />}
     </div>
   );
 }

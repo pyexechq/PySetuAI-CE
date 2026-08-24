@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.governance import AuditLog, ComplianceSnapshot
 from app.models.tenant import User
 from app.schemas.dashboard import DashboardComplianceFramework
-from app.services.compliance_service import build_compliance_frameworks, overall_compliance_score
+from app.services.compliance_service import GATED_AUDIT_STATUSES, build_compliance_frameworks, overall_compliance_score
 
 
 def compute_period_compliance_metrics(*, total_requests: int, blocked_requests: int) -> tuple[float, float]:
@@ -43,6 +43,8 @@ async def _load_compliance_metrics(
         AuditLog.tenant_id == tenant_id,
         AuditLog.timestamp >= period_start,
         AuditLog.timestamp < period_end,
+        # Excludes discovery/heartbeat telemetry that never went through DLP decisioning.
+        AuditLog.status.in_(GATED_AUDIT_STATUSES),
     ]
 
     total = (await db.execute(select(func.count(AuditLog.id)).where(*base))).scalar() or 0

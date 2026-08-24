@@ -35,6 +35,7 @@ MODULE_ROUTES: dict[str, str] = {
     "Reports": "/reports",
     "Data Protection": "/data-protection",
     "Settings": "/settings/organization",
+    "Policy Bundles": "/settings/policy-bundles",
     "Users & RBAC": "/settings/users",
     "Integrations": "/settings/integrations",
     "Prompt templates": "/settings/prompts",

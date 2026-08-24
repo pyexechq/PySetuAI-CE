@@ -28,10 +28,11 @@ PySetu AI is distributed across three primary editions, catering to individual d
 | Core LLM Gateway | ✅ | ✅ | ✅ |
 | Agentic MCP Auditing | ✅ | ✅ | ✅ |
 | Basic Telemetry & Logs | ✅ | ✅ | ✅ |
+| **Self-Service Developer Portal** | ✅ | ✅ | ✅ (Tenant-entitled) |
 | **OIDC / SSO (SAML)** | ❌ | ✅ | ✅ |
-| **GenAI DLP** | ❌ | ✅ | ✅ |
+| **GenAI DLP** | ✅ Basic | ✅ Advanced | ✅ Advanced |
 | **Vault/KMS Integration** | ❌ | ✅ | ✅ |
-| **Compliance Reports** | ❌ | ✅ | ✅ |
+| **Compliance Reports** | ✅ Basic | ✅ Advanced | ✅ Advanced |
 | **Marketing Site** | ❌ | ❌ | ✅ |
 | **SaaS Tenant Admin** | ❌ | ❌ | ✅ |
 

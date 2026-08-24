@@ -88,7 +88,7 @@ def test_map_rag_audit_source() -> None:
     assert map_audit_source(log) == "rag"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_evaluate_and_dispatch_creates_ticket() -> None:
     from app.models.governance import AlertWebhook
     from app.services.incident_dispatch_service import evaluate_and_dispatch
@@ -152,7 +152,7 @@ async def test_evaluate_and_dispatch_creates_ticket() -> None:
     mock_adapter.create_ticket.assert_awaited_once()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_evaluate_and_dispatch_updates_on_duplicate() -> None:
     from app.models.governance import AlertWebhook, IncidentOutbox
     from app.services.incident_dispatch_service import evaluate_and_dispatch

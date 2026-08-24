@@ -88,11 +88,15 @@ class DashboardMetricsResponse(BaseModel):
     cost_savings: float
     compliance_score: float
     success_rate: float = 0
+    agentic_security_events: int = 0
+    mcp_tool_chain_events: int = 0
     total_requests_change_pct: float = 0
     blocked_requests_change_pct: float = 0
     pii_redactions_change_pct: float = 0
     policy_violations_change_pct: float = 0
     mcp_violations_change_pct: float = 0
+    agentic_security_events_change_pct: float = 0
+    mcp_tool_chain_events_change_pct: float = 0
     compliance_score_change_pts: float = 0
     success_rate_change_pts: float = 0
     comparison_period: str = "vs prior 30 days"

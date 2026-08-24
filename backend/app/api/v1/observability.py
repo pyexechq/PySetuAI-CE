@@ -3,7 +3,7 @@ from typing import Annotated
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.date_range import resolve_range
@@ -117,16 +117,26 @@ async def observability_traces(
     from_date: str | None = Query(None),
     to_date: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
+    dlp_only: bool = Query(False),
 ) -> list[TraceSummaryResponse]:
     range_start, range_end = resolve_range(from_date, to_date)
-    result = await db.execute(
-        select(AuditLog)
-        .where(
-            AuditLog.tenant_id == current_user.tenant_id,
-            AuditLog.timestamp >= range_start,
-            AuditLog.timestamp < range_end,
+    query = select(AuditLog).where(
+        AuditLog.tenant_id == current_user.tenant_id,
+        AuditLog.timestamp >= range_start,
+        AuditLog.timestamp < range_end,
+    )
+    if dlp_only:
+        # Show only traces where a DLP policy was applicable (action or details match)
+        query = query.where(
+            or_(
+                AuditLog.action == "DLP Scan",
+                AuditLog.action == "PII",
+                AuditLog.details.ilike("%DLP%"),
+                AuditLog.details.ilike("%PII%")
+            )
         )
-        .order_by(AuditLog.timestamp.desc())
+    result = await db.execute(
+        query.order_by(AuditLog.timestamp.desc())
         .limit(limit)
     )
     logs = result.scalars().all()

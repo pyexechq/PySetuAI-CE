@@ -5,7 +5,11 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore, canAccessRoute, canAccessTenantModule } from "@/stores/auth-store";
 import { useTenantStore } from "@/stores/tenant-store";
 
-const PUBLIC_ROUTES = ["/login", "/accept-invite", "/auth/oidc/callback", "/platform/login", "/terms", "/privacy", "/cookies", "/legal/security"];
+const PUBLIC_ROUTES = ["/login", "/accept-invite", "/auth/oidc/callback", "/platform/login", "/terms", "/privacy", "/cookies", "/legal/security", "/blog"];
+
+function isPublicRoute(pathname: string) {
+  return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -26,7 +30,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     if (!hydrated) return;
     if (pathname.startsWith("/platform")) return;
     if (pathname === "/" && !isAuthenticated) return;
-    if (PUBLIC_ROUTES.includes(pathname)) return;
+    if (isPublicRoute(pathname)) return;
 
     if (!isAuthenticated) {
       const next = pathname === "/login" ? "" : `?next=${encodeURIComponent(pathname)}`;
@@ -65,7 +69,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     return <>{children}</>;
   }
 
-  if (PUBLIC_ROUTES.includes(pathname)) {
+  if (isPublicRoute(pathname)) {
     return <>{children}</>;
   }
 

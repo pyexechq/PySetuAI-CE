@@ -82,7 +82,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
-* {
+*, ::after, ::before {
   border-color: var(--border);
 }
 
@@ -135,6 +135,11 @@ body {
   color: var(--foreground) !important;
   border-color: var(--border) !important;
   border-radius: 0.375rem;
+}
+
+.audit-log-grid .ag-root-wrapper-body,
+.audit-log-grid .ag-body-viewport {
+  background-color: var(--card) !important;
 }
 
 .audit-log-grid .ag-header {

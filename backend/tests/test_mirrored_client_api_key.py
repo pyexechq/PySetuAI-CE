@@ -52,7 +52,7 @@ def test_looks_like_jwt() -> None:
     assert not looks_like_jwt("hg_demo_key")
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resolve_client_api_key_accepts_non_hg_prefix() -> None:
     raw = "sk-test-key-12345678"
     record = SimpleNamespace(
@@ -67,13 +67,13 @@ async def test_resolve_client_api_key_accepts_non_hg_prefix() -> None:
     assert resolved.last_used_at is not None
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resolve_client_api_key_returns_none_when_missing() -> None:
     db = _FakeDb([_ExecuteResult(None)])
     assert await resolve_client_api_key(db, "sk-missing-key-123456") is None
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_register_mirrored_client_key_rejects_duplicate() -> None:
     db = _FakeDb([_ExecuteResult(uuid.uuid4())])
     with pytest.raises(HTTPException) as exc:
@@ -86,7 +86,7 @@ async def test_register_mirrored_client_key_rejects_duplicate() -> None:
     assert exc.value.status_code == 409
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_register_mirrored_client_key_creates_record() -> None:
     db = _FakeDb([_ExecuteResult(None)])
     record = await register_mirrored_client_key(

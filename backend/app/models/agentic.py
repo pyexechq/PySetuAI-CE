@@ -5,12 +5,15 @@ with endpoint, agent, capability, and normalized security-event records. Endpoin
 identity is tenant-scoped and never relies on display names alone.
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.tenant import Base
 
@@ -42,6 +45,7 @@ class AgentInventory(Base):
     endpoint_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("endpoints.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    endpoint: Mapped[Optional["Endpoint"]] = relationship(lazy="joined")
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     agent_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     vendor: Mapped[str] = mapped_column(String(128), default="", nullable=False)
@@ -109,6 +113,8 @@ class SecurityEvent(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
 
+    endpoint: Mapped[Optional["Endpoint"]] = relationship(lazy="joined")
+
 
 class ApprovalRequest(Base):
     __tablename__ = "approval_requests"
@@ -133,6 +139,11 @@ class ApprovalRequest(Base):
     reason: Mapped[str] = mapped_column(Text, default="", nullable=False)
     policy_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     policy_name: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    requested_mcp_tool: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    requested_mcp_tools: Mapped[list | None] = mapped_column(JSONB, default=list, nullable=True)
+    requested_bundle_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("policy_bundles.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False, index=True)
     decided_by: Mapped[str] = mapped_column(String(255), default="", nullable=False)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -279,3 +290,22 @@ class GuardianAction(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
     executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SanctionedAiTool(Base):
+    """Tenant-approved allowlist of locally-installed AI tools/vendors.
+
+    Endpoint-agent tool discoveries not matching this allowlist are shadow AI:
+    usage that bypassed the gateway's DLP/policy inspection entirely.
+    """
+
+    __tablename__ = "sanctioned_ai_tools"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_sanctioned_ai_tools_tenant_name"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    added_by: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

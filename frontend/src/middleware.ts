@@ -11,6 +11,7 @@ const PUBLIC_ROUTES = [
   "/privacy",
   "/cookies",
   "/legal/security",
+  "/blog",
 ];
 
 export function middleware(request: NextRequest) {

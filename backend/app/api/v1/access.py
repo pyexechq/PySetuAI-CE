@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rbac import MANAGE_POLICIES, require_permission
+from app.core.rbac import MANAGE_POLICIES, USE_MCP, USE_STUDIO, require_any_permission, require_permission
 from app.db.session import get_db
 from app.models.governance import ClientApiKey, Policy, PolicyBundle
 from app.models.tenant import User
@@ -45,6 +45,7 @@ from app.services.policy_bundle_service import clear_other_defaults, get_policy_
 router = APIRouter()
 
 _require_policy_admin = require_permission(MANAGE_POLICIES)
+_require_key_management = require_any_permission(MANAGE_POLICIES, USE_MCP, USE_STUDIO)
 
 
 def _parse_allowed_api_origins(origins: list[str] | None) -> list[str] | None:
@@ -298,7 +299,7 @@ async def delete_policy_bundle(
 
 @router.get("/client-api-keys", response_model=list[ClientApiKeyResponse])
 async def list_client_api_keys(
-    current_user: Annotated[User, Depends(_require_policy_admin)],
+    current_user: Annotated[User, Depends(_require_key_management)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[ClientApiKeyResponse]:
     result = await db.execute(
@@ -322,7 +323,7 @@ async def list_client_api_keys(
 @router.post("/client-api-keys", response_model=ClientApiKeyCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_client_api_key(
     payload: ClientApiKeyCreateRequest,
-    current_user: Annotated[User, Depends(_require_policy_admin)],
+    current_user: Annotated[User, Depends(_require_key_management)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ClientApiKeyCreateResponse:
     name = payload.name.strip()
@@ -366,7 +367,7 @@ async def create_client_api_key(
 @router.get("/client-api-keys/{key_id}/reveal", response_model=ClientApiKeyRevealResponse)
 async def reveal_client_api_key(
     key_id: str,
-    current_user: Annotated[User, Depends(_require_policy_admin)],
+    current_user: Annotated[User, Depends(_require_key_management)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ClientApiKeyRevealResponse:
     record = await get_client_api_key(db, current_user.tenant_id, key_id)
@@ -432,7 +433,7 @@ async def create_mirrored_client_api_key(
 async def update_client_api_key(
     key_id: str,
     payload: ClientApiKeyUpdateRequest,
-    current_user: Annotated[User, Depends(_require_policy_admin)],
+    current_user: Annotated[User, Depends(_require_key_management)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ClientApiKeyResponse:
     record = await get_client_api_key(db, current_user.tenant_id, key_id)
@@ -488,7 +489,7 @@ async def update_client_api_key(
 @router.delete("/client-api-keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_client_api_key(
     key_id: str,
-    current_user: Annotated[User, Depends(_require_policy_admin)],
+    current_user: Annotated[User, Depends(_require_key_management)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     record = await get_client_api_key(db, current_user.tenant_id, key_id)

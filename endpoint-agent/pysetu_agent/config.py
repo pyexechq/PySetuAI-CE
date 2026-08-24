@@ -13,7 +13,7 @@ import socket
 from dataclasses import dataclass, field
 
 DEFAULT_BACKEND_URL = "http://localhost:8001"
-DEFAULT_POLL_INTERVAL_SECONDS = 60
+DEFAULT_POLL_INTERVAL_SECONDS = 300
 
 
 @dataclass

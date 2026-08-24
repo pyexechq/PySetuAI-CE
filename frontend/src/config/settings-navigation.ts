@@ -5,6 +5,7 @@ import {
   Layers,
   Network,
   Shield,
+  ShieldCheck,
   Sparkles,
   Sun,
   Users,
@@ -67,6 +68,14 @@ export const settingsNavItems: SettingsNavItem[] = [
     href: "/settings/gateway",
     icon: Network,
     description: "Tenant-wide rate limits, token saving default, token budgets, and API origins",
+    group: "platform",
+  },
+  {
+    id: "sanctioned-ai",
+    label: "Sanctioned AI",
+    href: "/settings/sanctioned-ai",
+    icon: ShieldCheck,
+    description: "Explicitly allowlisted AI tools and shadow-AI discovery",
     group: "platform",
   },
   {

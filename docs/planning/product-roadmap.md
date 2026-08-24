@@ -267,6 +267,8 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 - [x] `DiscoveredMcpServer.args` field + `_mcp_server_args()` so the gateway spawns `npx -y @server-github` correctly
 - [x] Daemon CLI flags `--mcp-gateway`, `--server`, `--mcp-gateway-config`; offline dispatch before `missing_fields` check
 - [x] MCP gateway tests (`test_mcp_gateway.py`, 15 tests) + daemon CLI wiring tests
+- [x] Developer Portal (`/developer-portal`) — MCP Access Request submission + status check
+- [x] Auto-provisioning of API keys and Claude Desktop `mcp.json` configs for approved requests
 - [x] Policy dry-run against API key bundles — `POST /policies/test` accepts `api_key_id`/`bundle_id`, returns per-rule `rule_results`; `GET /policies/rules` accepts `bundle_id`/`default_bundle`
 - [x] Governance Sandbox API key selector + real-time evaluation + active-rule highlighting + triggered-rule progress bar
 - [x] Policy engine honors regex flags in `content.matches(/.../i)`
@@ -294,3 +296,4 @@ _See [quality-audit-sprint.md](./quality-audit-sprint.md) (audit reviewed Aug 14
 | M16: Compliance UX & config | Aug 15, 2026 | ✅ Complete — BL-116–BL-122 ([aug-15-compliance-ux-update.md](../progress/aug-15-compliance-ux-update.md)) |
 | M17: Unified AI Agent Control Plane | Aug 19, 2026 | ✅ Complete — Phases 16a–16e (endpoint enforcement, MCP governance depth, Copilot, agentic security, Guardian loop) ([agentic-control-plane-roadmap.md](./agentic-control-plane-roadmap.md)) |
 | M18: Endpoint MCP Gateway + Sandbox Policy Dry-Run | Aug 20, 2026 | ✅ Complete — Phase 16f (MCP gateway, policy dry-run against API key bundles, Data Protection Center tabs) ([current-sprint.md](./current-sprint.md)) |
+| M19: Unified Self-Service Developer Portal & SaaS Entitlement Governance | Aug 24, 2026 | ✅ Complete — Self-service MCP Catalogue, Access Requests & Auto-provisioning, Access & RBAC grants visibility, SaaS tenant module entitlement control ([current-sprint.md](./current-sprint.md)) |

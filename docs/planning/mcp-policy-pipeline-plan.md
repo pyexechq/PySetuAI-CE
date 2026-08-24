@@ -101,9 +101,9 @@
 
 ## S18-06 — Bundle MCP scope UI
 
-- [ ] Policy bundle editor: section "MCP tool scope" with mode toggle (`All tenant MCP` / `Allowlist`).
-- [ ] Allowlist: multi-select MCP servers from tenant registry; optional per-server tool multiselect from `tool_names`.
-- [ ] Save via existing bundle PATCH API.
+- [x] Policy bundle editor: section "MCP tool scope" with mode toggle (`all` / `allowlist` / `denylist`).
+- [x] Allowlist/denylist: multi-select MCP servers from tenant registry; optional per-server tool multiselect from `tool_names`.
+- [x] Save via existing bundle create API (`mcp_scope` payload); existing bundles display an "MCP scope" badge.
 
 **Verify:** `make build-frontend`; create bundle with allowlist; key with that bundle sees filtered tools/list.
 

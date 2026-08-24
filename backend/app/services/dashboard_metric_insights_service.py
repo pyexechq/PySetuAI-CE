@@ -26,6 +26,8 @@ METRIC_KEYS = frozenset(
         "pii_redactions",
         "policy_violations",
         "mcp_violations",
+        "agentic_security_events",
+        "mcp_tool_chain_events",
         "cost_savings",
         "compliance_score",
         "protocol_translations",
@@ -42,6 +44,8 @@ METRIC_TITLES: dict[str, str] = {
     "pii_redactions": "PII Redactions",
     "policy_violations": "Policy Violations",
     "mcp_violations": "MCP Violations",
+    "agentic_security_events": "Agentic Security Events",
+    "mcp_tool_chain_events": "MCP Tool Chain Events",
     "cost_savings": "Total LLM Spend",
     "compliance_score": "Compliance Score",
     "protocol_translations": "Protocol Translations",
@@ -91,6 +95,16 @@ def _metric_snapshot(metric_key: str, overview: DashboardOverviewResponse) -> di
         "mcp_violations": {
             "value": m.mcp_violations,
             "change_pct": m.mcp_violations_change_pct,
+            "period": m.comparison_period,
+        },
+        "agentic_security_events": {
+            "value": m.agentic_security_events,
+            "change_pct": m.agentic_security_events_change_pct,
+            "period": m.comparison_period,
+        },
+        "mcp_tool_chain_events": {
+            "value": m.mcp_tool_chain_events,
+            "change_pct": m.mcp_tool_chain_events_change_pct,
             "period": m.comparison_period,
         },
         "cost_savings": {
@@ -231,8 +245,8 @@ def _playbook_insight(
         "success_rate": (
             f"Success rate is {m.success_rate}% ({_trend_label(m.success_rate_change_pts or 0)} vs prior 30 days).",
             [
-                "Success rate reflects allowed LLM and MCP traffic after policy, DLP, and ABAC checks.",
-                "A drop often follows new strict bundles or increased injection attempts.",
+                "Success rate reflects traffic that was not blocked after policy, DLP, and ABAC checks (allowed, redacted, or alerted).",
+                "Blocking is the platform's protective action; a drop often follows new strict bundles or increased injection attempts.",
             ],
             [
                 "Compare weekly traffic chart for correlated block spikes.",
@@ -262,14 +276,36 @@ def _playbook_insight(
             ],
         ),
         "mcp_violations": (
-            f"{m.mcp_violations:,} MCP-related audit events were captured in the last 30 days.",
+            f"{m.mcp_violations:,} blocked MCP tool invocations were captured in the last 30 days.",
             [
-                "MCP violations include risky tool calls and offline/degraded servers.",
+                "MCP violations are blocked tool calls, not all MCP traffic.",
                 "High-risk MCP servers amplify exfiltration and data residency exposure.",
             ],
             [
                 "Review MCP Governance trust scores and tool allowlists.",
                 "Disable or quarantine servers with elevated risk scores.",
+            ],
+        ),
+        "agentic_security_events": (
+            f"{m.agentic_security_events:,} agentic security events were recorded in the last 30 days.",
+            [
+                "Events span anomalies, exfiltration, prompt-injection findings, and Guardian actions.",
+                "A rising count may indicate a new agent or endpoint under active attack.",
+            ],
+            [
+                "Open Agentic Security to triage anomalies and exfiltration.",
+                "Review Guardian enforcement actions and adjust response policies.",
+            ],
+        ),
+        "mcp_tool_chain_events": (
+            f"{m.mcp_tool_chain_events:,} MCP tool chain events were recorded in the last 30 days.",
+            [
+                "Tool chain events capture multi-step agent tool calls and their chain risk scores.",
+                "High chain risk indicates chained access to sensitive data sources.",
+            ],
+            [
+                "Review MCP Tool Chains for high-risk sequences.",
+                "Tighten per-tool policies for chained high-risk tools.",
             ],
         ),
         "cost_savings": (

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, Copy, Eye, Globe2, KeyRound, Layers, Loader2, Plus, Search, ShieldCheck, Trash2, Folder, X } from "lucide-react";
+import { Activity, Copy, Eye, Globe2, KeyRound, Layers, Loader2, Pencil, Plus, Search, ShieldCheck, Trash2, Folder, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,17 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
   const [newBundlePolicyIds, setNewBundlePolicyIds] = useState<string[]>([]);
   const [newBundleCustomIntentIds, setNewBundleCustomIntentIds] = useState<string[]>([]);
   const [newBundleFrameworkPacks, setNewBundleFrameworkPacks] = useState<string[]>([]);
+  const [newBundleMcpMode, setNewBundleMcpMode] = useState<"all" | "allowlist" | "denylist">("allowlist");
+  const [newBundleMcpEntries, setNewBundleMcpEntries] = useState<{ server_id: string; tool_names: string[] }[]>([]);
+
+  const [editingBundleId, setEditingBundleId] = useState<string | null>(null);
+  const [editBundleName, setEditBundleName] = useState("");
+  const [editBundleDesc, setEditBundleDesc] = useState("");
+  const [editBundlePolicyIds, setEditBundlePolicyIds] = useState<string[]>([]);
+  const [editBundleCustomIntentIds, setEditBundleCustomIntentIds] = useState<string[]>([]);
+  const [editBundleFrameworkPacks, setEditBundleFrameworkPacks] = useState<string[]>([]);
+  const [editBundleMcpMode, setEditBundleMcpMode] = useState<"all" | "allowlist" | "denylist">("allowlist");
+  const [editBundleMcpEntries, setEditBundleMcpEntries] = useState<{ server_id: string; tool_names: string[] }[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyType, setNewKeyType] = useState<"pysetu" | "mirrored">("pysetu");
   const [newMirroredKey, setNewMirroredKey] = useState("");
@@ -94,6 +105,12 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
   const { data: frameworkPacks = [] } = useQuery({
     queryKey: ["framework-rule-packs", token],
     queryFn: () => api.getFrameworkRulePacks(token!),
+    enabled: Boolean(token),
+  });
+
+  const { data: mcpServers = [] } = useQuery({
+    queryKey: ["mcp-servers", token],
+    queryFn: () => api.getMcpServers(token!),
     enabled: Boolean(token),
   });
 
@@ -133,6 +150,10 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
         policy_ids: newBundlePolicyIds,
         custom_intent_ids: newBundleCustomIntentIds,
         framework_rule_packs: newBundleFrameworkPacks,
+        mcp_scope: {
+          mode: newBundleMcpMode,
+          entries: newBundleMcpEntries.filter((entry) => entry.server_id),
+        },
         is_default: bundles.length === 0,
       }),
     onSuccess: () => {
@@ -142,12 +163,33 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
       setNewBundlePolicyIds([]);
       setNewBundleCustomIntentIds([]);
       setNewBundleFrameworkPacks([]);
+      setNewBundleMcpMode("allowlist");
+      setNewBundleMcpEntries([]);
     },
   });
 
   const deleteBundle = useMutation({
     mutationFn: (id: string) => api.deletePolicyBundle(token!, id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["policy-bundles"] }),
+  });
+
+  const updateBundle = useMutation({
+    mutationFn: () =>
+      api.updatePolicyBundle(token!, editingBundleId!, {
+        name: editBundleName,
+        description: editBundleDesc,
+        policy_ids: editBundlePolicyIds,
+        custom_intent_ids: editBundleCustomIntentIds,
+        framework_rule_packs: editBundleFrameworkPacks,
+        mcp_scope: {
+          mode: editBundleMcpMode,
+          entries: editBundleMcpEntries.filter((entry) => entry.server_id),
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["policy-bundles"] });
+      setEditingBundleId(null);
+    },
   });
 
   const createKey = useMutation({
@@ -313,23 +355,234 @@ export function AccessSettings({ section = "all" }: { section?: AccessSettingsSe
                         </Badge>
                       );
                     })}
-                    {bundle.policy_ids.length === 0 && (bundle.custom_intent_ids || []).length === 0 && (bundle.framework_rule_packs || []).length === 0 && (
+                    {bundle.mcp_scope && (
+                      <Badge variant="outline" className="text-xs border-sky-500/30 text-sky-600 dark:text-sky-400">
+                        MCP scope: {bundle.mcp_scope.mode}
+                        {bundle.mcp_scope.entries.length > 0 ? ` · ${bundle.mcp_scope.entries.length} server${bundle.mcp_scope.entries.length > 1 ? "s" : ""}` : ""}
+                      </Badge>
+                    )}
+                    {bundle.policy_ids.length === 0 && (bundle.custom_intent_ids || []).length === 0 && (bundle.framework_rule_packs || []).length === 0 && !bundle.mcp_scope && (
                       <span className="text-xs text-muted-foreground">No policies, intents, or rule packs attached</span>
                     )}
                   </div>
                 </div>
                 {canEdit && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() => deleteBundle.mutate(bundle.id)}
-                    disabled={deleteBundle.isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditingBundleId(bundle.id);
+                        setEditBundleName(bundle.name);
+                        setEditBundleDesc(bundle.description || "");
+                        setEditBundlePolicyIds(bundle.policy_ids || []);
+                        setEditBundleCustomIntentIds(bundle.custom_intent_ids || []);
+                        setEditBundleFrameworkPacks(bundle.framework_rule_packs || []);
+                        setEditBundleMcpMode(bundle.mcp_scope?.mode || "allowlist");
+                        setEditBundleMcpEntries(bundle.mcp_scope?.entries || []);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => deleteBundle.mutate(bundle.id)}
+                      disabled={deleteBundle.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 )}
               </div>
+
+              {editingBundleId === bundle.id && (
+                <div className="space-y-3 mt-4 pt-4 border-t border-border/60">
+                  <p className="text-sm font-medium">Edit bundle</p>
+                  <input
+                    value={editBundleName}
+                    onChange={(e) => setEditBundleName(e.target.value)}
+                    placeholder="Bundle name"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  />
+                  <input
+                    value={editBundleDesc}
+                    onChange={(e) => setEditBundleDesc(e.target.value)}
+                    placeholder="Description (optional)"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  />
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Attach policies (order matters)</p>
+                    <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-input p-2">
+                      {policies.map((p) => (
+                        <label key={p.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={editBundlePolicyIds.includes(p.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setEditBundlePolicyIds((ids) => [...ids, p.id]);
+                              else setEditBundlePolicyIds((ids) => ids.filter((id) => id !== p.id));
+                            }}
+                          />
+                          {p.type === "folder" ? <Folder className="h-4 w-4 text-muted-foreground" /> : null}
+                          {p.label}
+                        </label>
+                      ))}
+                      {policies.length === 0 && <span className="text-xs text-muted-foreground">No policies available</span>}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Attach Custom Intents</p>
+                    <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-input p-2">
+                      {customIntents.map((intent) => (
+                        <label key={intent.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={editBundleCustomIntentIds.includes(intent.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setEditBundleCustomIntentIds((ids) => [...ids, intent.id]);
+                              else setEditBundleCustomIntentIds((ids) => ids.filter((id) => id !== intent.id));
+                            }}
+                          />
+                          {intent.intent_type === "folder" ? <Folder className="h-4 w-4 text-muted-foreground" /> : null}
+                          {intent.name}
+                        </label>
+                      ))}
+                      {customIntents.length === 0 && <span className="text-xs text-muted-foreground">No custom intents available</span>}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Framework rule packs</p>
+                    <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-input p-2">
+                      {frameworkPacks.map((pack) => (
+                        <label key={pack.id} className="flex items-start gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={editBundleFrameworkPacks.includes(pack.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setEditBundleFrameworkPacks((ids) => [...ids, pack.id]);
+                              else setEditBundleFrameworkPacks((ids) => ids.filter((id) => id !== pack.id));
+                            }}
+                          />
+                          <span>
+                            <span className="font-medium">{pack.name}</span>
+                            <span className="ml-1 text-xs text-muted-foreground">v{pack.version} · {pack.rule_count} rules</span>
+                            <span className="block text-xs text-muted-foreground">{pack.description}</span>
+                          </span>
+                        </label>
+                      ))}
+                      {frameworkPacks.length === 0 && <span className="text-xs text-muted-foreground">No framework rule packs available</span>}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">MCP scope</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(["all", "allowlist", "denylist"] as const).map((mode) => (
+                        <label key={mode} className="flex items-center gap-1.5 text-sm">
+                          <input
+                            type="radio"
+                            name="edit-mcp-mode"
+                            checked={editBundleMcpMode === mode}
+                            onChange={() => setEditBundleMcpMode(mode)}
+                          />
+                          {mode}
+                        </label>
+                      ))}
+                    </div>
+                    {editBundleMcpMode !== "all" && (
+                      <div className="space-y-2 rounded-md border border-input p-2">
+                        {editBundleMcpEntries.map((entry, entryIndex) => {
+                          const server = mcpServers.find((s) => s.id === entry.server_id);
+                          return (
+                            <div key={entryIndex} className="space-y-1 rounded-md border border-border/60 p-2">
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={entry.server_id}
+                                  onChange={(e) => {
+                                    const serverId = e.target.value;
+                                    const selected = mcpServers.find((s) => s.id === serverId);
+                                    setEditBundleMcpEntries((entries) =>
+                                      entries.map((en, i) =>
+                                        i === entryIndex
+                                          ? { server_id: serverId, tool_names: selected ? selected.tool_names : [] }
+                                          : en
+                                      )
+                                    );
+                                  }}
+                                  className="flex h-8 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+                                >
+                                  <option value="">Select MCP server</option>
+                                  {mcpServers.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                  ))}
+                                </select>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive"
+                                  onClick={() => setEditBundleMcpEntries((entries) => entries.filter((_, i) => i !== entryIndex))}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              {server && server.tool_names.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {server.tool_names.map((tool) => (
+                                    <label key={tool} className="flex items-center gap-1 text-xs">
+                                      <input
+                                        type="checkbox"
+                                        checked={entry.tool_names.includes(tool)}
+                                        onChange={(e) => {
+                                          setEditBundleMcpEntries((entries) =>
+                                            entries.map((en, i) =>
+                                              i === entryIndex
+                                                ? {
+                                                    ...en,
+                                                    tool_names: e.target.checked
+                                                      ? [...en.tool_names, tool]
+                                                      : en.tool_names.filter((t) => t !== tool),
+                                                  }
+                                                : en
+                                            )
+                                          );
+                                        }}
+                                      />
+                                      {tool}
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs border-dashed"
+                          onClick={() => setEditBundleMcpEntries((entries) => [...entries, { server_id: "", tool_names: [] }])}
+                        >
+                          <Plus className="mr-1 h-3 w-3" /> Add server exception
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setEditingBundleId(null)}>Cancel</Button>
+                    <Button
+                      onClick={() => updateBundle.mutate()}
+                      disabled={updateBundle.isPending || !editBundleName.trim()}
+                    >
+                      {updateBundle.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              )}
+
             </div>
           ))}
 

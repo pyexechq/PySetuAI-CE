@@ -13,8 +13,8 @@ function AgentInventoryFallback() {
 export default function AgentsPage() {
   return (
     <AppShell
-      title="Agent Inventory"
-      description="Unified inventory of AI agents, their risk, and tool access"
+      title="Agents & Endpoints"
+      description="Unified inventory of AI agents, endpoints, and tool access"
     >
       <Suspense fallback={<AgentInventoryFallback />}>
         <AgentInventoryView />

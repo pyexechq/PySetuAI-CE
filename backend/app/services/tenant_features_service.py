@@ -27,6 +27,11 @@ FEATURE_DEFINITIONS: dict[str, dict[str, str]] = {
         "description": "Scheduled compliance and governance report exports.",
         "route": "/reports",
     },
+    "developer_portal": {
+        "label": "Developer Portal",
+        "description": "Self-service MCP integration catalogue, API key generation, and Agent Playground.",
+        "route": "/developer-portal",
+    },
 }
 
 DEFAULT_FEATURE_FLAGS: dict[str, bool] = {key: True for key in FEATURE_DEFINITIONS}
@@ -53,6 +58,8 @@ def resolve_feature_flags(tenant: Tenant) -> dict[str, bool]:
     flags.update(_stored_flags(tenant))
     if getattr(tenant, "qa_dashboard_enabled", None) is False:
         flags["qa_dashboard"] = False
+    if getattr(tenant, "mcp_portal_enabled", None) is False:
+        flags["developer_portal"] = False
     return flags
 
 
@@ -105,6 +112,8 @@ def apply_platform_feature_updates(
     tenant.feature_policy = policy
     if "qa_dashboard" in updates and updates["qa_dashboard"] is not None:
         tenant.qa_dashboard_enabled = bool(updates["qa_dashboard"])
+    if "developer_portal" in updates and updates["developer_portal"] is not None:
+        tenant.mcp_portal_enabled = bool(updates["developer_portal"])
 
 
 def apply_tenant_feature_update(tenant: Tenant, feature_key: str, enabled: bool) -> None:

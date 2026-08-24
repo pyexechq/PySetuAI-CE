@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.agentic import AgentInventory, ApprovalRequest, Endpoint, SecurityEvent
+from app.models.agentic import AgentInventory, ApprovalRequest, Endpoint, SanctionedAiTool, SecurityEvent
 from app.models.governance import AuditLog, PolicyBundle
 from app.schemas.agentic import (
     AgentRegisterRequest,
@@ -254,9 +254,69 @@ async def upsert_agent(
 def _audit_status(decision: str) -> str:
     if decision == "allowed":
         return "allowed"
-    if decision in {"blocked", "redacted", "approval"}:
+    if decision in {"blocked", "redacted", "approval", "bypassed"}:
         return decision
     return "logged"
+
+
+# event_types emitted by the endpoint agent's periodic AI-tool/MCP-server inventory scan
+# (daemon.py discovery_event_payload / mcp_discovery_event_payload).
+DISCOVERY_EVENT_TYPES = {"discovery", "mcp_discovery"}
+
+
+async def list_sanctioned_tools(db: AsyncSession, tenant_id: uuid.UUID) -> list[SanctionedAiTool]:
+    result = await db.execute(
+        select(SanctionedAiTool).where(SanctionedAiTool.tenant_id == tenant_id).order_by(SanctionedAiTool.name)
+    )
+    return list(result.scalars().all())
+
+
+async def add_sanctioned_tool(
+    db: AsyncSession, tenant_id: uuid.UUID, name: str, *, added_by: str
+) -> SanctionedAiTool:
+    existing = await db.execute(
+        select(SanctionedAiTool).where(
+            SanctionedAiTool.tenant_id == tenant_id,
+            func.lower(SanctionedAiTool.name) == name.strip().lower(),
+        )
+    )
+    tool = existing.scalar_one_or_none()
+    if tool is not None:
+        return tool
+    tool = SanctionedAiTool(tenant_id=tenant_id, name=name.strip(), added_by=added_by)
+    db.add(tool)
+    await db.flush()
+    await db.refresh(tool)
+    return tool
+
+
+async def remove_sanctioned_tool(db: AsyncSession, tenant_id: uuid.UUID, tool_id: uuid.UUID) -> bool:
+    tool = await db.get(SanctionedAiTool, tool_id)
+    if tool is None or tool.tenant_id != tenant_id:
+        return False
+    await db.delete(tool)
+    await db.flush()
+    return True
+
+
+async def _classify_discovery(
+    db: AsyncSession, tenant_id: uuid.UUID, metadata: dict
+) -> tuple[str, list[str]]:
+    """Compare discovered tool names against the tenant's sanctioned allowlist.
+
+    Returns ("logged", []) for routine inventory (nothing discovered, or every discovered
+    tool is on the allowlist) so it stays out of the DLP gated/success-rate denominator, or
+    ("bypassed", [unsanctioned names]) when shadow AI usage is detected.
+    """
+    discovered = metadata.get("discovered") or []
+    names = {str(item.get("name", "")).strip() for item in discovered if isinstance(item, dict) and item.get("name")}
+    if not names:
+        return "logged", []
+    sanctioned = {tool.name.lower() for tool in await list_sanctioned_tools(db, tenant_id)}
+    unsanctioned = sorted(name for name in names if name.lower() not in sanctioned)
+    if unsanctioned:
+        return "bypassed", unsanctioned
+    return "logged", []
 
 
 async def record_security_event(
@@ -276,18 +336,29 @@ async def record_security_event(
     now = datetime.now(UTC)
     band = risk_band(payload.risk_score)
 
+    decision = payload.decision
+    unsanctioned_tools: list[str] = []
+    if payload.event_type in DISCOVERY_EVENT_TYPES:
+        # The client always reports discovery as decision="log"; classify it here against
+        # the tenant's sanctioned-tool allowlist so shadow AI usage shows up as "bypassed"
+        # rather than being lumped in with routine inventory telemetry.
+        decision, unsanctioned_tools = await _classify_discovery(db, tenant_id, payload.metadata)
+        if unsanctioned_tools:
+            band = "high"
+
     audit = AuditLog(
         tenant_id=tenant_id,
         timestamp=now,
         actor=actor or payload.user_name,
         action=f"endpoint.{payload.action}"[:100],
         resource=payload.resource or "-",
-        status=_audit_status(payload.decision),
+        status=_audit_status(decision),
         risk=band,
         details=(
             f"source={payload.source}; event_type={payload.event_type}; "
             f"tool={payload.tool or 'unknown'}; "
             f"classification={', '.join(payload.classification) or 'none'}"
+            + (f"; unsanctioned_tools={', '.join(unsanctioned_tools)}" if unsanctioned_tools else "")
         )[:4000],
         usage_metadata={
             "source": payload.source,
@@ -296,6 +367,7 @@ async def record_security_event(
             "classification": payload.classification,
             "policy_id": payload.policy_id,
             "policy_name": payload.policy_name,
+            "unsanctioned_tools": unsanctioned_tools,
         },
         source=payload.source or "endpoint",
     )
@@ -314,8 +386,8 @@ async def record_security_event(
         action=payload.action,
         resource=payload.resource,
         classification=payload.classification,
-        decision=payload.decision,
-        risk_score=payload.risk_score,
+        decision=decision,
+        risk_score=70 if unsanctioned_tools else payload.risk_score,
         policy_id=payload.policy_id,
         policy_name=payload.policy_name,
         metadata_json=payload.metadata,
@@ -381,6 +453,7 @@ async def security_event_summary(db: AsyncSession, tenant_id: uuid.UUID) -> dict
         "blocked": by_decision.get("blocked", 0),
         "redacted": by_decision.get("redacted", 0),
         "allowed": by_decision.get("allowed", 0),
+        "bypassed": by_decision.get("bypassed", 0),
         "high_risk": high_risk,
         "by_decision": by_decision,
         "by_type": by_type,

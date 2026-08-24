@@ -256,8 +256,11 @@ async def chain_graph(db: AsyncSession, tenant_id: uuid.UUID, *, limit: int = 20
 
     for event in events:
         risk = event.chain_risk_score
-        source_label = event.source_agent_id and f"agent:{event.source_agent_id}" or "agent:unknown"
-        target_label = event.target_agent_id and f"agent:{event.target_agent_id}" or "agent:unknown"
+        source_id_str = str(event.source_agent_id)[:8] if event.source_agent_id else "unknown"
+        target_id_str = str(event.target_agent_id)[:8] if event.target_agent_id else "unknown"
+        
+        source_label = f"Agent ({source_id_str})"
+        target_label = f"Agent ({target_id_str})"
         server_label = event.mcp_server_name or "mcp:unknown"
         tool_label = event.tool_name or "tool:unknown"
         data_label = event.data_source or "data:unknown"

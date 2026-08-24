@@ -17,6 +17,7 @@ import {
   Monitor,
   ShieldCheck,
   ShieldAlert,
+  Code2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -60,8 +61,7 @@ export const mainNavGroups: NavGroup[] = [
   {
     label: "Agents & endpoints",
     items: [
-      { title: "Agent Inventory", href: "/agents", icon: Bot },
-      { title: "Endpoint Security", href: "/endpoints", icon: Monitor },
+      { title: "Agents & Endpoints", href: "/agents", icon: Bot },
       { title: "MCP Tool Chains", href: "/mcp-tool-chains", icon: GitBranch },
       { title: "Microsoft Copilot", href: "/microsoft-copilot", icon: Bot },
       { title: "Agentic Security", href: "/agentic-security", icon: ShieldAlert },
@@ -81,6 +81,7 @@ export const mainNavGroups: NavGroup[] = [
     items: [
       { title: "QA Dashboard", href: "/qa-dashboard", icon: ClipboardCheck },
       { title: "Settings", href: "/settings", icon: Settings },
+      { title: "Developer Portal", href: "/developer-portal", icon: Code2, badge: "Beta" },
     ],
   },
 ];

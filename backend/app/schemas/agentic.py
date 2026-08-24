@@ -8,7 +8,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-AgentDecision = Literal["allowed", "blocked", "redacted", "approval", "log"]
+AgentDecision = Literal["allowed", "blocked", "redacted", "approval", "log", "bypassed"]
 
 
 class EndpointRegisterRequest(BaseModel):
@@ -53,12 +53,17 @@ class AgentRegisterRequest(BaseModel):
     permissions: list[str] = Field(default_factory=list)
 
 
+class AgentEndpointResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    hostname: str
+
 class AgentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
     tenant_id: uuid.UUID
     endpoint_id: uuid.UUID | None = None
+    endpoint: AgentEndpointResponse | None = None
     name: str
     agent_type: str
     vendor: str
@@ -113,6 +118,7 @@ class SecurityEventResponse(BaseModel):
     policy_name: str
     metadata_json: dict | None = None
     created_at: datetime | None = None
+    endpoint: AgentEndpointResponse | None = None
 
 
 class SecurityEventIngestResponse(BaseModel):
@@ -125,13 +131,40 @@ class SecurityEventSummary(BaseModel):
     blocked: int
     redacted: int
     allowed: int
+    bypassed: int
     high_risk: int
     by_decision: dict[str, int]
     by_type: dict[str, int]
 
 
+class SanctionedAiToolCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+
+
+class SanctionedAiToolResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    name: str
+    added_by: str
+    created_at: datetime | None = None
+
+
 class ApprovalDecisionRequest(BaseModel):
     reason: str = Field(default="", max_length=512)
+
+
+class MCPAccessRequestPayload(BaseModel):
+    requester_email: str = Field(min_length=1, max_length=255)
+    requested_mcp_tool: str | None = Field(default=None, max_length=255)
+    requested_mcp_tools: list[str] | None = Field(default=None)
+    requested_bundle_id: uuid.UUID | None = None
+    reason: str = Field(default="", max_length=2048)
+    action: str = Field(default="mcp_access_request", max_length=128)
+    policy_id: str | None = Field(default=None, max_length=64)
+    policy_name: str | None = Field(default="", max_length=255)
+    user_name: str | None = Field(default="", max_length=255)
 
 
 class FileGovernanceRule(BaseModel):
@@ -162,6 +195,9 @@ class ApprovalRequestResponse(BaseModel):
     reason: str
     policy_id: str | None = None
     policy_name: str
+    requested_mcp_tool: str | None = None
+    requested_mcp_tools: list[str] | None = None
+    requested_bundle_id: uuid.UUID | None = None
     status: str
     decided_by: str
     decided_at: datetime | None = None

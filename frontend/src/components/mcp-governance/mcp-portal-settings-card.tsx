@@ -64,20 +64,32 @@ export function McpPortalSettingsCard({ canEdit }: { canEdit: boolean }) {
   return (
     <Card className="border-border/60 bg-card/50">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Globe className="h-4 w-4 text-violet-400" />
-          Self-service MCP portal
-        </CardTitle>
-        <CardDescription>
-          Let end users browse published integrations and connect personal tokens at{" "}
-          <span className="font-mono text-xs">/mcp-governance?tab=portal</span>.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Globe className="h-4 w-4 text-violet-400" />
+              Self-service MCP Developer Portal
+            </CardTitle>
+            <CardDescription className="mt-1">
+              Let developers and agent builders browse published MCP integrations, configure API keys, and test agents at{" "}
+              <a href="/developer-portal" target="_blank" className="font-mono text-xs text-primary underline underline-offset-2">/developer-portal</a>.
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs font-semibold gap-1.5"
+            onClick={() => window.open('/developer-portal', '_blank')}
+          >
+            Open Developer Portal ↗
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-3">
           <div>
-            <p className="text-sm font-medium">Portal enabled</p>
-            <p className="text-xs text-muted-foreground">Developers can open the MCP portal when enabled.</p>
+            <p className="text-sm font-medium">Developer Portal Enabled</p>
+            <p className="text-xs text-muted-foreground">Self-service MCP catalog and developer tools are available.</p>
           </div>
           <Button
             variant={settings?.enabled ? "default" : "outline"}

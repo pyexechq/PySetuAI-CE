@@ -20,7 +20,7 @@ export function useObservability() {
 
   const tracesQuery = useQuery({
     queryKey: ["observability-traces", token, from, to],
-    queryFn: () => api.getObservabilityTraces(token!, 20, range),
+    queryFn: () => api.getObservabilityTraces(token!, 20, { ...range, dlp_only: true }),
     enabled: Boolean(token),
     staleTime: 15_000,
   });

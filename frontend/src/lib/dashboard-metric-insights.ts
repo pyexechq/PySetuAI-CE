@@ -5,6 +5,8 @@ export type DashboardMetricKey =
   | "pii_redactions"
   | "policy_violations"
   | "mcp_violations"
+  | "agentic_security_events"
+  | "mcp_tool_chain_events"
   | "cost_savings"
   | "compliance_score"
   | "protocol_translations"
@@ -45,6 +47,8 @@ const EXACT_METRIC_TITLE_KEYS: Record<string, DashboardMetricKey> = {
   "Policy Violations": "policy_violations",
   "High-Risk Events": "policy_violations",
   "MCP Violations": "mcp_violations",
+  "Agentic Security Events": "agentic_security_events",
+  "MCP Tool Chain Events": "mcp_tool_chain_events",
   "Total LLM Spend": "cost_savings",
   "Stacked cost savings": "translation_cost_savings",
   "Total translations": "protocol_translations",

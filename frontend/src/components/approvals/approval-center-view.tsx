@@ -68,36 +68,63 @@ function ApprovalCenterViewInner() {
       </div>
 
       {approvals.length === 0 ? (
-        <Card className="border-border/60 bg-card/50">
-          <CardContent className="p-8 text-center">
-            <ShieldCheck className="mx-auto h-8 w-8 text-muted-foreground/50" />
-            <p className="mt-3 font-medium">No approval requests</p>
+        <Card className="border-border bg-card shadow-sm rounded-2xl">
+          <CardContent className="p-12 text-center">
+            <ShieldCheck className="mx-auto h-10 w-10 text-muted-foreground/40 mb-2" />
+            <p className="font-semibold text-base">No approval requests</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Agent actions requiring approval will appear here.
+              Agent actions and MCP tool access requests requiring human sign-off will appear here.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {approvals.map((approval: ApiApprovalRequest) => (
             <div
               key={approval.id}
-              className="flex flex-col gap-4 rounded-xl border border-border/60 bg-background/50 p-4 md:flex-row md:items-center md:justify-between"
+              className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm md:flex-row md:items-center md:justify-between hover:border-primary/50 hover:shadow-md transition-all"
             >
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-mono text-sm font-medium">{approval.resource || approval.action}</p>
+                  <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20">
+                    {approval.resource || approval.action}
+                  </span>
                   <Badge variant={approval.status === "pending" ? "warning" : approval.status === "approved" ? "success" : "secondary"}>
                     {approval.status}
                   </Badge>
                   <Badge variant={riskVariant(approval.risk_score)}>risk {approval.risk_score}</Badge>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {approval.user_name || "unknown user"}
-                  {approval.tool ? ` · ${approval.tool}` : ""} · {approval.action}
-                </p>
+
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {approval.user_name || "unknown user"}
+                    {approval.tool ? <span className="text-primary font-bold"> · {approval.tool}</span> : ""} 
+                    <span className="text-muted-foreground font-normal"> ({approval.action})</span>
+                  </p>
+
+                  {approval.action === "mcp_access_request" && (
+                    <div className="mt-2 space-y-1 bg-muted/40 p-3 rounded-xl border border-border/50 text-xs">
+                      {approval.requested_mcp_tools && approval.requested_mcp_tools.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                          <span className="font-semibold text-foreground">Requested Tools:</span>
+                          {approval.requested_mcp_tools.map((t: string) => (
+                            <span key={t} className="font-mono text-[11px] bg-background border border-border px-2 py-0.5 rounded-md font-medium text-foreground">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {approval.reason && (
+                        <p className="text-muted-foreground leading-relaxed">
+                          <span className="font-semibold text-foreground">Justification:</span> {approval.reason}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {(approval.classification ?? []).length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1">
                     {approval.classification!.map((label, index) => (
                       <Badge key={`${approval.id}-${index}`} variant="outline" className="text-xs">
                         {label}
@@ -106,15 +133,16 @@ function ApprovalCenterViewInner() {
                   </div>
                 )}
                 {approval.policy_name && (
-                  <p className="mt-1 text-xs text-muted-foreground">Policy: {approval.policy_name}</p>
+                  <p className="text-xs text-muted-foreground">Policy: {approval.policy_name}</p>
                 )}
               </div>
+
               <div className="flex shrink-0 items-center gap-2">
                 {approval.status === "pending" ? (
                   <>
                     <Button
                       size="sm"
-                      className="gap-1"
+                      className="gap-1.5 rounded-xl font-bold text-xs shadow-xs"
                       disabled={decide.isPending}
                       onClick={() => decide.mutate({ id: approval.id, approve: true })}
                     >
@@ -124,7 +152,7 @@ function ApprovalCenterViewInner() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="gap-1"
+                      className="gap-1.5 rounded-xl font-bold text-xs border-border"
                       disabled={decide.isPending}
                       onClick={() => decide.mutate({ id: approval.id, approve: false })}
                     >
@@ -133,10 +161,16 @@ function ApprovalCenterViewInner() {
                     </Button>
                   </>
                 ) : (
-                  <p className="text-xs text-muted-foreground">
-                    {approval.decided_by || "system"}
-                    {approval.decided_at ? ` · ${new Date(approval.decided_at).toLocaleString()}` : ""}
-                  </p>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-foreground capitalize">
+                      {approval.status} by {approval.decided_by || "admin"}
+                    </p>
+                    {approval.decided_at && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {new Date(approval.decided_at).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

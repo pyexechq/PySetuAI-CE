@@ -1,11 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, Loader2, ShieldAlert } from "lucide-react";
+import { Bot, Loader2, ShieldAlert, Monitor, User, Search, Download } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { api, type ApiAgent } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { api, type ApiAgent, type ApiEndpoint } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
+import { cn } from "@/lib/utils";
 
 function riskVariant(score: number): "default" | "secondary" | "warning" | "destructive" | "success" | "outline" {
   if (score >= 80) return "destructive";
@@ -23,11 +34,102 @@ function riskLabel(score: number): string {
 
 function AgentInventoryViewInner() {
   const token = useAuthStore((s) => s.token);
-  const { data: agents = [], isLoading } = useQuery({
+  const [activeTab, setActiveTab] = useState<"agents" | "endpoints">("agents");
+
+  const { data: agents = [], isLoading: agentsLoading } = useQuery({
     queryKey: ["agents", token],
     queryFn: () => api.getAgents(token!),
-    enabled: Boolean(token),
+    enabled: Boolean(token) && activeTab === "agents",
   });
+
+  const { data: endpoints = [], isLoading: endpointsLoading } = useQuery({
+    queryKey: ["endpoints", token],
+    queryFn: () => api.getEndpoints(token!),
+    enabled: Boolean(token) && activeTab === "endpoints",
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex w-full items-center justify-between border-b border-border/60 pb-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => setActiveTab("agents")}
+            className={cn(
+              "relative h-9 rounded-md px-4 py-2 text-sm font-medium transition-colors hover:text-primary",
+              activeTab === "agents" ? "bg-muted text-primary" : "text-muted-foreground hover:bg-muted/50"
+            )}
+          >
+            Discovered Agents
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setActiveTab("endpoints")}
+            className={cn(
+              "relative h-9 rounded-md px-4 py-2 text-sm font-medium transition-colors hover:text-primary",
+              activeTab === "endpoints" ? "bg-muted text-primary" : "text-muted-foreground hover:bg-muted/50"
+            )}
+          >
+            Endpoints
+          </Button>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
+              Download Agents
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Endpoint Agents</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => window.open("/downloads/agent-macos.zip", "_blank")}>
+              macOS (Apple Silicon / Intel)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.open("/downloads/agent-windows.exe", "_blank")}>
+              Windows (x64)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.open("/downloads/agent-linux.zip", "_blank")}>
+              Linux (x64 / ARM64)
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Browser Extensions</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => window.open("/downloads/ext-chrome.crx", "_blank")}>
+              Google Chrome
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.open("/downloads/ext-edge.crx", "_blank")}>
+              Microsoft Edge
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.open("/downloads/ext-firefox.xpi", "_blank")}>
+              Mozilla Firefox
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {activeTab === "agents" ? (
+        <AgentsTab agents={agents} isLoading={agentsLoading} />
+      ) : (
+        <EndpointsTab endpoints={endpoints} isLoading={endpointsLoading} />
+      )}
+    </div>
+  );
+}
+
+function riskCardClass(score: number): string {
+  if (score >= 80) return "border-red-500/30 bg-red-500/5";
+  if (score >= 60) return "border-amber-500/30 bg-amber-500/5";
+  if (score >= 30) return "border-blue-500/30 bg-blue-500/5";
+  return "border-green-500/30 bg-green-500/5";
+}
+
+function AgentsTab({ agents, isLoading }: { agents: ApiAgent[]; isLoading: boolean }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [groupBy, setGroupBy] = useState<"hostname" | "agent_type" | "vendor">("hostname");
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (key: string) => {
+    setCollapsedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   if (isLoading) {
     return (
@@ -42,6 +144,21 @@ function AgentInventoryViewInner() {
 
   const highRisk = agents.filter((agent) => agent.risk_score >= 60).length;
   const active = agents.filter((agent) => agent.status === "active").length;
+
+  const groupedAgents = agents.reduce((acc, agent) => {
+    let key = "Unknown";
+    if (groupBy === "hostname") key = agent.endpoint?.hostname || "Unknown machine";
+    if (groupBy === "agent_type") key = agent.agent_type || "Unknown type";
+    if (groupBy === "vendor") key = agent.vendor || "Unknown vendor";
+    
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(agent);
+    return acc;
+  }, {} as Record<string, ApiAgent[]>);
+
+  const filteredGroupKeys = Object.keys(groupedAgents).filter((key) =>
+    key.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -70,11 +187,39 @@ function AgentInventoryViewInner() {
 
       <Card className="border-border/60 bg-card/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5" />
-            Agent Inventory
-          </CardTitle>
-          <CardDescription>AI agents discovered across endpoints, ordered by risk.</CardDescription>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
+                Agent Inventory
+              </CardTitle>
+              <CardDescription>AI agents discovered across endpoints, dynamically grouped.</CardDescription>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Group by:</span>
+                <select
+                  value={groupBy}
+                  onChange={(e) => setGroupBy(e.target.value as "hostname" | "agent_type" | "vendor")}
+                  className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="hostname">Hostname</option>
+                  <option value="agent_type">Agent Type</option>
+                  <option value="vendor">Vendor</option>
+                </select>
+              </div>
+              <div className="flex w-full items-center gap-2 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm sm:w-auto">
+                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search groups..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-7 w-full min-w-[200px] bg-transparent outline-none placeholder:text-muted-foreground"
+                />
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {agents.length === 0 ? (
@@ -85,42 +230,193 @@ function AgentInventoryViewInner() {
                 Register an endpoint agent to begin discovery.
               </p>
             </div>
+          ) : filteredGroupKeys.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">No groups matching "{searchQuery}"</div>
+          ) : (
+            <div className="space-y-4">
+              {filteredGroupKeys.map((groupKey) => {
+                const isCollapsed = collapsedGroups[groupKey];
+                const groupAgents = groupedAgents[groupKey];
+                
+                return (
+                  <div key={groupKey} className="rounded-xl border border-border/60 bg-background/50 overflow-hidden shadow-sm">
+                    <button
+                      onClick={() => toggleGroup(groupKey)}
+                      className="flex w-full items-center justify-between border-b border-border/60 bg-muted/30 px-4 py-3 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        {groupBy === "hostname" && <Monitor className="h-4 w-4 text-muted-foreground" />}
+                        {groupBy === "agent_type" && <Bot className="h-4 w-4 text-muted-foreground" />}
+                        {groupBy === "vendor" && <ShieldAlert className="h-4 w-4 text-muted-foreground" />}
+                        <span className="font-semibold">{groupKey}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="secondary" className="text-xs">
+                          {groupAgents.length} {groupAgents.length === 1 ? 'agent' : 'agents'}
+                        </Badge>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className={cn("h-4 w-4 text-muted-foreground transition-transform", isCollapsed ? "" : "rotate-180")}
+                        >
+                          <path d="m6 9 6 6 6-6"/>
+                        </svg>
+                      </div>
+                    </button>
+                    
+                    {!isCollapsed && (
+                      <div className="grid grid-cols-1 gap-4 p-4 bg-background md:grid-cols-2 2xl:grid-cols-3">
+                        {groupAgents.map((agent: ApiAgent) => (
+                          <div
+                            key={agent.id}
+                            className={cn(
+                              "flex flex-col gap-3 rounded-lg border p-4 shadow-sm transition-colors",
+                              riskCardClass(agent.risk_score)
+                            )}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-medium">{agent.name}</p>
+                                <Badge variant={agent.status === "active" ? "success" : "secondary"}>{agent.status}</Badge>
+                                {groupBy !== "agent_type" && (
+                                  <Badge variant="outline" className="bg-background">{agent.agent_type}</Badge>
+                                )}
+                              </div>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                {agent.vendor || "Unknown vendor"}
+                                {agent.version ? ` · v${agent.version}` : ""}
+                              </p>
+                              <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+                                {groupBy !== "hostname" && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Monitor className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="truncate">{agent.endpoint?.hostname || "Unknown machine"}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1.5">
+                                  <User className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="truncate">{agent.user_name || "Unknown user"}</span>
+                                </div>
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-1.5">
+                                {(agent.tools ?? []).slice(0, 4).map((tool, index) => (
+                                  <Badge key={`${agent.id}-${index}`} variant="outline" className="text-[10px] uppercase bg-background">
+                                    {tool}
+                                  </Badge>
+                                ))}
+                                {(agent.mcp_servers ?? []).length > 0 && (
+                                  <Badge variant="outline" className="text-[10px] uppercase bg-background">
+                                    {agent.mcp_servers!.length} MCP
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-3">
+                              <span className="text-xs text-muted-foreground">Risk Profile</span>
+                              <Badge variant={riskVariant(agent.risk_score)}>
+                                {riskLabel(agent.risk_score)} · {agent.risk_score}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function EndpointsTab({ endpoints, isLoading }: { endpoints: ApiEndpoint[]; isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <Card className="border-border/60 bg-card/50">
+        <CardContent className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading endpoints…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const online = endpoints.filter((endpoint) => endpoint.status === "online").length;
+  const degraded = endpoints.filter((endpoint) => endpoint.status === "degraded").length;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card className="border-border/60 bg-card/50">
+          <CardContent className="p-5">
+            <div className="text-xs text-muted-foreground">Protected endpoints</div>
+            <p className="mt-1 text-2xl font-semibold">{endpoints.length}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/60 bg-card/50">
+          <CardContent className="p-5">
+            <div className="text-xs text-muted-foreground">Online</div>
+            <p className="mt-1 text-2xl font-semibold">{online}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/60 bg-card/50">
+          <CardContent className="p-5">
+            <div className="text-xs text-muted-foreground">Degraded</div>
+            <p className="mt-1 text-2xl font-semibold">{degraded}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-border/60 bg-card/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Monitor className="h-5 w-5" />
+            Endpoints
+          </CardTitle>
+          <CardDescription>Devices running the PySetu endpoint agent.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {endpoints.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border/60 p-8 text-center">
+              <Monitor className="mx-auto h-8 w-8 text-muted-foreground/50" />
+              <p className="mt-3 font-medium">No endpoints registered yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Register an endpoint using a client API key.
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
-              {agents.map((agent: ApiAgent) => (
+              {endpoints.map((endpoint: ApiEndpoint) => (
                 <div
-                  key={agent.id}
+                  key={endpoint.id}
                   className="flex flex-col gap-3 rounded-xl border border-border/60 bg-background/50 p-4 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium">{agent.name}</p>
-                      <Badge variant={agent.status === "active" ? "success" : "secondary"}>{agent.status}</Badge>
-                      <Badge variant="outline">{agent.agent_type}</Badge>
+                      <p className="font-mono text-sm font-medium">{endpoint.hostname}</p>
+                      <Badge variant={endpoint.status === "online" ? "success" : "secondary"}>
+                        {endpoint.status}
+                      </Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {agent.vendor || "Unknown vendor"}
-                      {agent.version ? ` · v${agent.version}` : ""}
-                      {agent.user_name ? ` · ${agent.user_name}` : ""}
+                      {endpoint.os_name || "Unknown OS"}
+                      {endpoint.os_version ? ` ${endpoint.os_version}` : ""}
+                      {endpoint.agent_version ? ` · agent v${endpoint.agent_version}` : ""}
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {(agent.tools ?? []).slice(0, 4).map((tool, index) => (
-                        <Badge key={`${agent.id}-${index}`} variant="outline" className="text-xs">
-                          {tool}
-                        </Badge>
-                      ))}
-                      {(agent.mcp_servers ?? []).length > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                          {agent.mcp_servers!.length} MCP
-                        </Badge>
-                      )}
-                    </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant={riskVariant(agent.risk_score)}>
-                      {riskLabel(agent.risk_score)} · {agent.risk_score}
-                    </Badge>
-                  </div>
+                  <p className="shrink-0 text-xs text-muted-foreground">
+                    Last seen: {endpoint.last_seen_at ? new Date(endpoint.last_seen_at).toLocaleString() : "never"}
+                  </p>
                 </div>
               ))}
             </div>
