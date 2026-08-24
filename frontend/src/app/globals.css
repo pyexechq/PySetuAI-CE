@@ -283,6 +283,55 @@ body {
   .audit-log-grid {
     height: 70vh;
   }
+  .react-flow__attribution {
+    display: none;
+  }
+}
+
+@media print {
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  header, footer, nav, aside, .print-hidden, [data-print-hidden="true"], .login-modal, [role="dialog"] {
+    display: none !important;
+  }
+  body {
+    font-size: 10.5pt !important;
+    line-height: 1.5 !important;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  /* Avoid breaking callout boxes, cards, tables, and illustrations across pages */
+  .rounded-xl,
+  .rounded-2xl,
+  .rounded-lg,
+  [class*="rounded-"],
+  .not-prose,
+  table,
+  tr,
+  blockquote,
+  figure {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  table {
+    border-collapse: collapse !important;
+  }
+  tr {
+    break-inside: avoid !important;
+  }
+  @page {
+    margin: 1.6cm 1.4cm 1.6cm 1.4cm;
+    size: auto;
+  }
 }
 
 /* Coarse pointers (touch): enlarge tap targets for nav links and icon buttons. */
