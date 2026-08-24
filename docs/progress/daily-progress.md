@@ -1,4 +1,16 @@
-# Daily Progress — Aug 24, 2026
+# Daily Progress — Aug 25, 2026
+
+- **Self-Service Developer Portal**: Unified `/developer-portal` with shopping-cart operation-level access requests, business justification capture, and auto-provisioned API keys with Claude/Cursor configs.
+- **MCP Governance Access & RBAC**: Added `McpDeveloperGrantsCard` to live grants table with real-time revocation and categorized identity & policy guardrails.
+- **SaaS Platform Ops Entitlements**: Added `developer_portal` feature entitlement to SaaS control plane (`/platform`) with tenant portal disable guard screen.
+- **Marketing & Blog**: Added Developer Portal hero to marketing home, updated "Choose the right edition" matrix, and published official blog post `/blog/self-service-developer-portal-mcp-governance`.
+- **Multi-Repo Synchronization**: Synchronized and pushed `PySetuAI` (SaaS Monorepo), `PySetuAI-CE` (Apache 2.0 Community), and `PySetuAI-Enterprise` (Commercial Enterprise).
+- **GA Test & Quality Scorecard**: 471/471 backend tests passed (100%), 114/114 frontend routes compiled cleanly.
+- **GTM Financial & Capacity Model**: Formulated 3-year revenue/EBITDA projections and throughput capacity benchmarks.
+
+> Full detail: [session-summary-ga-release-and-developer-portal.md](./session-summary-ga-release-and-developer-portal.md)
+
+## Prior — Aug 24, 2026
 
 - **Agent Inventory UI Refactor**: Introduced dynamic grouping by Hostname, Agent Type, and Vendor. Added collapsible group views, search bar filtering, and risk-based color coding.
 - **Monitoring Discover Tab Redundancy Fix**: Deduplicated endpoint tools by hostname and tool name/source, wrapping host tools in collapsible cards to eliminate massive redundant data in logs.
