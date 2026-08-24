@@ -6,7 +6,7 @@
 
 set -e
 
-ENTERPRISE_REMOTE=${ENTERPRISE_REMOTE:-"git@github.com:pyexechq/PySetuAI-Enterprise.git"}
+ENTERPRISE_REMOTE=${ENTERPRISE_REMOTE:-"https://github.com/pyexechq/PySetuAI-Enterprise.git"}
 
 echo "Creating a temporary clone for Enterprise export..."
 TEMP_DIR=$(mktemp -d)
@@ -30,12 +30,9 @@ git filter-repo --force \
   --path frontend/src/app/platform/ --invert-paths \
   --path backend/app/api/v1/platform.py --invert-paths
 
+echo "Pushing Enterprise Edition to $ENTERPRISE_REMOTE..."
+git remote add enterprise "$ENTERPRISE_REMOTE"
+git push enterprise main --force
+
 echo ""
-echo "Filtering complete. Your Enterprise Edition repository is ready in $TEMP_DIR."
-echo "To push this to your Enterprise distribution repository, run:"
-echo ""
-echo "  cd $TEMP_DIR"
-echo "  git remote add enterprise $ENTERPRISE_REMOTE"
-echo "  git push enterprise main --force"
-echo ""
-echo "(Note: You can safely delete $TEMP_DIR when you are done.)"
+echo "Enterprise Edition export and push complete!"

@@ -6,7 +6,7 @@
 set -e
 
 # Default to the current public repo URL if not provided via ENV var
-PUBLIC_REPO_URL=${PUBLIC_REPO_URL:-"git@github.com:pyexechq/PySetuAI-Public.git"}
+PUBLIC_REPO_URL=${PUBLIC_REPO_URL:-"https://github.com/pyexechq/PySetuAI-CE.git"}
 EXPORT_BRANCH="main"
 
 echo "Creating a temporary clone for export..."
@@ -34,12 +34,9 @@ git filter-repo --force \
   --path backend/app/api/v1/oidc.py --invert-paths \
   --path backend/app/api/v1/compliance.py --invert-paths
 
+echo "Pushing Community Edition to $PUBLIC_REPO_URL..."
+git remote add public "$PUBLIC_REPO_URL"
+git push public main --force
+
 echo ""
-echo "Filtering complete. Your Community Edition repository is ready in $TEMP_DIR."
-echo "To push this to your public GitHub repo, run the following from within the temp directory:"
-echo ""
-echo "  cd $TEMP_DIR"
-echo "  git remote add public $PUBLIC_REPO_URL"
-echo "  git push public main --force"
-echo ""
-echo "(Note: You can safely delete $TEMP_DIR when you are done.)"
+echo "Community Edition export and push complete!"
