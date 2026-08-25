@@ -10,6 +10,7 @@ interface LoginModalProps {
   lockTenant?: boolean;
   title?: string;
   description?: string;
+  redirectTo?: string;
 }
 
 export function LoginModal({
@@ -19,6 +20,7 @@ export function LoginModal({
   lockTenant = false,
   title = "Sign in to PySetu",
   description = "Access your tenant workspace with email and password.",
+  redirectTo,
 }: LoginModalProps) {
   if (!open) return null;
 
@@ -29,6 +31,7 @@ export function LoginModal({
           showTenantField={!lockTenant}
           showDemoHints={!lockTenant}
           submitLabel="Sign in"
+          redirectTo={redirectTo}
           onSuccess={onClose}
         />
     </AppModal>

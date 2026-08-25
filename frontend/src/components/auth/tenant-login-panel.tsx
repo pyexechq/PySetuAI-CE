@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ApiError, api, type ApiPublicOidcProvider } from "@/lib/api";
@@ -20,6 +20,7 @@ interface TenantLoginPanelProps {
   showTenantField?: boolean;
   showDemoHints?: boolean;
   submitLabel?: string;
+  redirectTo?: string;
   onSuccess?: () => void;
 }
 
@@ -28,9 +29,11 @@ export function TenantLoginPanel({
   showTenantField = true,
   showDemoHints = DEMO_LOGIN_HINTS_ENABLED,
   submitLabel = "Sign In",
+  redirectTo,
   onSuccess,
 }: TenantLoginPanelProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const login = useAuthStore((s) => s.login);
   const setTenant = useTenantStore((s) => s.setTenant);
   const [email, setEmail] = useState(DEMO_LOGIN_DEFAULT_EMAIL);
@@ -40,6 +43,8 @@ export function TenantLoginPanel({
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const targetUrl = redirectTo || searchParams.get("next") || searchParams.get("redirectTo") || searchParams.get("redirect");
 
   useEffect(() => {
     setTenantSlug(initialTenantSlug);
@@ -59,6 +64,13 @@ export function TenantLoginPanel({
     setError("");
     setSsoLoading(providerId);
     try {
+      if (targetUrl) {
+        try {
+          sessionStorage.setItem("oidc_next", targetUrl);
+        } catch {
+          // Ignore sessionStorage errors in strict/incognito contexts
+        }
+      }
       const slug = tenantSlug.trim().toLowerCase();
       const result = await api.startOidcLogin(slug, providerId);
       window.location.href = result.authorization_url;
@@ -97,7 +109,11 @@ export function TenantLoginPanel({
         brandTagline: org.brand_tagline,
       });
       onSuccess?.();
-      router.replace(user.role === "platform_admin" ? "/platform" : "/");
+      if (targetUrl && targetUrl.startsWith("/") && targetUrl !== "/login") {
+        router.replace(targetUrl);
+      } else {
+        router.replace(user.role === "platform_admin" ? "/platform" : "/");
+      }
     } catch (err) {
       const message =
         err instanceof ApiError

@@ -55,12 +55,24 @@ export default function OidcCallbackPage() {
           slug: org.slug,
           displayName: org.display_name,
           logoUrl: org.logo_url,
-          brandTagline: org.brand_tagline,
           qaDashboardEnabled: org.qa_dashboard_enabled,
           features: org.features,
           featurePolicy: org.feature_policy,
         });
-        router.replace("/");
+
+        let nextUrl = searchParams.get("next") || searchParams.get("redirectTo");
+        if (!nextUrl && typeof window !== "undefined") {
+          try {
+            nextUrl = sessionStorage.getItem("oidc_next");
+            if (nextUrl) sessionStorage.removeItem("oidc_next");
+          } catch {}
+        }
+
+        if (nextUrl && nextUrl.startsWith("/") && nextUrl !== "/login") {
+          router.replace(nextUrl);
+        } else {
+          router.replace(user.role === "platform_admin" ? "/platform" : "/");
+        }
       } catch (err) {
         if (cancelled) return;
         setError(
