@@ -13,6 +13,7 @@ const PUBLIC_ROUTES = [
   "/legal/security",
   "/blog",
   "/whitepaper",
+  "/developer-portal",
 ];
 
 export function middleware(request: NextRequest) {
