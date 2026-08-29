@@ -85,7 +85,7 @@ export function PolicyAiHelper({
   );
 
   return (
-    <Card className="w-[340px] shrink-0 flex flex-col overflow-hidden border-border/60 bg-card/50">
+    <Card className="w-full lg:w-[340px] shrink-0 flex flex-col overflow-hidden border-border/60 bg-card/50">
       <CardHeader className="pb-3 shrink-0">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Sparkles className="h-4 w-4 text-indigo-400" />

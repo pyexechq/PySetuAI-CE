@@ -205,7 +205,7 @@ export function DataProtectionView() {
                         />
                       </PieChart>
                     </ResponsiveContainer>
-                    <div className="mt-4 grid grid-cols-2 gap-2.5">
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {dataClassifications.map((item) => (
                         <div key={item.label} className="flex items-center gap-2 p-2 rounded-xl bg-muted/20 border border-border/50">
                           <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />

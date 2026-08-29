@@ -133,13 +133,13 @@ export function LlmUsageChart({ data, summary }: LlmUsageChartProps) {
               </div>
 
               <div className="overflow-x-auto rounded-lg border border-border/60">
-                <table className="w-full min-w-[420px] text-xs">
+                <table className="w-full min-w-[340px] text-xs">
                   <thead>
                     <tr className="border-b border-border/60 text-left text-muted-foreground">
                       <th className="px-3 py-2 font-medium">Model</th>
                       <th className="px-3 py-2 font-medium text-right">Requests</th>
-                      <th className="px-3 py-2 font-medium text-right">Tokens</th>
-                      <th className="px-3 py-2 font-medium text-right">Avg tok/req</th>
+                      <th className="px-3 py-2 font-medium text-right hidden sm:table-cell">Tokens</th>
+                      <th className="px-3 py-2 font-medium text-right hidden md:table-cell">Avg tok/req</th>
                       <th className="px-3 py-2 font-medium text-right">Cost</th>
                     </tr>
                   </thead>
@@ -148,10 +148,10 @@ export function LlmUsageChart({ data, summary }: LlmUsageChartProps) {
                       <tr key={entry.model} className="border-b border-border/40 last:border-0">
                         <td className="px-3 py-2 font-medium">{entry.model}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatNumber(entry.requests)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">
+                        <td className="px-3 py-2 text-right tabular-nums hidden sm:table-cell">
                           {formatCompactTokens(entry.total_tokens ?? 0)}
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
+                        <td className="px-3 py-2 text-right tabular-nums hidden md:table-cell">
                           {formatNumber(Math.round(entry.avg_tokens_per_request ?? 0))}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatUsd(entry.cost_usd ?? 0)}</td>

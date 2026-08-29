@@ -623,8 +623,8 @@ export function PolicyStudioLayout() {
       {activeStudioTab === "intents" ? (
         <CustomIntentsPanel />
       ) : (
-        <div className="flex h-[calc(100vh-11rem)] gap-4">
-          <Card className="w-72 shrink-0 border-border/60 bg-card/50">
+        <div className="flex flex-col lg:flex-row h-auto lg:h-[calc(100vh-11rem)] gap-4">
+          <Card className="w-full lg:w-72 shrink-0 border-border/60 bg-card/50">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">Policy Tree</CardTitle>

@@ -446,7 +446,7 @@ export function QADashboardView() {
 
       {/* Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-card/60 border border-border/50 shadow-xs">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-card/60 border border-border/50 shadow-xs overflow-x-auto">
           {[
             { id: "overview", label: "Cycle Overview & Readiness" },
             { id: "cases", label: `Test Cases (${cycle?.total_cases ?? 0})` },

@@ -155,7 +155,7 @@ function RoutingVisualEngine({ rule, models }: RoutingVisualEngineProps) {
   const cols = fallbackTargets.length;
 
   return (
-    <div className="relative flex min-h-[580px] items-center justify-center overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-b from-card/90 via-card/50 to-muted/20 p-8 shadow-sm">
+    <div className="relative flex min-h-[580px] items-center justify-center overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-b from-card/90 via-card/50 to-muted/20 p-4 sm:p-8 shadow-sm">
       {/* Top Toggle */}
       <div className="absolute right-4 top-4 z-20 flex items-center gap-2 text-xs text-muted-foreground bg-card/80 px-3 py-1.5 rounded-full border border-border/60 backdrop-blur-sm shadow-xs">
         <span className="font-medium">Traffic Weights</span>

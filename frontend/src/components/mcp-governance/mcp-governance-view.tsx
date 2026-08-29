@@ -388,7 +388,7 @@ export function McpGovernanceView() {
       {canGovern && activeTab === "overview" && (
         <div className="space-y-6">
           {/* KPI row */}
-          <div className="grid gap-4 sm:grid-cols-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
               { label: "Total MCP Servers", value: servers.length, color: "" },
               { label: "Active / Healthy", value: activeCount, color: "text-emerald-400" },

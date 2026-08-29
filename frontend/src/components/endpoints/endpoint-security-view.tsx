@@ -58,7 +58,7 @@ function EndpointSecurityViewInner() {
           </div>
 
           {/* Quick Metrics Grid */}
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-3 w-full lg:w-auto shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 w-full lg:w-auto shrink-0">
             <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Protected</div>
               <p className="mt-1.5 text-lg sm:text-xl font-bold text-foreground">{endpoints.length}</p>
