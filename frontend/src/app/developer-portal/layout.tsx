@@ -135,6 +135,9 @@ function PortalHeader({ onMenuToggle }: { onMenuToggle: () => void }) {
             <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
               DevPortal
             </span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/80 uppercase leading-none">
+              Beta
+            </span>
           </div>
         </Link>
 
@@ -350,10 +353,34 @@ function PortalLayoutContent({ children }: { children: React.ReactNode }) {
         )}
 
         {/* ── Main Content ── */}
-        <main className="flex-1 overflow-y-auto bg-slate-50/70">
-          <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+        <main className="flex-1 overflow-y-auto bg-slate-50/70 flex flex-col justify-between">
+          <div className="p-6 lg:p-8 max-w-6xl mx-auto w-full flex-1">
             {children}
           </div>
+          <footer className="border-t border-slate-200/80 bg-white/80 px-6 py-4 text-xs text-slate-500">
+            <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span>© 2026 PySetu AI. All rights reserved.</span>
+                <span className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 uppercase leading-none">
+                  Beta
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <Link href="/terms" className="hover:text-indigo-600 transition-colors">
+                  Terms & Conditions
+                </Link>
+                <Link href="/privacy" className="hover:text-indigo-600 transition-colors">
+                  Privacy Policy
+                </Link>
+                <Link href="/legal/security" className="hover:text-indigo-600 transition-colors">
+                  Security & Trust
+                </Link>
+                <a href="mailto:hello@pysetu.io" className="hover:text-indigo-600 transition-colors">
+                  hello@pysetu.io
+                </a>
+              </div>
+            </div>
+          </footer>
         </main>
       </div>
 

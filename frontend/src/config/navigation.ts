@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   Code2,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 

@@ -36,7 +36,7 @@ export default function CookiesPage() {
 
       <h2>Contact</h2>
       <p>
-        Questions about this policy: <a href="mailto:privacy@pysetu.com">privacy@pysetu.com</a>
+        Questions about this policy: <a href="mailto:hello@pysetu.io">hello@pysetu.io</a>
       </p>
     </LegalPageShell>
   );

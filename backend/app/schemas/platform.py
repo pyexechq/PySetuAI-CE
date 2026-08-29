@@ -189,3 +189,96 @@ class PlatformUsageOverviewResponse(BaseModel):
     period_days: int
     fleet: PlatformUsageFleetSummary
     tenants: list[PlatformUsageTenantRow]
+
+
+class PlatformAdminResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+    is_active: bool
+    created_at: str | None = None
+
+
+class PlatformAdminCreateRequest(BaseModel):
+    email: EmailStr
+    name: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class PlatformAdminUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    is_active: bool | None = None
+    new_password: str | None = Field(default=None, min_length=8, max_length=128)
+
+
+class PlatformMediaItemResponse(BaseModel):
+    filename: str
+    url: str
+    size_bytes: int
+    mime_type: str
+    created_at: str
+
+
+class PlatformMediaUploadResponse(BaseModel):
+    url: str
+    filename: str
+    size_bytes: int
+    mime_type: str
+
+
+class ContainerHealthItem(BaseModel):
+    name: str
+    service: str
+    status: str  # healthy, up, degraded, stopped
+    image: str
+    role: str
+    port: str | None = None
+    uptime: str | None = None
+    latency_ms: int | None = None
+    details: str | None = None
+
+
+class ContainerHealthResponse(BaseModel):
+    generated_at: str
+    overall_status: str
+    total_containers: int
+    healthy_count: int
+    containers: list[ContainerHealthItem]
+
+
+class MarketingLeadItem(BaseModel):
+    id: str
+    full_name: str
+    work_email: str
+    company_name: str
+    team_size: str | None = None
+    use_case: str | None = None
+    message: str | None = None
+    status: str
+    created_at: str
+
+
+class MarketingPageTraffic(BaseModel):
+    path: str
+    title: str
+    views: int
+    unique_visitors: int
+    conversion_rate_pct: float
+
+
+class MarketingChannelTraffic(BaseModel):
+    channel: str
+    visitors: int
+    percentage: float
+
+
+class PlatformMarketingAnalyticsResponse(BaseModel):
+    generated_at: str
+    period_days: int
+    summary: dict
+    top_pages: list[MarketingPageTraffic]
+    channels: list[MarketingChannelTraffic]
+    recent_leads: list[MarketingLeadItem]
+
+

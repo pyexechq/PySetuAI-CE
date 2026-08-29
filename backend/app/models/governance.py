@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -465,17 +465,43 @@ class CustomIntent(Base):
     __tablename__ = "custom_intents"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), index=True)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    scope: Mapped[str] = mapped_column(String(16), default="tenant")  # "global" or "tenant"
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    action: Mapped[str] = mapped_column(String(32), default="block")
+    action: Mapped[str] = mapped_column(String(32), default="block")  # "block", "redact", "monitor"
+    pattern_type: Mapped[str] = mapped_column(String(32), default="keyword")  # "keyword", "regex", "ast_syntax", "composite"
     keywords: Mapped[list] = mapped_column(JSONB, default=list)
+    regex_pattern: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    syntax_rules: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    target_tenant_ids: Mapped[list] = mapped_column(JSONB, default=list)
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False)
+    risk_level: Mapped[str] = mapped_column(String(16), default="high")  # "low", "medium", "high", "critical"
+    explanation_template: Mapped[str | None] = mapped_column(String(256), nullable=True)
     confidence_threshold: Mapped[float] = mapped_column(Float, default=0.8)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("custom_intents.id", ondelete="CASCADE"), nullable=True, index=True
     )
     intent_type: Mapped[str] = mapped_column(String(32), default="intent")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ClassifierEfficiencyMetric(Base):
+    __tablename__ = "classifier_efficiency_metrics"
+    __table_args__ = (UniqueConstraint("tenant_id", "metric_date", name="ix_classifier_metrics_tenant_date"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    total_scans: Mapped[int] = mapped_column(BigInteger, default=0)
+    blocked_count: Mapped[int] = mapped_column(BigInteger, default=0)
+    redacted_count: Mapped[int] = mapped_column(BigInteger, default=0)
+    avg_latency_micros: Mapped[float] = mapped_column(Float, default=250.0)
+    category_breakdown: Mapped[dict] = mapped_column(JSONB, default=dict)
+    metric_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

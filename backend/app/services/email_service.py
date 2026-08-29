@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import smtplib
+import uuid
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any
@@ -19,14 +20,26 @@ def send_email(
     subject: str,
     html_body: str,
     text_body: str | None = None,
+    config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Send an email using custom SMTP config if supplied, or default settings."""
+    if config:
+        from app.services.smtp_config_service import send_smtp_message
+        return send_smtp_message(
+            config=config,
+            recipients=recipients,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+        )
+
     cleaned = [recipient.strip() for recipient in recipients if recipient and recipient.strip()]
     if not cleaned:
         return {"status": "skipped", "reason": "no_recipients", "recipients": []}
 
     if not settings.smtp_enabled:
         logger.info(
-            "SMTP disabled — email '%s' ready for %s. Set SMTP_ENABLED=true to deliver.",
+            "SMTP disabled — email '%s' ready for %s. Set SMTP_ENABLED=true or configure SMTP in console to deliver.",
             subject,
             ", ".join(cleaned),
         )
@@ -54,6 +67,28 @@ def send_email(
         return {"status": "failed", "reason": str(exc), "recipients": cleaned}
 
 
+async def send_tenant_email(
+    *,
+    db: Any,
+    tenant_id: uuid.UUID | None,
+    recipients: list[str],
+    subject: str,
+    html_body: str,
+    text_body: str | None = None,
+) -> dict[str, Any]:
+    """Send an email using tenant-specific SMTP if enabled, falling back to platform SMTP."""
+    from app.services.smtp_config_service import resolve_effective_smtp_credentials, send_smtp_message
+
+    effective_config = await resolve_effective_smtp_credentials(db, tenant_id)
+    return send_smtp_message(
+        config=effective_config,
+        recipients=recipients,
+        subject=subject,
+        html_body=html_body,
+        text_body=text_body,
+    )
+
+
 def _html_to_plain(html: str) -> str:
     text = html.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
     for tag in ("<p>", "</p>", "<div>", "</div>", "<li>", "</li>"):
@@ -66,3 +101,4 @@ def _html_to_plain(html: str) -> str:
         text = text[:start] + text[end + 1 :]
     lines = [line.strip() for line in text.splitlines()]
     return "\n".join(line for line in lines if line)
+

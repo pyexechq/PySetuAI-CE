@@ -19,10 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('approval_requests', sa.Column('requested_mcp_tool', sa.String(255), nullable=True))
-    op.add_column('approval_requests', sa.Column('requested_bundle_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('policy_bundles.id', ondelete='SET NULL'), nullable=True))
+    pass
 
 
 def downgrade() -> None:
-    op.drop_column('approval_requests', 'requested_bundle_id')
-    op.drop_column('approval_requests', 'requested_mcp_tool')
+    pass
+

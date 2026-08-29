@@ -46,6 +46,8 @@ from app.schemas.governance import (
     IngressBindingResponse,
     LLMProviderCreateRequest,
     LLMProviderUpdateRequest,
+    LLMProviderTestConnectionRequest,
+    LLMProviderTestConnectionResponse,
     McpDiscoverToolsResponse,
     DynamicToolPreviewRequest,
     DynamicToolPreviewResponse,
@@ -155,6 +157,7 @@ from app.services.mcp_catalog_service import (
     install_spec_from_entry,
     list_catalog_entries,
 )
+from app.services.llm_connection_tester import test_llm_provider_connection
 from app.services.mcp_health_service import apply_health_result, probe_mcp_server
 from app.services.policy_graph import build_ingress_bindings, resolve_policy_graph_node
 from app.services.provider_metrics_service import rebalance_provider_percentages
@@ -2012,6 +2015,28 @@ async def rebalance_llm_provider_percentages(
         total_requests=total_requests,
         providers=[ProviderShareItem(**item) for item in updates],
         message=f"Updated routing shares for {len(updates)} active provider(s) from live traffic.",
+    )
+
+
+@router.post("/llm/providers/test-connection", response_model=LLMProviderTestConnectionResponse)
+async def test_llm_provider_connection_endpoint(
+    payload: LLMProviderTestConnectionRequest,
+    current_user: Annotated[User, Depends(_require_llm_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> LLMProviderTestConnectionResponse:
+    success, message, latency_ms, models = await test_llm_provider_connection(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        provider_type=payload.provider_type,
+        api_key=payload.api_key,
+        endpoint_url=payload.endpoint_url,
+        provider_id=payload.provider_id,
+    )
+    return LLMProviderTestConnectionResponse(
+        success=success,
+        message=message,
+        latency_ms=latency_ms,
+        models_found=models,
     )
 
 

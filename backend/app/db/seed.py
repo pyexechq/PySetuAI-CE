@@ -83,7 +83,8 @@ async def seed_demo_data() -> None:
             user_result = await session.execute(
                 select(User).where(User.tenant_id == tenant.id, User.email == demo_user["email"])
             )
-            if user_result.scalar_one_or_none() is None:
+            existing_user = user_result.scalar_one_or_none()
+            if existing_user is None:
                 session.add(
                     User(
                         tenant_id=tenant.id,
@@ -93,6 +94,8 @@ async def seed_demo_data() -> None:
                         role=demo_user["role"],
                     )
                 )
+            else:
+                existing_user.hashed_password = get_password_hash(demo_password)
 
         await session.commit()
 

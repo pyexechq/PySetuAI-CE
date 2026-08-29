@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { HelpChatLayer } from "@/components/help/help-chat-layer";
@@ -25,7 +26,31 @@ export function AppShell({ children, title, description }: AppShellProps) {
             description={description}
             onMenuClick={() => setMobileNavOpen(true)}
           />
-          <main className="relative min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+          <main className="relative min-h-0 flex-1 overflow-y-auto flex flex-col justify-between p-4 md:p-6">
+            <div className="flex-1">{children}</div>
+            <footer className="mt-8 border-t border-border/50 pt-4 pb-2 text-xs text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span>© 2026 PySetu AI. All rights reserved.</span>
+                <span className="inline-flex items-center rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary uppercase leading-none">
+                  Beta
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <Link href="/terms" className="hover:text-foreground transition-colors">
+                  Terms & Conditions
+                </Link>
+                <Link href="/privacy" className="hover:text-foreground transition-colors">
+                  Privacy Policy
+                </Link>
+                <Link href="/legal/security" className="hover:text-foreground transition-colors">
+                  Security & Trust
+                </Link>
+                <a href="mailto:hello@pysetu.io" className="hover:text-foreground transition-colors">
+                  hello@pysetu.io
+                </a>
+              </div>
+            </footer>
+          </main>
         </div>
       </div>
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>

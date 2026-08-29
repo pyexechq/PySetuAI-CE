@@ -8,9 +8,11 @@ from app.api.v1.access import router as access_router
 from app.api.v1.agentic import router as agentic_router
 from app.api.v1.agentic_security import router as agentic_security_router
 from app.api.v1.audit import router as audit_router
+from app.api.v1.classifier import router as classifier_router
 from app.api.v1.compliance import router as compliance_router
 from app.api.v1.custom_intents import router as custom_intents_router
 from app.api.v1.data_protection import router as data_protection_router
+from app.api.v1.edge import router as edge_router
 from app.api.v1.extension import router as extension_router
 from app.api.v1.gateway import admin_router as gateway_admin_router
 from app.api.v1.gateway import openai_router as gateway_openai_router
@@ -26,6 +28,7 @@ from app.api.v1.oidc import router as oidc_router
 from app.api.v1.blog import router as blog_router
 from app.api.v1.platform import router as platform_router
 from app.api.v1.prompt_templates import router as prompt_templates_router
+from app.api.v1.public_leads import router as public_leads_router
 from app.api.v1.qa import router as qa_router
 from app.api.v1.rag_gateway import router as rag_gateway_router
 from app.api.v1.reports import router as reports_router
@@ -45,6 +48,7 @@ from app.db.seed_agentic_control_plane import seed_agentic_control_plane_data
 from app.db.seed_genai_dlp import seed_genai_dlp_demo_events
 from app.db.seed_governance import seed_access_data, seed_governance_data, seed_uag_data
 from app.db.seed_prompt_templates import seed_prompt_templates_data
+from app.services.traffic_simulator import generate_simulated_traffic_for_tenant
 from app.services.vault_service import assert_production_security, load_jwt_secret_from_vault
 from app.services.health_service import build_dependency_status
 from app.services.http_client_pool import close_http_client
@@ -57,7 +61,7 @@ async def lifespan(app: FastAPI):
         set_jwt_secret_override(vault_jwt, from_vault=True)
     assert_production_security(get_jwt_secret())
 
-    if settings.debug:
+    if settings.debug or settings.demo_credentials_enabled:
         try:
             await seed_demo_data()
             await seed_platform_admin()
@@ -73,22 +77,77 @@ async def lifespan(app: FastAPI):
             control_seeded = await seed_agentic_control_plane_data()
             if control_seeded:
                 print(f"Agentic control-plane seed: demo data added for {control_seeded} tenant(s).")
+            await generate_simulated_traffic_for_tenant("acme", count=8)
         except Exception as exc:
             print(f"Seed skipped (database may be unavailable): {exc}")
     yield
     await close_http_client()
 
 
+from fastapi.openapi.utils import get_openapi
+
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="Enterprise AI Governance and Control Plane API",
     lifespan=lifespan,
+    swagger_ui_parameters={
+        "persistAuthorization": True,
+        "displayRequestDuration": True,
+        "tryItOutEnabled": True,
+        "filter": True,
+    },
 )
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title="PySetu AI — Enterprise AI Gateway & Governance API",
+        version=settings.app_version,
+        description="Public Developer & Client API for PySetu AI Gateway, Policy Engine, MCP Governance, and Enterprise Access Control.",
+        routes=app.routes,
+    )
+
+    # Filter out internal SaaS platform operator routes from client OpenAPI documentation
+    if "paths" in openapi_schema:
+        filtered_paths = {}
+        for path, methods in openapi_schema["paths"].items():
+            if path.startswith(f"{settings.api_prefix}/platform") or path.startswith("/platform"):
+                continue
+            filtered_paths[path] = methods
+        openapi_schema["paths"] = filtered_paths
+
+    if "components" not in openapi_schema:
+        openapi_schema["components"] = {}
+
+    openapi_schema["components"]["securitySchemes"] = {
+        "HTTPBearer": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Enter your JWT token (from /api/v1/auth/login)",
+        },
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "API Key or Bearer Token in Authorization header",
+        },
+    }
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+    allow_origin_regex=r"https://([a-zA-Z0-9-]+\.)?pysetu\.io",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -98,6 +157,8 @@ app.add_middleware(AuthRateLimitMiddleware)
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(blog_router, prefix=settings.api_prefix)
 app.include_router(platform_router, prefix=settings.api_prefix)
+app.include_router(classifier_router, prefix=settings.api_prefix)
+app.include_router(edge_router, prefix=settings.api_prefix)
 app.include_router(governance_router, prefix=settings.api_prefix)
 app.include_router(audit_router, prefix=settings.api_prefix)
 app.include_router(access_router, prefix=settings.api_prefix)
@@ -125,6 +186,7 @@ app.include_router(routing_groups_router, prefix=settings.api_prefix)
 app.include_router(prompt_templates_router, prefix=settings.api_prefix)
 app.include_router(help_router, prefix=settings.api_prefix)
 app.include_router(custom_intents_router, prefix=settings.api_prefix)
+app.include_router(public_leads_router, prefix=settings.api_prefix)
 app.include_router(gateway_admin_router, prefix=settings.api_prefix)
 app.include_router(gateway_openai_router)
 

@@ -41,7 +41,7 @@ export default function PrivacyPage() {
       <p>
         Depending on your jurisdiction, you may have rights to access, correct, delete, or restrict processing of
         your personal information. Contact your tenant administrator or{" "}
-        <a href="mailto:privacy@pysetu.com">privacy@pysetu.com</a> to submit a request.
+        <a href="mailto:hello@pysetu.io">hello@pysetu.io</a> to submit a request.
       </p>
 
       <h2>International transfers</h2>
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
 
       <h2>Contact</h2>
       <p>
-        Privacy inquiries: <a href="mailto:privacy@pysetu.com">privacy@pysetu.com</a>
+        Privacy inquiries: <a href="mailto:hello@pysetu.io">hello@pysetu.io</a>
       </p>
     </LegalPageShell>
   );

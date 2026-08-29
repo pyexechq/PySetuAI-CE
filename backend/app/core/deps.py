@@ -15,7 +15,7 @@ from app.models.tenant import Tenant, User
 
 from app.services.tenant_features_service import is_feature_enabled
 
-security = HTTPBearer(auto_error=False)
+security = HTTPBearer(auto_error=False, scheme_name="HTTPBearer", description="JWT Bearer Token")
 
 
 async def get_current_user(
@@ -25,8 +25,12 @@ async def get_current_user(
     if credentials is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
+    token_str = credentials.credentials.strip()
+    if token_str.lower().startswith("bearer "):
+        token_str = token_str[7:].strip()
+
     try:
-        payload = decode_access_token(credentials.credentials)
+        payload = decode_access_token(token_str)
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -44,6 +48,35 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
 
     return user
+
+
+async def get_optional_current_user(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> User | None:
+    if credentials is None:
+        return None
+
+    token_str = credentials.credentials.strip()
+    if token_str.lower().startswith("bearer "):
+        token_str = token_str[7:].strip()
+
+    try:
+        payload = decode_access_token(token_str)
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        result = await db.execute(
+            select(User)
+            .options(selectinload(User.tenant))
+            .where(User.id == uuid.UUID(str(user_id)))
+        )
+        user = result.scalar_one_or_none()
+        if user is None or not user.is_active:
+            return None
+        return user
+    except Exception:
+        return None
 
 
 async def get_current_tenant(

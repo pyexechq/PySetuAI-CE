@@ -77,8 +77,13 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           <BrandingLogo logoUrl={currentTenant.logoUrl} alt={brandName} iconClassName="h-5 w-5 text-primary-foreground" />
         </div>
         {!collapsed && (
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-foreground">{brandName}</p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <p className="truncate text-sm font-bold text-foreground">{brandName}</p>
+              <span className="shrink-0 rounded border border-primary/30 bg-primary/10 px-1 py-0.2 text-[9px] font-semibold text-primary uppercase leading-none">
+                Beta
+              </span>
+            </div>
             <p className="truncate text-[10px] text-muted-foreground">{brandTagline}</p>
           </div>
         )}

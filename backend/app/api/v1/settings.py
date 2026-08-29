@@ -22,6 +22,12 @@ from app.schemas.settings import (
     GatewaySettingsResponse,
     GatewaySettingsUpdate,
 )
+from app.schemas.smtp import (
+    SmtpConfigResponse,
+    SmtpConfigUpdate,
+    SmtpTestRequest,
+    SmtpTestResponse,
+)
 from app.services.ai_assist_config_service import ai_assist_status, update_ai_assist_settings
 from app.services.integration_service import get_or_create_integration, mask_secret, resolve_gateway_config
 from app.services.secrets_service import (
@@ -279,3 +285,36 @@ async def update_gateway_settings(
         token_saving_enabled=tenant.token_saving_enabled,
         token_saving_mode=tenant.token_saving_mode,
     )
+
+
+@router.get("/settings/smtp", response_model=SmtpConfigResponse)
+async def get_tenant_smtp(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> SmtpConfigResponse:
+    from app.services.smtp_config_service import get_tenant_smtp_config
+    return await get_tenant_smtp_config(db, current_user.tenant_id)
+
+
+@router.put("/settings/smtp", response_model=SmtpConfigResponse)
+async def update_tenant_smtp(
+    payload: SmtpConfigUpdate,
+    current_user: Annotated[User, Depends(_require_org_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> SmtpConfigResponse:
+    from app.services.smtp_config_service import update_tenant_smtp_config
+    try:
+        return await update_tenant_smtp_config(db, current_user.tenant_id, payload)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/settings/smtp/test", response_model=SmtpTestResponse)
+async def test_tenant_smtp(
+    payload: SmtpTestRequest,
+    current_user: Annotated[User, Depends(_require_org_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> SmtpTestResponse:
+    from app.services.smtp_config_service import test_smtp_configuration
+    return await test_smtp_configuration(db, current_user.tenant_id, payload)
+

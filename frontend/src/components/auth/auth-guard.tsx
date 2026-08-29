@@ -5,7 +5,18 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore, canAccessRoute, canAccessTenantModule } from "@/stores/auth-store";
 import { useTenantStore } from "@/stores/tenant-store";
 
-const PUBLIC_ROUTES = ["/login", "/accept-invite", "/auth/oidc/callback", "/platform/login", "/terms", "/privacy", "/cookies", "/legal/security", "/blog"];
+const PUBLIC_ROUTES = [
+  "/login",
+  "/accept-invite",
+  "/auth/oidc/callback",
+  "/platform/login",
+  "/terms",
+  "/privacy",
+  "/cookies",
+  "/legal/security",
+  "/blog",
+  "/whitepaper",
+];
 
 function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));

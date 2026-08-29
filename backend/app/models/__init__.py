@@ -39,12 +39,14 @@ from app.models.governance import (
 )
 from app.models.qa import QADefect, QATestCase, QATestCycle
 from app.models.tenant import Base, PlatformEmailTemplate, Tenant, TenantInvite, User
+from app.models.trial_request import TrialRequest
 from app.models.uag import UagModelMapping, UagTranslationEvent, UagTranslationPolicy
 
 __all__ = [
     "Base",
     "Tenant",
     "TenantInvite",
+    "TrialRequest",
     "PlatformEmailTemplate",
     "User",
     "Policy",

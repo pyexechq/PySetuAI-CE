@@ -11,11 +11,11 @@ def demo_credentials_allowed() -> bool:
 
 
 def resolve_demo_seed_password() -> str | None:
-    """Password for local demo seed users; must come from env when demo mode is on."""
+    """Password for local demo seed users; defaults to demo1234 when demo mode is on."""
     if not demo_credentials_allowed():
         return None
-    value = (settings.demo_seed_password or "").strip()
-    return value or None
+    value = (settings.demo_seed_password or "demo1234").strip()
+    return value or "demo1234"
 
 
 def resolve_platform_admin_password() -> str | None:

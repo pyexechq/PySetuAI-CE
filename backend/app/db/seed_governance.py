@@ -306,11 +306,25 @@ MCP_SERVERS = [
 ]
 
 AUDIT_LOGS = [
-    ("support-agent@v1", "LLM Request", "GPT-4o /chat", "allowed", "low", "Customer query processed"),
-    ("code-copilot@v2", "Policy Check", "Prompt Injection Guard", "blocked", "high", "Detected override attempt"),
+    (
+        "admin@acme.com",
+        "LLM Request",
+        "GPT-4o-mini /chat",
+        "allowed",
+        "low",
+        'bundle=Standard Support; trace_id=dccc0234f8f63da2166b3b0a55b8a7ed; UAG translated gpt-4o-mini → gemini-1.5-flash via ollama (Ollama: gemma4:e2b) |uag_trace={"source_protocol":"openai","requested_model":"gpt-4o-mini","canonical_model":"gemini-1.5-flash","target_provider":"ollama","target_protocol":"openai-compatible","translated_model":"gemma4:e2b","governance_actions":["dlp","policy_engine","dynamic_tools","opa","egress_policy"],"translation_ms":9.45,"policy_applied":"Standard Support","compatibility_score":0.98}',
+    ),
+    ("code-copilot@v2", "Policy Check", "Prompt Injection Guard", "blocked", "high", "Detected override attempt; blocked early at gateway"),
     ("hr-bot@v1", "MCP Tool Call", "HR Database /query", "allowed", "low", "Employee lookup"),
     ("finance-bot@v1", "DLP Scan", "PII Redaction — EU", "review", "medium", "SSN pattern detected, redacted"),
-    ("sales-agent@v3", "LLM Request", "Claude 3.5 /chat", "allowed", "low", "Proposal draft generated"),
+    (
+        "developer@acme.com",
+        "LLM Request",
+        "Claude 3.5 /chat",
+        "allowed",
+        "low",
+        'bundle=Developer Key; trace_id=8fae220914c194b301a2f60cd1983011; UAG translated gpt-4o → claude-3-5-sonnet via anthropic (Anthropic: claude-3-5-sonnet) |uag_trace={"source_protocol":"openai","requested_model":"gpt-4o","canonical_model":"claude-3-5-sonnet","target_provider":"anthropic","target_protocol":"messages","translated_model":"claude-3-5-sonnet","governance_actions":["dlp","policy_engine","opa","egress_policy"],"translation_ms":14.20,"policy_applied":"Code tasks → Claude","compatibility_score":0.986}',
+    ),
     ("unknown-client", "Auth Attempt", "AI Gateway", "blocked", "high", "Invalid JWT token"),
     ("support-agent@v1", "MCP Tool Call", "Jira /create-ticket", "allowed", "low", "Ticket INC-4521 created"),
     (
@@ -484,18 +498,25 @@ async def seed_access_for_tenant(session, tenant_id: uuid.UUID) -> bool:
     return True
 
 
+from app.models.uag import UagModelMapping, UagTranslationEvent, UagTranslationPolicy
+
 async def seed_uag_for_tenant(session, tenant_id: uuid.UUID) -> bool:
     existing = await session.execute(
         select(UagModelMapping).where(UagModelMapping.tenant_id == tenant_id).limit(1)
     )
     if existing.scalar_one_or_none() is not None:
-        return False
+        # Check if events exist
+        events_existing = await session.execute(
+            select(UagTranslationEvent).where(UagTranslationEvent.tenant_id == tenant_id).limit(1)
+        )
+        if events_existing.scalar_one_or_none() is not None:
+            return False
 
     for requested, actual, provider in (
         ("gpt-4o", "gemini-1.5-pro", "gemini"),
         ("gpt-4o-mini", "gemini-1.5-flash", "gemini"),
-        ("gpt-5", "claude-sonnet-4", "claude"),
-        ("gpt-4", "llama3:70b", "ollama"),
+        ("gpt-5", "claude-3-5-sonnet", "anthropic"),
+        ("gpt-4", "llama3.1:70b", "ollama"),
     ):
         session.add(
             UagModelMapping(
@@ -521,6 +542,39 @@ async def seed_uag_for_tenant(session, tenant_id: uuid.UUID) -> bool:
                 actions=actions,
                 priority=priority,
                 enabled=True,
+            )
+        )
+
+    # Seed realistic UAG translation trace events
+    sample_traces = [
+        ("openai", "anthropic", "gpt-4o", "claude-3-5-sonnet", True, 142.5, 98.6, {"emulated_protocol": "openai", "input_tokens": 420, "output_tokens": 160, "schema_mapping": "chat.completions -> messages", "tool_call_translated": True}),
+        ("openai", "gemini", "gpt-4o", "gemini-1.5-pro", True, 118.2, 96.4, {"emulated_protocol": "openai", "input_tokens": 512, "output_tokens": 230, "schema_mapping": "chat.completions -> generateContent"}),
+        ("anthropic", "ollama", "claude-3-5-haiku", "llama3.1:70b", True, 89.4, 94.1, {"emulated_protocol": "anthropic", "air_gap_fallback": True, "schema_mapping": "messages -> api/generate"}),
+        ("openai", "openai", "text-davinci-003", "gpt-4o-mini", True, 75.0, 99.2, {"emulated_protocol": "openai_legacy", "legacy_upgrade": True, "tokens_saved": 110}),
+        ("bedrock", "anthropic", "amazon.titan-text-express-v1", "claude-3-5-sonnet", True, 165.0, 92.8, {"emulated_protocol": "aws_bedrock", "schema_mapping": "invoke_model -> messages"}),
+        ("openai", "gemini", "gpt-4o-mini", "gemini-1.5-flash", True, 95.0, 97.5, {"emulated_protocol": "openai", "input_tokens": 280, "output_tokens": 110}),
+        ("openai", "anthropic", "gpt-4o", "claude-3-5-sonnet", True, 138.0, 98.9, {"emulated_protocol": "openai", "input_tokens": 390, "output_tokens": 185}),
+        ("anthropic", "ollama", "claude-3-5-sonnet", "llama3.1:70b", True, 102.3, 93.8, {"emulated_protocol": "anthropic", "schema_mapping": "messages -> api/generate"}),
+    ]
+
+    import json
+    now = datetime.now(UTC)
+    for i, (src, tgt, req_m, trans_m, ok, lat, comp, details) in enumerate(sample_traces):
+        event_time = now - timedelta(hours=i * 3 + 1)
+        session.add(
+            UagTranslationEvent(
+                id=uuid.uuid4(),
+                tenant_id=tenant_id,
+                request_id=f"uag_req_{uuid.uuid4().hex[:12]}",
+                source_protocol=src,
+                target_provider=tgt,
+                requested_model=req_m,
+                translated_model=trans_m,
+                success=ok,
+                latency_ms=lat,
+                compatibility_score=comp,
+                details=json.dumps({**details, "simulated": True, "generated_at": event_time.isoformat()}),
+                created_at=event_time,
             )
         )
     return True

@@ -78,6 +78,7 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
   const [saving, setSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "success" | "error">("idle");
+  const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
 
   const hasStoredKey = Boolean(provider?.api_key_set) && !clearApiKey;
 
@@ -94,17 +95,19 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
     setCostOut(provider?.cost_per_1m_output != null ? String(provider.cost_per_1m_output) : "");
     setModelAliases((provider?.model_aliases ?? []).join(", "));
     setError(null);
+    setConnectionMessage(null);
     setConnectionStatus("idle");
   }, [open, provider]);
 
   if (!open) return null;
 
   async function handleTestConnection() {
-    const trimmedName = name.trim();
+    if (!token) return;
+    const trimmedKey = apiKey.trim();
     const trimmedEndpoint = endpointUrl.trim();
 
-    if (!trimmedName) {
-      setError("Provider name is required");
+    if (providerType !== "ollama" && !trimmedKey && !hasStoredKey) {
+      setError(`API key is required to test ${providerType.toUpperCase()} connection`);
       setConnectionStatus("error");
       return;
     }
@@ -123,13 +126,27 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
 
     setTestingConnection(true);
     setError(null);
+    setConnectionMessage(null);
     setConnectionStatus("idle");
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 700));
-      setConnectionStatus("success");
-    } catch {
+      const res = await api.testLlmProviderConnection(token, {
+        provider_type: providerType,
+        api_key: trimmedKey || undefined,
+        endpoint_url: trimmedEndpoint || undefined,
+        provider_id: isEdit && provider ? provider.id : undefined,
+      });
+
+      if (res.success) {
+        setConnectionStatus("success");
+        setConnectionMessage(res.message);
+      } else {
+        setConnectionStatus("error");
+        setError(res.message);
+      }
+    } catch (err: any) {
       setConnectionStatus("error");
+      setError(err?.message || "Failed to test provider connection.");
     } finally {
       setTestingConnection(false);
     }
@@ -408,9 +425,11 @@ export function LlmProviderModal({ open, provider, token, onClose, onSaved }: Ll
           Active in routing pool
         </label>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
         {connectionStatus === "success" && !error && (
-          <p className="text-sm text-emerald-400">Connection test successful.</p>
+          <p className="text-sm text-emerald-500 dark:text-emerald-400 font-medium">
+            {connectionMessage || "Connection test successful."}
+          </p>
         )}
 
         <div className="flex justify-end gap-2 pt-2">

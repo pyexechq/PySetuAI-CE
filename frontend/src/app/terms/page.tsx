@@ -56,7 +56,7 @@ export default function TermsPage() {
       <h2>8. Contact</h2>
       <p>
         For questions about these Terms, contact{" "}
-        <a href="mailto:legal@pysetu.com">legal@pysetu.com</a>.
+        <a href="mailto:hello@pysetu.io">hello@pysetu.io</a>.
       </p>
     </LegalPageShell>
   );

@@ -408,6 +408,52 @@ export interface ApiTenantUser {
   is_active: boolean;
 }
 
+export interface ApiSmtpConfig {
+  enabled: boolean;
+  host: string;
+  port: number;
+  from_email: string;
+  from_name: string;
+  username: string;
+  password_set: boolean;
+  password_masked: string | null;
+  use_tls: boolean;
+  use_ssl: boolean;
+  is_custom: boolean;
+  source: string;
+  info_message?: string | null;
+}
+
+export interface ApiSmtpConfigUpdate {
+  enabled?: boolean;
+  host?: string;
+  port?: number;
+  from_email?: string;
+  from_name?: string;
+  username?: string;
+  password?: string;
+  use_tls?: boolean;
+  use_ssl?: boolean;
+}
+
+export interface ApiSmtpTestRequest {
+  recipient_email: string;
+  host?: string;
+  port?: number;
+  from_email?: string;
+  from_name?: string;
+  username?: string;
+  password?: string;
+  use_tls?: boolean;
+  use_ssl?: boolean;
+}
+
+export interface ApiSmtpTestResponse {
+  success: boolean;
+  message: string;
+  details?: Record<string, unknown> | null;
+}
+
 export interface ApiTenantUserUpdate {
   role?: string;
   is_active?: boolean;
@@ -440,6 +486,21 @@ export interface ApiPlatformConfig {
   enabled: boolean;
   deployment_mode: string;
   platform_tenant_slug: string;
+}
+
+export interface ApiTrialRequestCreate {
+  full_name: string;
+  work_email: string;
+  company_name: string;
+  team_size?: string;
+  use_case?: string;
+  message?: string;
+}
+
+export interface ApiTrialSubmissionResult {
+  success: boolean;
+  message: string;
+  lead_id: string;
 }
 
 export interface ApiBlogContentSection {
@@ -668,6 +729,107 @@ export interface ApiPlatformUsageOverview {
   }[];
 }
 
+export interface ApiPlatformAdmin {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string | null;
+}
+
+export interface ApiPlatformAdminCreateRequest {
+  email: string;
+  name: string;
+  password: string;
+}
+
+export interface ApiPlatformAdminUpdateRequest {
+  name?: string;
+  is_active?: boolean;
+  new_password?: string;
+}
+
+export interface ApiPlatformMediaItem {
+  filename: string;
+  url: string;
+  size_bytes: number;
+  mime_type: string;
+  created_at: string;
+}
+
+export interface ApiPlatformMediaUploadResponse {
+  url: string;
+  filename: string;
+  size_bytes: number;
+  mime_type: string;
+}
+
+export interface ApiContainerHealthItem {
+  name: string;
+  service: string;
+  status: string;
+  image: string;
+  role: string;
+  port?: string | null;
+  uptime?: string | null;
+  latency_ms?: number | null;
+  details?: string | null;
+}
+
+export interface ApiContainerHealthResponse {
+  generated_at: string;
+  overall_status: string;
+  total_containers: number;
+  healthy_count: number;
+  containers: ApiContainerHealthItem[];
+}
+
+export interface ApiMarketingLeadItem {
+  id: string;
+  full_name: string;
+  work_email: string;
+  company_name: string;
+  team_size?: string | null;
+  use_case?: string | null;
+  message?: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface ApiMarketingPageTraffic {
+  path: string;
+  title: string;
+  views: number;
+  unique_visitors: number;
+  conversion_rate_pct: number;
+}
+
+export interface ApiMarketingChannelTraffic {
+  channel: string;
+  visitors: number;
+  percentage: number;
+}
+
+export interface ApiPlatformMarketingAnalyticsResponse {
+  generated_at: string;
+  period_days: number;
+  summary: {
+    total_pageviews_30d: number;
+    unique_visitors_30d: number;
+    sandbox_launches: number;
+    whitepaper_downloads: number;
+    total_leads: number;
+    pending_leads: number;
+    trial_conversion_rate_pct: number;
+    avg_session_duration: string;
+    bounce_rate_pct: number;
+  };
+  top_pages: ApiMarketingPageTraffic[];
+  channels: ApiMarketingChannelTraffic[];
+  recent_leads: ApiMarketingLeadItem[];
+}
+
 export interface ApiInvitePreview {
   email: string;
   role: string;
@@ -805,7 +967,37 @@ export const api = {
   completeOidcLogin: (body: { code: string; state: string }) =>
     apiFetch<ApiTokenResponse>("/auth/oidc/callback", { method: "POST", body: JSON.stringify(body) }),
 
+  changePassword: (token: string, body: { current_password: string; new_password: string }) =>
+    apiFetch<{ message: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  updateMyProfile: (token: string, body: { name: string }) =>
+    apiFetch<ApiUser>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }, token),
+
   getPlatformConfig: () => apiFetch<ApiPlatformConfig>("/platform/config"),
+
+  listPlatformAdmins: (token: string) =>
+    apiFetch<ApiPlatformAdmin[]>("/platform/admins", {}, token),
+
+  createPlatformAdmin: (token: string, body: ApiPlatformAdminCreateRequest) =>
+    apiFetch<ApiPlatformAdmin>("/platform/admins", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
+  updatePlatformAdmin: (token: string, adminId: string, body: ApiPlatformAdminUpdateRequest) =>
+    apiFetch<ApiPlatformAdmin>(`/platform/admins/${adminId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }, token),
+
+  deletePlatformAdmin: (token: string, adminId: string) =>
+    apiFetch<void>(`/platform/admins/${adminId}`, { method: "DELETE" }, token),
 
   listPlatformTenants: (token: string) =>
     apiFetch<ApiPlatformTenant[]>("/platform/tenants", {}, token),
@@ -900,6 +1092,39 @@ export const api = {
 
   deleteBlogArticle: (token: string, articleId: string) =>
     apiFetch<void>(`/platform/blogs/${articleId}`, { method: "DELETE" }, token),
+
+  uploadPlatformMedia: async (token: string, file: File): Promise<ApiPlatformMediaUploadResponse> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${API_BASE}/platform/media/upload`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    if (!res.ok) {
+      let msg = "Failed to upload media asset";
+      try {
+        const err = await res.json();
+        msg = err.detail || msg;
+      } catch {}
+      throw new ApiError(msg, res.status);
+    }
+    return res.json();
+  },
+
+  listPlatformMedia: (token: string) =>
+    apiFetch<ApiPlatformMediaItem[]>("/platform/media", {}, token),
+
+  deletePlatformMedia: (token: string, filename: string) =>
+    apiFetch<void>(`/platform/media/${encodeURIComponent(filename)}`, { method: "DELETE" }, token),
+
+  getPlatformContainersHealth: (token: string) =>
+    apiFetch<ApiContainerHealthResponse>("/platform/containers/health", {}, token),
+
+  getPlatformMarketingAnalytics: (token: string, days = 30) =>
+    apiFetch<ApiPlatformMarketingAnalyticsResponse>(`/platform/marketing/analytics?days=${days}`, {}, token),
 
   previewInvite: (inviteToken: string) =>
     apiFetch<ApiInvitePreview>(`/auth/invite/${encodeURIComponent(inviteToken)}`),
@@ -1545,6 +1770,12 @@ export const api = {
   rebalanceLlmProviders: (token: string) =>
     apiFetch<ApiProviderRebalanceResponse>("/llm/providers/rebalance-percentages", { method: "POST" }, token),
 
+  testLlmProviderConnection: (token: string, body: ApiLlmProviderTestRequest) =>
+    apiFetch<ApiLlmProviderTestResponse>("/llm/providers/test-connection", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, token),
+
   getRoutingRules: (token: string) =>
     apiFetch<ApiRoutingRule[]>("/llm/routing-rules", {}, token),
 
@@ -1969,6 +2200,27 @@ export const api = {
 
   testAlertWebhook: (token: string, webhookId: string) =>
     apiFetch<ApiAlertWebhookTestResult>(`/settings/alert-webhooks/${webhookId}/test`, { method: "POST" }, token),
+
+  getTenantSmtp: (token: string) =>
+    apiFetch<ApiSmtpConfig>("/settings/smtp", {}, token),
+
+  updateTenantSmtp: (token: string, body: ApiSmtpConfigUpdate) =>
+    apiFetch<ApiSmtpConfig>("/settings/smtp", { method: "PUT", body: JSON.stringify(body) }, token),
+
+  testTenantSmtp: (token: string, body: ApiSmtpTestRequest) =>
+    apiFetch<ApiSmtpTestResponse>("/settings/smtp/test", { method: "POST", body: JSON.stringify(body) }, token),
+
+  getPlatformSmtp: (token: string) =>
+    apiFetch<ApiSmtpConfig>("/platform/smtp", {}, token),
+
+  updatePlatformSmtp: (token: string, body: ApiSmtpConfigUpdate) =>
+    apiFetch<ApiSmtpConfig>("/platform/smtp", { method: "PUT", body: JSON.stringify(body) }, token),
+
+  testPlatformSmtp: (token: string, body: ApiSmtpTestRequest) =>
+    apiFetch<ApiSmtpTestResponse>("/platform/smtp/test", { method: "POST", body: JSON.stringify(body) }, token),
+
+  submitTrialRequest: (body: ApiTrialRequestCreate) =>
+    apiFetch<ApiTrialSubmissionResult>("/public/trial-requests", { method: "POST", body: JSON.stringify(body) }),
 
   getExecutiveSummary: (token: string, params?: ApiDateRangeParams) => {
     const query = new URLSearchParams();
@@ -2892,6 +3144,20 @@ export interface ApiLlmProviderUpdateRequest {
   model_aliases?: string[];
   cost_per_1m_input?: number;
   cost_per_1m_output?: number;
+}
+
+export interface ApiLlmProviderTestRequest {
+  provider_type: string;
+  api_key?: string;
+  endpoint_url?: string;
+  provider_id?: string;
+}
+
+export interface ApiLlmProviderTestResponse {
+  success: boolean;
+  message: string;
+  latency_ms?: number;
+  models_found?: string[];
 }
 
 export interface ApiRoutingRule {
@@ -4125,4 +4391,196 @@ export const customIntentsAPI = {
     }, token);
   },
 };
+
+export interface EdgeNodeItem {
+  id: string;
+  node_id: string;
+  name: string;
+  region: string;
+  cloud_provider: string;
+  status: string;
+  ip_address?: string | null;
+  hostname?: string | null;
+  bundle_version: number;
+  last_heartbeat_at?: string | null;
+  sync_latency_ms: number;
+  requests_routed_24h: number;
+  cpu_percent?: number | null;
+  memory_percent?: number | null;
+  is_active: boolean;
+  created_at: string;
+  enrollment_token?: string | null;
+}
+
+export interface EdgeNodeListResponse {
+  nodes: EdgeNodeItem[];
+  total_active_nodes: number;
+  global_sync_healthy: boolean;
+  average_edge_latency_ms: number;
+}
+
+export interface EdgeNodeCreateRequest {
+  name: string;
+  region: string;
+  cloud_provider?: string;
+  ip_address?: string;
+  hostname?: string;
+}
+
+export const edgeMeshAPI = {
+  listNodes: async (token?: string) => {
+    return apiFetch<EdgeNodeListResponse>(`/edge/nodes`, {}, token);
+  },
+  createNode: async (data: EdgeNodeCreateRequest, token?: string) => {
+    return apiFetch<EdgeNodeItem>(`/edge/nodes`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token);
+  },
+  getSyncBundle: async (region: string = "us-east-1", token?: string) => {
+    return apiFetch<any>(`/edge/bundle?region=${region}`, {}, token);
+  },
+  deleteNode: async (nodeId: string, token?: string) => {
+    return apiFetch<void>(`/edge/nodes/${nodeId}`, {
+      method: "DELETE",
+    }, token);
+  },
+};
+
+export interface ClassifierRuleItem {
+  id: string;
+  tenant_id?: string | null;
+  scope: string; // 'global' | 'tenant'
+  name: string;
+  description?: string | null;
+  action: string; // 'block' | 'redact' | 'monitor' | 'request_approval'
+  risk_level: string; // 'low' | 'medium' | 'high' | 'critical'
+  pattern_type: string; // 'keyword' | 'regex' | 'ast_syntax' | 'composite'
+  keywords: string[];
+  regex_pattern?: string | null;
+  syntax_rules?: Record<string, any> | null;
+  confidence_threshold: number;
+  is_active: boolean;
+  is_system: boolean;
+  explanation_template?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ClassifierRuleCreatePayload {
+  name: string;
+  description?: string;
+  scope: string;
+  tenant_id?: string;
+  action: string;
+  risk_level: string;
+  pattern_type: string;
+  keywords: string[];
+  regex_pattern?: string;
+  syntax_rules?: Record<string, any>;
+  confidence_threshold: number;
+  is_active?: boolean;
+  explanation_template?: string;
+}
+
+export interface ClassifierMatchResult {
+  rule_id?: string;
+  rule_name?: string;
+  scope: string;
+  category: string;
+  action: string;
+  risk_level: string;
+  score: number;
+  matched_tokens?: string[];
+  matched_token?: string;
+  start?: number;
+  end?: number;
+  explanation: string;
+}
+
+export interface ClassifierTestResponse {
+  verdict: string;
+  risk_score: number;
+  risk_tier: string;
+  execution_time_micros: number;
+  latency_ms: number;
+  engine: string;
+  deobfuscated: boolean;
+  is_blocked: boolean;
+  is_redacted: boolean;
+  matches: ClassifierMatchResult[];
+  modified_text?: string | null;
+}
+
+export interface ClassifierMetricsResponse {
+  total_scans: number;
+  blocked_count: number;
+  redacted_count: number;
+  block_rate_percent: number;
+  avg_latency_micros: number;
+  avg_latency_ms: number;
+  engine_efficiency: string;
+  category_distribution: Record<string, number>;
+  recent_trend: Array<{ day: string; scans: number; blocked: number }>;
+}
+
+export interface ClassifierAiAssistResponse {
+  name: string;
+  description: string;
+  scope: string;
+  action: string;
+  risk_level: string;
+  pattern_type: string;
+  keywords: string[];
+  regex_pattern: string;
+  confidence_threshold: number;
+  explanation_template: string;
+  test_phrases?: {
+    positive_matches: string[];
+    negative_matches: string[];
+  };
+}
+
+export const classifierAPI = {
+  getMetrics: async (token?: string) => {
+    return apiFetch<ClassifierMetricsResponse>(`/platform/classifier/metrics`, {}, token);
+  },
+  listRules: async (scope?: string, tenantId?: string, token?: string) => {
+    const params = new URLSearchParams();
+    if (scope) params.append("scope", scope);
+    if (tenantId) params.append("tenant_id", tenantId);
+    const qs = params.toString();
+    return apiFetch<ClassifierRuleItem[]>(`/platform/classifier/rules${qs ? `?${qs}` : ""}`, {}, token);
+  },
+  createRule: async (data: ClassifierRuleCreatePayload, token?: string) => {
+    return apiFetch<ClassifierRuleItem>(`/platform/classifier/rules`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token);
+  },
+  updateRule: async (ruleId: string, data: Partial<ClassifierRuleCreatePayload>, token?: string) => {
+    return apiFetch<ClassifierRuleItem>(`/platform/classifier/rules/${ruleId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }, token);
+  },
+  deleteRule: async (ruleId: string, token?: string) => {
+    return apiFetch<void>(`/platform/classifier/rules/${ruleId}`, {
+      method: "DELETE",
+    }, token);
+  },
+  testPayload: async (data: { text: string; tenant_id?: string; tool_name?: string; tool_arguments?: Record<string, any> }, token?: string) => {
+    return apiFetch<ClassifierTestResponse>(`/platform/classifier/test`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token);
+  },
+  aiAssist: async (goal: string, target_scope: string = "global", token?: string) => {
+    return apiFetch<ClassifierAiAssistResponse>(`/platform/classifier/assist`, {
+      method: "POST",
+      body: JSON.stringify({ goal, target_scope }),
+    }, token);
+  },
+};
+
 

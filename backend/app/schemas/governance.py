@@ -592,6 +592,20 @@ class LLMProviderUpdateRequest(BaseModel):
     cost_per_1m_output: float | None = Field(default=None, ge=0)
 
 
+class LLMProviderTestConnectionRequest(BaseModel):
+    provider_type: str
+    api_key: str | None = None
+    endpoint_url: str | None = None
+    provider_id: str | None = None
+
+
+class LLMProviderTestConnectionResponse(BaseModel):
+    success: bool
+    message: str
+    latency_ms: float | None = None
+    models_found: list[str] | None = None
+
+
 class RoutingRuleResponse(BaseModel):
     id: str
     name: str

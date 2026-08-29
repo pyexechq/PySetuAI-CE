@@ -1,6 +1,7 @@
 import {
   Building2,
   FileText,
+  Globe,
   KeyRound,
   Layers,
   Network,
@@ -68,6 +69,14 @@ export const settingsNavItems: SettingsNavItem[] = [
     href: "/settings/gateway",
     icon: Network,
     description: "Tenant-wide rate limits, token saving default, token budgets, and API origins",
+    group: "platform",
+  },
+  {
+    id: "edge-gateways",
+    label: "Edge Gateway Mesh",
+    href: "/ai-gateway?tab=edge-mesh",
+    icon: Globe,
+    description: "Multi-region edge gateway nodes, VPC data planes, and sub-2ms local OPA DLP execution",
     group: "platform",
   },
   {

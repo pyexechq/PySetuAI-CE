@@ -641,4 +641,4 @@ export const HELP_POLICIES = [
   { href: "/cookies", label: "Cookie policy", description: "Cookies and local storage used by the product.", icon: Cookie },
 ] as const;
 
-export const HELP_SUPPORT_EMAIL = "security@pysetu.com";
+export const HELP_SUPPORT_EMAIL = "hello@pysetu.io";

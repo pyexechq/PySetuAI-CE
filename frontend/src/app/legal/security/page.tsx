@@ -25,7 +25,7 @@ export default function LegalSecurityPage() {
       <h2>Reporting vulnerabilities</h2>
       <p>
         If you believe you have discovered a security issue, please report it responsibly to{" "}
-        <a href="mailto:security@pysetu.com">security@pysetu.com</a>. Do not publicly disclose issues until
+        <a href="mailto:security@pysetu.io">security@pysetu.io</a>. Do not publicly disclose issues until
         we have had a reasonable opportunity to investigate and remediate.
       </p>
     </LegalPageShell>

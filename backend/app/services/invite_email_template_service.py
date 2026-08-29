@@ -155,14 +155,16 @@ def build_invite_email_context(
 
 
 def sample_preview_context() -> dict[str, str]:
+    sample_subdomain = "globex"
+    sample_tenant_url = tenant_public_url(sample_subdomain)
     return {
         "tenant_name": "Globex Industries",
         "admin_name": "Alex Admin",
         "admin_email": "alex.admin@globex.com",
-        "invite_url": "https://globex.localhost:3000/accept-invite?token=sample-token",
+        "invite_url": f"{sample_tenant_url}/accept-invite?token=sample-token",
         "expires_at": datetime.now(UTC).strftime("%B %d, %Y %H:%M UTC"),
         "platform_name": settings.app_name,
-        "tenant_url": "https://globex.localhost:3000",
+        "tenant_url": sample_tenant_url,
     }
 
 
@@ -278,7 +280,10 @@ async def send_tenant_invite_email(
             invite_url=invite_url,
         ),
     )
-    delivery = send_email(
+    from app.services.email_service import send_tenant_email
+    delivery = await send_tenant_email(
+        db=db,
+        tenant_id=tenant.id,
         recipients=[invite.email],
         subject=preview["subject"],
         html_body=preview["html_body"],
