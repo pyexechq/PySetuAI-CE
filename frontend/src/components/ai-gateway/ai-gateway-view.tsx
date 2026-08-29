@@ -267,15 +267,15 @@ export function AiGatewayView() {
       <QuickLinkPills links={QUICK_LINKS} />
 
       {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-4 sm:p-6 shadow-sm">
         {/* Subtle Background Glow */}
         <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
 
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between w-full min-w-0">
           {/* Status & Highlights */}
-          <div className="space-y-2.5 max-w-xl">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="space-y-2.5 w-full min-w-0 max-w-xl">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 Gateway Operational
@@ -289,7 +289,7 @@ export function AiGatewayView() {
               </Badge>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-foreground break-words">
               Enterprise AI Gateway & Ingress Mesh
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
@@ -297,60 +297,60 @@ export function AiGatewayView() {
             </p>
 
             {/* Protocol Support Pills */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Protocols:
               </span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 <CheckCircle2 className="h-3 w-3" /> OpenAI v1
               </span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 <CheckCircle2 className="h-3 w-3" /> Gemini v1beta
               </span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 <CheckCircle2 className="h-3 w-3" /> Anthropic Claude v1
               </span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                 <Zap className="h-3 w-3" /> Edge Mesh
               </span>
             </div>
           </div>
 
           {/* Quick Metrics Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 shrink-0">
-            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2.5 sm:gap-3 w-full lg:w-auto shrink-0">
+            <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Ingress Health</span>
                 <Shield className="h-3.5 w-3.5 text-emerald-500" />
               </div>
-              <p className="mt-1.5 text-xl font-bold text-foreground">100%</p>
+              <p className="mt-1.5 text-lg sm:text-xl font-bold text-foreground">100%</p>
               <p className="text-[10px] text-muted-foreground">OPA + DLP Active</p>
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+            <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Today&apos;s Traffic</span>
                 <Cloud className="h-3.5 w-3.5 text-blue-500" />
               </div>
-              <p className="mt-1.5 text-xl font-bold text-foreground">{status.requests_today || 0}</p>
+              <p className="mt-1.5 text-lg sm:text-xl font-bold text-foreground">{status.requests_today || 0}</p>
               <p className="text-[10px] text-muted-foreground">Requests processed</p>
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+            <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Threats Blocked</span>
                 <ShieldAlert className="h-3.5 w-3.5 text-rose-500" />
               </div>
-              <p className="mt-1.5 text-xl font-bold text-rose-600 dark:text-rose-400">{status.blocked_today || 0}</p>
+              <p className="mt-1.5 text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400">{status.blocked_today || 0}</p>
               <p className="text-[10px] text-muted-foreground">Zero-AI Guarded</p>
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+            <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Gateway Latency</span>
                 <Zap className="h-3.5 w-3.5 text-amber-500" />
               </div>
-              <p className="mt-1.5 text-xl font-bold text-emerald-600 dark:text-emerald-400">&lt; 0.3 ms</p>
+              <p className="mt-1.5 text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">&lt; 0.3 ms</p>
               <p className="text-[10px] text-muted-foreground">Pre-flight overhead</p>
             </div>
           </div>

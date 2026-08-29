@@ -145,15 +145,14 @@ export function AuditExplorerView() {
   return (
     <div className="space-y-6">
       <QuickLinkPills links={QUICK_LINKS} />
-
       {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-4 sm:p-6 shadow-sm">
         <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
 
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2.5 max-w-xl">
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between w-full min-w-0">
+          <div className="space-y-2.5 w-full min-w-0 max-w-xl">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 Live Ingestion Stream
@@ -167,7 +166,7 @@ export function AuditExplorerView() {
               </Badge>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-foreground break-words">
               Audit Explorer & Telemetry Trace Mesh
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
@@ -176,41 +175,43 @@ export function AuditExplorerView() {
           </div>
 
           {/* Quick Metrics Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 shrink-0">
-            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2.5 sm:gap-3 w-full lg:w-auto shrink-0">
+            <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Total Events</span>
                 <Activity className="h-3.5 w-3.5 text-blue-500" />
               </div>
-              <p className="mt-1.5 text-xl font-bold text-foreground">{statusCounts.total || logs.length}</p>
+              <p className="mt-1.5 text-lg sm:text-xl font-bold text-foreground">{statusCounts.total || logs.length}</p>
               <p className="text-[10px] text-muted-foreground">Recorded in range</p>
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+            <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Allowed Traffic</span>
                 <FileCheck className="h-3.5 w-3.5 text-emerald-500" />
               </div>
-              <p className="mt-1.5 text-xl font-bold text-emerald-600 dark:text-emerald-400">{statusCounts.allowed}</p>
+              <p className="mt-1.5 text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">{statusCounts.allowed}</p>
               <p className="text-[10px] text-muted-foreground">Policy cleared</p>
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+            <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Threats Blocked</span>
                 <ShieldAlert className="h-3.5 w-3.5 text-rose-500" />
               </div>
-              <p className="mt-1.5 text-xl font-bold text-rose-600 dark:text-rose-400">{statusCounts.blocked}</p>
+              <p className="mt-1.5 text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400">{statusCounts.blocked}</p>
               <p className="text-[10px] text-muted-foreground">Violations intercepted</p>
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+            <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm">
               <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-[11px] font-semibold uppercase tracking-wider">Under Review</span>
-                <Search className="h-3.5 w-3.5 text-amber-500" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Pending Review</span>
+                <Activity className="h-3.5 w-3.5 text-amber-500" />
               </div>
-              <p className="mt-1.5 text-xl font-bold text-amber-600 dark:text-amber-400">{statusCounts.review}</p>
-              <p className="text-[10px] text-muted-foreground">Escalated to human</p>
+              <p className="mt-1.5 text-lg sm:text-xl font-bold text-amber-600 dark:text-amber-400">
+                {statusCounts.review}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Flagged events</p>
             </div>
           </div>
         </div>

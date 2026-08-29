@@ -71,13 +71,13 @@ export function MonitoringView() {
       <QuickLinkPills links={QUICK_LINKS} />
 
       {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-4 sm:p-6 shadow-sm">
         <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
 
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2.5 max-w-xl">
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between w-full min-w-0">
+          <div className="space-y-2.5 w-full min-w-0 max-w-xl">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 Live Ingestion Stream
@@ -91,7 +91,7 @@ export function MonitoringView() {
               </Badge>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-foreground break-words">
               Monitoring & Observability Hub
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">

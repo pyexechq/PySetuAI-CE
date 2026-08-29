@@ -29,13 +29,13 @@ export function SettingsGroupNav() {
   return (
     <div className="space-y-6" data-help-id="settings-group-nav">
       {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-4 sm:p-6 shadow-sm">
         <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
 
-        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2 max-w-xl">
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between w-full min-w-0">
+          <div className="space-y-2.5 w-full min-w-0 max-w-xl">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 Tenant Mesh Active
@@ -46,7 +46,7 @@ export function SettingsGroupNav() {
               </Badge>
             </div>
 
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground break-words">
               Enterprise Settings & System Controls
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
@@ -55,7 +55,7 @@ export function SettingsGroupNav() {
           </div>
 
           {/* Primary Category Switcher */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-card/80 border border-border/60 shadow-xs shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-card/80 border border-border/60 shadow-xs shrink-0 w-full sm:w-auto">
             {GROUP_ORDER.map((g) => {
               const active = g === group;
               const firstHref = settingsItemsForGroup(g)[0]?.href ?? "/settings/organization";
@@ -65,7 +65,7 @@ export function SettingsGroupNav() {
                   key={g}
                   href={active ? pathname : firstHref}
                   className={cn(
-                    "flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap",
+                    "flex flex-1 sm:flex-initial items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap",
                     active
                       ? "bg-primary text-primary-foreground shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
