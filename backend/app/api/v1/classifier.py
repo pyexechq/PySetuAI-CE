@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 import uuid
 from typing import Annotated, Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -241,12 +241,12 @@ async def update_classifier_rule(
     return _intent_to_response(intent)
 
 
-@router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_classifier_rule(
     rule_id: str,
     current_user: Annotated[User, Depends(_require_platform_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> None:
+) -> Response:
     """Deletes an Intent & Risk rule."""
     try:
         r_uuid = uuid.UUID(rule_id)
@@ -262,6 +262,7 @@ async def delete_classifier_rule(
 
     await db.delete(intent)
     await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/test", response_model=ClassifierTestResponse)
