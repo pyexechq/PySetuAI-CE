@@ -29,6 +29,7 @@ fi
 # --invert-paths removes these specific paths from the repo entirely
 git filter-repo --force \
   --path frontend/src/components/marketing/ --invert-paths \
+  --path frontend/src/components/platform/ --invert-paths \
   --path frontend/src/app/platform/ --invert-paths \
   --path backend/app/api/v1/platform.py --invert-paths \
   --path backend/app/api/v1/oidc.py --invert-paths \

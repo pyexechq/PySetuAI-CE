@@ -24,9 +24,9 @@ if ! command -v git-filter-repo &> /dev/null; then
     pip install git-filter-repo
 fi
 
-# Only strip the PySetu Cloud specific components
 git filter-repo --force \
   --path frontend/src/components/marketing/ --invert-paths \
+  --path frontend/src/components/platform/ --invert-paths \
   --path frontend/src/app/platform/ --invert-paths \
   --path backend/app/api/v1/platform.py --invert-paths
 
