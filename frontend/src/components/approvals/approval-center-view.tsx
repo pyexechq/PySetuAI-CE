@@ -48,21 +48,69 @@ function ApprovalCenterViewInner() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Badge variant="warning">Pending: {pendingCount}</Badge>
-          <Badge variant="outline">Total shown: {approvals.length}</Badge>
+      {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2.5 max-w-xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
+                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                Human-in-the-Loop Gate
+              </Badge>
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-xs font-medium gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                Four-Eyes Access Control
+              </Badge>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              Approvals & Break-Glass Authorizations
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Review and authorize sensitive autonomous agent tool executions, high-risk MCP operations, and emergency break-glass policy overrides.
+            </p>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid grid-cols-2 gap-3 shrink-0">
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Pending Action</span>
+                <ShieldCheck className="h-3.5 w-3.5 text-amber-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-amber-600 dark:text-amber-400">{pendingCount}</p>
+              <p className="text-[10px] text-muted-foreground">Requires sign-off</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Total Requests</span>
+                <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-foreground">{approvals.length}</p>
+              <p className="text-[10px] text-muted-foreground">Historical records</p>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+      </div>
+
+      <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-card/60 border border-border/50 shadow-xs">
           {(["pending", "all"] as const).map((filter) => (
-            <Button
+            <button
               key={filter}
-              variant={statusFilter === filter ? "secondary" : "ghost"}
-              size="sm"
               onClick={() => setStatusFilter(filter)}
+              className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                statusFilter === filter
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
-              {filter[0].toUpperCase() + filter.slice(1)}
-            </Button>
+              {filter === "pending" ? `Pending (${pendingCount})` : `All Records (${approvals.length})`}
+            </button>
           ))}
         </div>
       </div>

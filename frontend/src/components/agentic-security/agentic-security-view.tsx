@@ -175,58 +175,98 @@ function AgenticSecurityViewInner() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Card className="border-border/60 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Activity className="h-3.5 w-3.5" /> Open anomalies
+      {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-rose-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2.5 max-w-xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Autonomous Guardian Active
+              </Badge>
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-xs font-medium gap-1">
+                <ShieldAlert className="h-3.5 w-3.5 text-primary" />
+                Rogue Agent Circuit Breaker
+              </Badge>
+              <Badge variant="outline" className="bg-muted text-muted-foreground border-border/60 text-xs font-mono">
+                Sub-2ms Anomaly Trap
+              </Badge>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              Agentic Threat Defense & Guardian Mesh
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Detect and remediate autonomous agent runaway loops, prompt injection payloads, silent data exfiltration vectors, and unapproved tool call chains.
+            </p>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 shrink-0">
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Open Anomalies</span>
+                <Activity className="h-3.5 w-3.5 text-primary" />
               </div>
-              <p className="mt-1 text-2xl font-semibold">{anomalySummary?.open ?? 0}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> Injection findings
+              <p className="mt-1.5 text-xl font-bold text-foreground">{anomalySummary?.open ?? 0}</p>
+              <p className="text-[10px] text-muted-foreground">Behavioral drifts</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Injections</span>
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
               </div>
-              <p className="mt-1 text-2xl font-semibold">{injectionSummary?.open ?? 0}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Cable className="h-3.5 w-3.5 text-red-500" /> Exfiltration
+              <p className="mt-1.5 text-xl font-bold text-amber-600 dark:text-amber-400">{injectionSummary?.open ?? 0}</p>
+              <p className="text-[10px] text-muted-foreground">Blocked findings</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Exfiltrations</span>
+                <Cable className="h-3.5 w-3.5 text-rose-500" />
               </div>
-              <p className="mt-1 text-2xl font-semibold">{exfilSummary?.open ?? 0}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Workflow className="h-3.5 w-3.5 text-amber-500" /> Guardian pending
+              <p className="mt-1.5 text-xl font-bold text-rose-600 dark:text-rose-400">{exfilSummary?.open ?? 0}</p>
+              <p className="text-[10px] text-muted-foreground">Egress traps</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Guardian Actions</span>
+                <Workflow className="h-3.5 w-3.5 text-blue-500" />
               </div>
-              <p className="mt-1 text-2xl font-semibold">{guardianSummary?.pending ?? 0}</p>
-            </CardContent>
-          </Card>
+              <p className="mt-1.5 text-xl font-bold text-blue-600 dark:text-blue-400">{guardianSummary?.pending ?? 0}</p>
+              <p className="text-[10px] text-muted-foreground">Pending mitigation</p>
+            </div>
+          </div>
         </div>
-        <Button size="sm" onClick={handleRunGuardian} disabled={guardianRunning}>
-          {guardianRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-          Run Guardian Loop
-        </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            variant={activeTab === tab.id ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </Button>
-        ))}
+      {/* ─── Navigation Action Bar ────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-card/60 border border-border/50 shadow-xs">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                activeTab === tab.id
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <Button size="sm" className="gap-1.5 text-xs h-8" onClick={handleRunGuardian} disabled={guardianRunning}>
+          {guardianRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+          Run Guardian Loop
+        </Button>
       </div>
 
       {activeTab === "anomalies" && (
