@@ -11,8 +11,9 @@ import re
 from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.gemini_client import get_gemini_client, is_gemini_configured
-from app.services.secrets_service import OPENAI_SECRET, get_tenant_secret
+from app.config import settings
+from app.schemas.openai import ChatMessage
+from app.services.gemini_client import call_gemini
 
 
 def _heuristic_rule_synthesis(goal: str) -> dict[str, Any]:
@@ -75,11 +76,9 @@ async def generate_classifier_rule_from_prompt(
 
     trimmed_goal = goal.strip()
 
-    # Attempt AI synthesis if provider configured
-    try:
-        # Check Gemini
-        if is_gemini_configured():
-            client = get_gemini_client()
+    # Attempt AI synthesis if Gemini API key configured
+    if settings.gemini_api_key:
+        try:
             prompt = f"""You are a cybersecurity expert building deterministic, high-speed regex & keyword rules for an AI Gateway Intent & Risk Firewall.
 
 User Goal: "{trimmed_goal}"
@@ -102,17 +101,22 @@ Generate a valid JSON response with this exact structure:
 }}
 Output ONLY valid raw JSON without markdown code fences."""
 
-            response = await client.generate_content_async(prompt)
-            raw_text = response.text.strip()
-            # Clean possible markdown wrapping
+            messages = [ChatMessage(role="user", content=prompt)]
+            content, _ = await call_gemini(
+                model=settings.gemini_default_model or "gemini-1.5-pro",
+                messages=messages,
+                api_key=settings.gemini_api_key,
+                temperature=0.2,
+            )
+            raw_text = content.strip()
             if raw_text.startswith("```"):
                 raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
                 raw_text = re.sub(r"\s*```$", "", raw_text)
             parsed = json.loads(raw_text)
             parsed["scope"] = target_scope
             return parsed
-    except Exception:
-        pass
+        except Exception:
+            pass
 
     # Fallback to deterministic synthesis
     result = _heuristic_rule_synthesis(trimmed_goal)

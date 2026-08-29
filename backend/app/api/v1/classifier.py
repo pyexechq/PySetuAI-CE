@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rbac import MANAGE_POLICIES, PLATFORM_ADMIN_ROLE, require_permission, require_roles
+from app.core.rbac import MANAGE_POLICIES, MANAGE_TENANTS, require_permission
 from app.db.session import get_db
 from app.models.governance import ClassifierEfficiencyMetric, CustomIntent
 from app.models.tenant import User
@@ -32,7 +32,7 @@ from app.services.classifier.intent_engine import (
 
 router = APIRouter(prefix="/platform/classifier", tags=["Intent & Risk Classifier"])
 
-_require_platform_admin = require_roles([PLATFORM_ADMIN_ROLE])
+_require_platform_admin = require_permission(MANAGE_TENANTS)
 _require_policy_manager = require_permission(MANAGE_POLICIES)
 
 
