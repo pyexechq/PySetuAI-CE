@@ -235,23 +235,43 @@ export function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <Card className="border-border/60 bg-card/50">
+    <Card className="border-border/80 bg-card/60 rounded-2xl shadow-xs">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          {theme === "dark" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-          Appearance
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          {theme === "dark" ? <Moon className="h-5 w-5 text-indigo-400" /> : <Sun className="h-5 w-5 text-amber-500" />}
+          Appearance & Theme Preferences
         </CardTitle>
-        <CardDescription>Theme and display preferences</CardDescription>
+        <CardDescription>Configure system color mode and visual accessibility</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-            <span className="text-sm">Theme: {theme === "dark" ? "Dark" : "Light"}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-muted/20 border border-border/60">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              {theme === "dark" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Interface Theme</p>
+              <p className="text-xs text-muted-foreground">Currently active: <span className="font-semibold capitalize text-foreground">{theme ?? "dark"}</span></p>
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-            Toggle Theme
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={theme === "light" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTheme("light")}
+              className="gap-1.5 text-xs h-8"
+            >
+              <Sun className="h-3.5 w-3.5" /> Light
+            </Button>
+            <Button
+              variant={theme === "dark" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTheme("dark")}
+              className="gap-1.5 text-xs h-8"
+            >
+              <Moon className="h-3.5 w-3.5" /> Dark
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -268,12 +288,21 @@ export function SettingsSignOut() {
   }
 
   return (
-    <>
-      <Separator />
-      <Button variant="destructive" onClick={handleLogout} className="gap-2">
-        <LogOut className="h-4 w-4" />
-        Sign Out
-      </Button>
-    </>
+    <Card className="border-rose-500/30 bg-rose-500/5 rounded-2xl shadow-xs">
+      <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-2">
+            <LogOut className="h-4 w-4" /> Active Session & Sign Out
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Terminates your current JWT token session on this device.
+          </p>
+        </div>
+        <Button variant="destructive" size="sm" onClick={handleLogout} className="gap-2 shrink-0 self-start sm:self-auto">
+          <LogOut className="h-4 w-4" />
+          Sign Out Session
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

@@ -67,7 +67,9 @@ export function Header({ title, description, onMenuClick }: HeaderProps) {
         </div>
       </div>
       <div className="flex items-center gap-1 sm:gap-2">
-        <DateRangePicker />
+        <div className="hidden sm:block">
+          <DateRangePicker />
+        </div>
         <NotificationCenter />
         <HeaderHelpMenu />
         <Button
@@ -81,9 +83,11 @@ export function Header({ title, description, onMenuClick }: HeaderProps) {
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
         </Button>
-        <PlatformStatusBadge />
+        <div className="hidden lg:block">
+          <PlatformStatusBadge />
+        </div>
 
-        <div className="ml-2 flex items-center border-l border-border pl-4 relative" ref={profileRef} data-help-id="header-profile">
+        <div className="ml-1 sm:ml-2 flex items-center border-l border-border pl-2 sm:pl-4 relative" ref={profileRef} data-help-id="header-profile">
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="flex items-center gap-2 rounded-full ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
