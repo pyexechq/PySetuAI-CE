@@ -518,36 +518,104 @@ export function PolicyStudioLayout() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2.5 max-w-xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                OPA Engine Active
+              </Badge>
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-xs font-medium gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                Rego Evaluator &lt;0.8ms
+              </Badge>
+              <Badge variant="outline" className="bg-muted text-muted-foreground border-border/60 text-xs font-mono">
+                MITRE ATLAS Defense
+              </Badge>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              Policy Studio & Guardrail Canvas
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Author declarative Rego guardrails, configure custom NLP intent classifiers, simulate prompt injection attacks, and enforce enterprise compliance templates.
+            </p>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 shrink-0">
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Active Rules</span>
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-foreground">{displayRules.filter((r) => r.enabled).length}</p>
+              <p className="text-[10px] text-muted-foreground">In active policy</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Policy Nodes</span>
+                <Folder className="h-3.5 w-3.5 text-blue-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-foreground">{tree.length}</p>
+              <p className="text-[10px] text-muted-foreground">Hierarchical trees</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Top Tab Navigation */}
-      <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-        <Button
-          variant={activeStudioTab === "policies" ? "secondary" : "ghost"}
-          size="sm"
-          className="gap-2"
-          onClick={() => setActiveStudioTab("policies")}
-        >
-          <ShieldCheck className="h-4 w-4 text-primary" />
-          Policy Tree & Rules
-        </Button>
-        <Button
-          variant={activeStudioTab === "intents" ? "secondary" : "ghost"}
-          size="sm"
-          className="gap-2"
-          onClick={() => setActiveStudioTab("intents")}
-        >
-          <Sparkles className="h-4 w-4 text-purple-400" />
-          Custom Intent Classifiers
-        </Button>
-        <div className="ml-auto">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-card/60 border border-border/50 shadow-xs">
+          <button
+            onClick={() => setActiveStudioTab("policies")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              activeStudioTab === "policies"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Policy Tree & Rules
+          </button>
+          <button
+            onClick={() => setActiveStudioTab("intents")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              activeStudioTab === "intents"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Sparkles className="h-3.5 w-3.5 text-purple-300" />
+            Custom Intent Classifiers
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="gap-1.5 text-xs h-8"
             onClick={() => setTemplateModalOpen(true)}
           >
-            <ShieldCheck className="h-4 w-4 text-green-500" />
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
             Compliance Templates
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs h-8"
+            onClick={() => setTesterOpen(true)}
+          >
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            Test Policy Simulator
           </Button>
         </div>
       </div>

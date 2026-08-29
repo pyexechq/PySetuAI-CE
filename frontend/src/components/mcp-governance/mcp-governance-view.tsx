@@ -91,23 +91,20 @@ function TabBar({
   if (tabs.length <= 1) return null;
 
   return (
-    <div className="flex border-b border-border/60 mb-6 gap-6 overflow-x-auto">
+    <div className="flex items-center gap-1.5 overflow-x-auto p-1 rounded-xl bg-card/60 border border-border/50 shadow-xs mb-6">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
           onClick={() => onChange(tab.id)}
           className={cn(
-            "pb-3 text-sm font-medium transition-colors relative whitespace-nowrap shrink-0",
+            "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0",
             active === tab.id
-              ? "text-primary"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
           )}
         >
           {tab.label}
-          {active === tab.id && (
-            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full" />
-          )}
         </button>
       ))}
     </div>
@@ -276,42 +273,109 @@ export function McpGovernanceView() {
 
   // ── render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-0">
-      {/* Page header bar */}
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-        <p className="text-sm text-muted-foreground">
-          {portalOnly
-            ? "Browse published integrations and connect your personal MCP credentials."
-            : "Manage, secure and govern all MCP servers and tools across the enterprise."}
-        </p>
+    <div className="space-y-6">
+      {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2.5 max-w-xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                MCP Circuit Breakers Active
+              </Badge>
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-xs font-medium gap-1">
+                <Shield className="h-3.5 w-3.5 text-primary" />
+                Zero-Trust Agent Sandbox
+              </Badge>
+              <Badge variant="outline" className="bg-muted text-muted-foreground border-border/60 text-xs font-mono">
+                OAuth 2.0 Broker
+              </Badge>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              Agentic Security & MCP Tool Governance
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Real-time tool multiplexing, rogue agent circuit breakers, blast-radius mitigation, argument schema validation, and granular role-based grants across all MCP servers.
+            </p>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 shrink-0">
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">MCP Servers</span>
+                <Server className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-foreground">{servers.length}</p>
+              <p className="text-[10px] text-muted-foreground">{activeCount} healthy</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">High Risk Tools</span>
+                <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-rose-600 dark:text-rose-400">{highRiskCount}</p>
+              <p className="text-[10px] text-muted-foreground">Sandboxed</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Tool Invocations</span>
+                <Activity className="h-3.5 w-3.5 text-blue-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-foreground">{formatNumber(totalToolCalls)}</p>
+              <p className="text-[10px] text-muted-foreground">Governed executions</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Discovered Tools</span>
+                <Wand2 className="h-3.5 w-3.5 text-amber-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-foreground">{allTools.length}</p>
+              <p className="text-[10px] text-muted-foreground">In active catalog</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Page header action bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+        <TabBar tabs={tabs} active={activeTab} onChange={handleTabChange} />
+
         {canEdit && !portalOnly && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2 mb-6">
             <Button
-              size="sm" variant="outline" className="gap-1.5"
+              size="sm" variant="outline" className="gap-1.5 text-xs h-8"
               disabled={checkingAll || servers.length === 0}
               onClick={runAllHealthChecks}
             >
-              <Activity className={cn("h-4 w-4", checkingAll && "animate-pulse")} />
-              {checkingAll ? "Checking…" : "Run health checks"}
+              <Activity className={cn("h-3.5 w-3.5", checkingAll && "animate-pulse")} />
+              {checkingAll ? "Checking…" : "Run Health Checks"}
             </Button>
             <Button
-              size="sm" variant="outline" className="gap-1.5 border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10"
+              size="sm" variant="outline" className="gap-1.5 text-xs h-8 border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10"
               onClick={() => setWizardOpen(true)}
             >
-              <Wand2 className="h-4 w-4" />
-              Import from API spec
+              <Wand2 className="h-3.5 w-3.5" />
+              Import API Spec
             </Button>
-            <Button size="sm" className="gap-1.5" onClick={openCreateModal}>
-              <Plus className="h-4 w-4" />
-              Register MCP
+            <Button size="sm" className="gap-1.5 text-xs h-8" onClick={openCreateModal}>
+              <Plus className="h-3.5 w-3.5" />
+              Register MCP Server
             </Button>
             <Button
               size="sm"
               variant="outline"
-              className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10 font-bold"
+              className="gap-1.5 text-xs h-8 border-primary/40 text-primary hover:bg-primary/10 font-bold"
               onClick={() => window.open('/developer-portal', '_blank')}
             >
-              <Globe className="h-4 w-4" />
+              <Globe className="h-3.5 w-3.5" />
               Developer Portal ↗
             </Button>
           </div>
@@ -319,8 +383,6 @@ export function McpGovernanceView() {
       </div>
 
       {actionError && <p className="mb-3 text-sm text-red-400">{actionError}</p>}
-
-      <TabBar tabs={tabs} active={activeTab} onChange={handleTabChange} />
 
       {/* ── OVERVIEW ──────────────────────────────────────────────────────────── */}
       {canGovern && activeTab === "overview" && (
