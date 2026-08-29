@@ -29,6 +29,10 @@ beat_schedule = {
         "task": "app.worker.tasks.export_siem_connectors",
         "schedule": 300.0,
     },
+    "nightly-classifier-regression-benchmark": {
+        "task": "app.worker.tasks.run_nightly_classifier_benchmark",
+        "schedule": crontab(hour=2, minute=0),
+    },
 }
 
 if settings.llm_rebalance_schedule_enabled:

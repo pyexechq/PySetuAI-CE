@@ -145,3 +145,27 @@ def run_guardian_loop_all_tenants(self) -> dict:
     except Exception as exc:
         logger.exception("Guardian loop all-tenants run failed")
         raise self.retry(exc=exc, countdown=60) from exc
+
+
+@celery_app.task(name="app.worker.tasks.run_nightly_classifier_benchmark")
+def run_nightly_classifier_benchmark() -> dict:
+    """Execute nightly regression benchmark against the golden 10,000 dataset."""
+    from app.services.classifier.evaluator import execute_dataset_benchmark
+
+    async def _run():
+        result = await execute_dataset_benchmark(sample_limit=10000)
+        logger.info(
+            "Nightly Classifier Benchmark: Accuracy=%.2f%%, Recall=%.2f%%, Latency=%.1fμs",
+            result["accuracy_percent"],
+            result["recall_percent"],
+            result["latency_profile"]["avg_micros"],
+        )
+        return {
+            "accuracy_percent": result["accuracy_percent"],
+            "recall_percent": result["recall_percent"],
+            "f1_score_percent": result["f1_score_percent"],
+            "avg_latency_micros": result["latency_profile"]["avg_micros"],
+            "total_rows": result["total_rows"],
+        }
+
+    return _run_async(_run())

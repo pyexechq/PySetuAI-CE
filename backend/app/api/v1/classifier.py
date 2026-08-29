@@ -16,6 +16,8 @@ from app.models.tenant import User
 from app.schemas.classifier import (
     ClassifierAiAssistRequest,
     ClassifierAiAssistResponse,
+    ClassifierBenchmarkRequest,
+    ClassifierBenchmarkResponse,
     ClassifierEfficiencyMetricsResponse,
     ClassifierMatchItem,
     ClassifierRuleCreateRequest,
@@ -25,6 +27,7 @@ from app.schemas.classifier import (
     ClassifierTestResponse,
 )
 from app.services.classifier.ai_assistant import generate_classifier_rule_from_prompt
+from app.services.classifier.evaluator import execute_dataset_benchmark
 from app.services.classifier.intent_engine import (
     BUILTIN_GLOBAL_RULES,
     classify_intent_and_risk,
@@ -327,3 +330,21 @@ async def ai_assist_rule_generation(
         target_scope=payload.target_scope,
     )
     return ClassifierAiAssistResponse(**res)
+
+
+@router.post("/benchmark", response_model=ClassifierBenchmarkResponse)
+async def run_classifier_dataset_benchmark(
+    payload: ClassifierBenchmarkRequest,
+    current_user: Annotated[User, Depends(_require_platform_admin)],
+) -> ClassifierBenchmarkResponse:
+    """Runs high-throughput deterministic evaluation across the 10,000-row dataset or custom uploaded CSV/JSONL."""
+    try:
+        results = await execute_dataset_benchmark(
+            file_content=payload.file_content,
+            file_format=payload.file_format,
+            sample_limit=payload.sample_limit,
+        )
+        return ClassifierBenchmarkResponse(**results)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+

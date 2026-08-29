@@ -274,6 +274,36 @@ async def compile_sync_bundle(
         },
     ]
 
+    from app.services.classifier.intent_engine import BUILTIN_GLOBAL_RULES
+    from app.services.cost_arbitrage_service import ARBITRAGE_TARGET_MAP
+    from app.services.mcp_sequence_detector import SEQUENCE_ATTACK_PATTERNS
+
+    classifier_items = [
+        {
+            "id": r.get("id"),
+            "name": r.get("name"),
+            "category": r.get("category"),
+            "action": r.get("action"),
+            "risk_level": r.get("risk_level"),
+            "regex_pattern": r.get("regex_pattern"),
+            "keywords": r.get("keywords", []),
+        }
+        for r in BUILTIN_GLOBAL_RULES
+    ]
+
+    mcp_chain_items = [
+        {
+            "id": p.get("id"),
+            "name": p.get("name"),
+            "attack_pattern": p.get("attack_pattern"),
+            "risk_score": p.get("risk_score"),
+            "action": p.get("action"),
+            "source_category": p.get("source_category"),
+            "target_category": p.get("target_category"),
+        }
+        for p in SEQUENCE_ATTACK_PATTERNS
+    ]
+
     return EdgeSyncBundleResponse(
         bundle_version=CURRENT_GLOBAL_BUNDLE_VERSION,
         generated_at=datetime.utcnow(),
@@ -282,6 +312,9 @@ async def compile_sync_bundle(
         policy_rules=policy_rules,
         model_aliases=alias_dict,
         dlp_patterns=dlp_rules,
+        classifier_rules=classifier_items,
+        mcp_attack_chains=mcp_chain_items,
+        cost_arbitrage_targets=ARBITRAGE_TARGET_MAP,
     )
 
 

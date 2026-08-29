@@ -123,3 +123,25 @@ class ClassifierAiAssistResponse(BaseModel):
     confidence_threshold: float = 0.75
     explanation_template: str
     test_phrases: Optional[dict[str, List[str]]] = None
+
+
+class ClassifierBenchmarkRequest(BaseModel):
+    file_content: Optional[str] = Field(None, description="Raw CSV or JSONL text if uploading custom dataset")
+    file_format: str = Field("jsonl", description="'jsonl' or 'csv'")
+    sample_limit: Optional[int] = Field(None, description="Optional cap on rows to evaluate (e.g. 1000, 5000, 10000)")
+
+
+class ClassifierBenchmarkResponse(BaseModel):
+    total_rows_evaluated: int
+    total_time_ms: float
+    scan_rate_per_sec: float
+    accuracy_percent: float
+    precision_percent: float
+    recall_percent: float
+    f1_score_percent: float
+    false_positive_rate_percent: float
+    latency_profile: dict[str, Any]
+    confusion_matrix: dict[str, int]
+    scenario_breakdown: List[dict[str, Any]]
+    missed_samples: List[dict[str, Any]]
+

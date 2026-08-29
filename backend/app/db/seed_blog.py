@@ -708,6 +708,71 @@ BLOG_ARTICLES = [
             },
         ],
     },
+    {
+        "slug": "zero-ai-gateway-mcp-sequence-defense",
+        "title": "Zero-AI Ingress Defense & Sequential MCP State Machine: Sub-Millisecond AI Security",
+        "excerpt": "How PySetu's deterministic classifier blocks prompt injections in <0.3ms and halts multi-step agent tool attacks before LLM token consumption.",
+        "category": "Architecture",
+        "feature": "Inline Gateway & MCP Security",
+        "date": "2026-08-29",
+        "read_time": "7 min read",
+        "author": "PySetu AI Security Team",
+        "tags": ["AI Gateway", "MCP Security", "Prompt Injection", "MITRE ATLAS"],
+        "content": [
+            {
+                "heading": "The Flaw of Using LLMs to Guard LLMs",
+                "body": [
+                    "Most AI guardrail systems rely on secondary LLM calls (e.g. Llama Guard) to classify user prompts. This approach introduces 200–800ms of latency, doubles token bills, and remains vulnerable to jailbreaks. When an attacker sends 10,000 prompt injection attempts, the enterprise pays full LLM inference costs just to reject them.",
+                    "PySetu solves this with a Homegrown Deterministic Zero-AI Classifier that scans inbound prompts in under 0.3 milliseconds (average ~267 microseconds) using Unicode NFKD canonicalization and compiled declarative rule lookup tables.",
+                ],
+            },
+            {
+                "heading": "Stopping Multi-Step Tool Exfiltration Chains",
+                "body": [
+                    "Autonomous agents operate in iterative reasoning loops. Individual tool calls (e.g. read_file or http_post) look benign in isolation, but when chained together (Read Secret → Outbound Webhook), they execute severe exfiltration or remote code execution attacks.",
+                    "PySetu's Sequential MCP State Machine tracks the temporal sequence of agent tool calls inside the server-side loop, blocking harmful tool sequences before execution and returning structured governance notifications to the agent.",
+                ],
+            },
+            {
+                "heading": "100% MITRE ATLAS & OWASP GenAI Compliance",
+                "body": [
+                    "Every rule and sequence pattern maps directly to MITRE ATLAS (AML.T0054, AML.T0025, AML.T0043, AML.T0051, AML.T0048) and OWASP GenAI Top 10 (LLM01–LLM10) taxonomies. An automated nightly Celery beat cron tests the entire rule pack against a 10,000-row golden enterprise dataset at 02:00 UTC to prevent false-positive regressions.",
+                ],
+            },
+        ],
+    },
+    {
+        "slug": "dynamic-cost-arbitrage-intent-routing",
+        "title": "Dynamic Cost Arbitrage: Slashing Enterprise LLM Bills by 94% with Intent Routing",
+        "excerpt": "Automatically downgrade low-complexity queries from GPT-4o to high-efficiency flash models without compromising complex reasoning.",
+        "category": "Cost Optimization",
+        "feature": "LLM Router & Cost Engine",
+        "date": "2026-08-29",
+        "read_time": "5 min read",
+        "author": "PySetu AI Team",
+        "tags": ["Cost Optimization", "LLM Router", "FinOps", "Token Efficiency"],
+        "content": [
+            {
+                "heading": "Overpaying for Simple Queries",
+                "body": [
+                    "Over 65% of enterprise AI traffic consists of simple tasks — translation, short summarization, classification, and text formatting. When users or internal apps send these requests to frontier models like GPT-4o or Claude 3.5 Sonnet, enterprises pay $2.50–$3.00 per million tokens for tasks that lightweight models handle identically at $0.075–$0.15 per million tokens.",
+                ],
+            },
+            {
+                "heading": "Deterministic Prompt Complexity Analysis",
+                "body": [
+                    "PySetu's Dynamic Cost Arbitrage Engine inspects prompt length, code blocks, and multi-step reasoning markers in real time. If a prompt is low-complexity, it transparently routes to high-efficiency models (GPT-4o-Mini, Claude 3.5 Haiku, Gemini 1.5 Flash), slashing token costs by 91.7% to 94.0%.",
+                    "When multi-step code refactoring or architectural reasoning is detected, the frontier model is preserved, ensuring zero quality degradation for mission-critical tasks.",
+                ],
+            },
+            {
+                "heading": "Transparent FinOps Telemetry",
+                "body": [
+                    "Every arbitrated request returns transparent metadata and headers detailing the original model, routed model, exact dollars saved, and percentage reduction, feeding directly into executive FinOps dashboards.",
+                ],
+            },
+        ],
+    },
 ]
 
 

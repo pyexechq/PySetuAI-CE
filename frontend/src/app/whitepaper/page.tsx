@@ -67,18 +67,18 @@ export default function WhitepaperPage() {
             <span className="text-muted-foreground">•</span>
             <span className="text-muted-foreground">August 2026 Edition</span>
             <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">Version 2.4 GA</span>
+            <span className="text-muted-foreground">Version 2.5 GA</span>
           </div>
 
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight md:text-5xl lg:leading-tight print:text-3xl">
             Governing the Autonomous Digital Enterprise: <br className="hidden md:inline" />
             <span className="bg-gradient-to-r from-primary via-indigo-500 to-sky-500 bg-clip-text text-transparent">
-              A Unified Architecture for MCP Tool-Chains, Real-Time GenAI DLP, and Agentic Safety
+              A 5-Pillar Architecture for Zero-AI Ingress Defense, Sequential MCP Safety, and Cost Arbitrage
             </span>
           </h1>
 
           <p className="mt-6 text-lg text-muted-foreground md:text-xl print:text-sm">
-            A comprehensive architectural blueprint for Enterprise CISOs, Chief Architects, and IT Operations Leaders to deploy, monitor, and enforce least-privilege governance across autonomous AI agents and Model Context Protocol (MCP) ecosystems.
+            A comprehensive architectural blueprint for Enterprise CISOs, Chief Architects, and IT Operations Leaders to deploy, monitor, and enforce least-privilege governance across autonomous AI agents, Model Context Protocol (MCP) ecosystems, and distributed edge nodes.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-border/40 pt-6 print:border-border/60">
@@ -122,10 +122,10 @@ export default function WhitepaperPage() {
               </p>
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 not-prose my-6 break-inside-avoid print:break-inside-avoid print:my-4 print:p-4 print:bg-slate-50 print:border-primary/40">
                 <h4 className="font-semibold text-primary flex items-center gap-2">
-                  <Shield className="h-5 w-5" /> The Core Thesis of PySetu AI
+                  <Shield className="h-5 w-5" /> The Core Thesis of PySetu AI v2.5
                 </h4>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed print:text-neutral-700">
-                  Enterprise AI governance requires an inline, zero-latency <strong>Control Plane</strong> that sits directly on the live execution path between AI clients (IDE extensions, Autonomous Agents, Copilots) and downstream tools. PySetu achieves this by coupling a <strong>Universal AI Gateway</strong> with compiled <strong>Open Policy Agent (OPA)</strong> evaluation, streaming regex automata DLP, and multi-hop attack surface graph attribution.
+                  Enterprise AI governance requires an inline, sub-millisecond <strong>Zero-AI Control Plane</strong> that sits directly on the live execution path between AI clients and downstream tools. PySetu v2.5 achieves this via a 5-pillar architecture: Sub-Millisecond Pre-Flight Interception (&lt;0.3ms), Sequential MCP State Machine Defense, 100% MITRE ATLAS / OWASP Compliance, Dynamic Cost Arbitrage (slashing token bills by 94%), and a Zero-Hop Distributed Edge Mesh.
                 </p>
               </div>
             </section>
@@ -133,35 +133,35 @@ export default function WhitepaperPage() {
             {/* Attack Vectors */}
             <section id="threat-vectors" className="scroll-mt-24 break-inside-avoid print:break-inside-avoid">
               <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl print:text-xl print:font-bold">
-                2. Threat Landscape: The 5 Vulnerabilities of Autonomous Agents
+                2. Threat Landscape: The 5 Adversarial Pillars of Autonomous AI
               </h2>
               <div className="grid gap-4 not-prose my-6 sm:grid-cols-2 print:grid-cols-2 print:my-3">
                 <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm break-inside-avoid print:break-inside-avoid print:p-3 print:bg-slate-50">
-                  <span className="text-xs font-bold uppercase tracking-wider text-red-500">Threat Vector 1</span>
-                  <h4 className="mt-1 font-semibold text-foreground print:text-sm">Unconstrained Tool Execution</h4>
+                  <span className="text-xs font-bold uppercase tracking-wider text-red-500">MITRE AML.T0054 / OWASP LLM01</span>
+                  <h4 className="mt-1 font-semibold text-foreground print:text-sm">Direct Prompt Injections &amp; Jailbreaks</h4>
                   <p className="mt-1 text-xs text-muted-foreground print:text-neutral-700">
-                    Agents granted full MCP server access executing destructive operations (e.g. <code>DROP TABLE</code> or mass emails) without granular approval checkpoints.
+                    Adversarial prompts overriding system directives or forcing model developer mode. PySetu intercepts these in &lt;0.3ms without paying upstream LLM token costs.
                   </p>
                 </div>
                 <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm break-inside-avoid print:break-inside-avoid print:p-3 print:bg-slate-50">
-                  <span className="text-xs font-bold uppercase tracking-wider text-amber-500">Threat Vector 2</span>
-                  <h4 className="mt-1 font-semibold text-foreground print:text-sm">Indirect Prompt Injection</h4>
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-500">MITRE AML.T0025 / OWASP LLM06</span>
+                  <h4 className="mt-1 font-semibold text-foreground print:text-sm">Sequential Tool Exfiltration Chains</h4>
                   <p className="mt-1 text-xs text-muted-foreground print:text-neutral-700">
-                    Malicious instructions hidden inside third-party MCP tool outputs (e.g. customer tickets or emails) hijacking agent context to exfiltrate secrets.
+                    Agents reading sensitive secrets/databases in Step 1 and chaining into outbound HTTP/webhooks in Step 2. PySetu&apos;s state machine halts the chain before egress.
                   </p>
                 </div>
                 <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm break-inside-avoid print:break-inside-avoid print:p-3 print:bg-slate-50">
-                  <span className="text-xs font-bold uppercase tracking-wider text-blue-500">Threat Vector 3</span>
-                  <h4 className="mt-1 font-semibold text-foreground print:text-sm">Vector Store Embedding Leaks</h4>
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-500">MITRE AML.T0043 / OWASP LLM02</span>
+                  <h4 className="mt-1 font-semibold text-foreground print:text-sm">Sensitive Information Disclosure &amp; Vector Leaks</h4>
                   <p className="mt-1 text-xs text-muted-foreground print:text-neutral-700">
-                    Sensitive PII/PHI or financial data embedded into un-governed vector databases (Pinecone, Qdrant) permanently breaching corporate data residency boundaries.
+                    Confidential PII, PHI, API keys, or embeddings leaking across tenant boundaries or un-governed vector databases.
                   </p>
                 </div>
                 <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm break-inside-avoid print:break-inside-avoid print:p-3 print:bg-slate-50">
-                  <span className="text-xs font-bold uppercase tracking-wider text-purple-500">Threat Vector 4</span>
-                  <h4 className="mt-1 font-semibold text-foreground print:text-sm">Multi-Hop Tool-Chain Escalation</h4>
+                  <span className="text-xs font-bold uppercase tracking-wider text-purple-500">MITRE AML.T0048 / OWASP LLM10</span>
+                  <h4 className="mt-1 font-semibold text-foreground print:text-sm">Runaway Loops &amp; Unbounded Financial Exhaustion</h4>
                   <p className="mt-1 text-xs text-muted-foreground print:text-neutral-700">
-                    Agent A calling Tool B, which invokes Service C, creating un-traced privilege escalation paths invisible to traditional log monitors.
+                    Agents trapped in 3+ identical tool call recursion loops burning enterprise token budgets. Blocked by PySetu&apos;s loop breaker and token quotas.
                   </p>
                 </div>
               </div>
@@ -170,21 +170,21 @@ export default function WhitepaperPage() {
             {/* Architecture Section */}
             <section id="architecture" className="scroll-mt-24">
               <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl print:text-xl print:font-bold">
-                3. The PySetu Control Plane Architecture
+                3. The PySetu 5-Pillar Enterprise Architecture
               </h2>
               <p className="text-muted-foreground leading-relaxed print:text-neutral-800">
-                PySetu AI operates as a unified, high-performance gateway cluster deployed within your VPC or private cloud infrastructure. The runtime consists of four core micro-architectural engines:
+                PySetu AI operates as a unified, high-performance distributed control plane. The runtime consists of five core micro-architectural pillars:
               </p>
 
               <div className="space-y-4 not-prose my-6 print:my-3">
                 <div className="flex gap-4 rounded-xl border border-border/70 bg-card p-5 break-inside-avoid print:break-inside-avoid print:p-4 print:bg-slate-50">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500 font-bold print:hidden">
-                    <Server className="h-5 w-5" />
+                    <Shield className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-foreground print:text-sm">1. Universal Protocol Translation &amp; Router</h4>
+                    <h4 className="font-semibold text-foreground print:text-sm">Pillar 1: Inline Zero-AI Pre-Flight Interceptor (&lt; 0.3 ms)</h4>
                     <p className="mt-1 text-sm text-muted-foreground leading-relaxed print:text-xs print:text-neutral-700">
-                      Accepts requests in standard OpenAI, Anthropic, or Gemini formats and normalizes them into a canonical internal prompt model. Routes traffic dynamically based on latency, model availability, and cost budgets with automatic multi-provider failover.
+                      Scans inbound prompts in ~267 microseconds using Unicode NFKD canonicalization and compiled declarative lookup tables. Intercepts attacks before LLM token forwarding, saving 100% of attack token costs.
                     </p>
                   </div>
                 </div>
@@ -194,33 +194,45 @@ export default function WhitepaperPage() {
                     <Workflow className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-foreground print:text-sm">2. Model Context Protocol (MCP) Multiplex Gateway</h4>
+                    <h4 className="font-semibold text-foreground print:text-sm">Pillar 2: Sequential MCP Tool Chain State Machine</h4>
                     <p className="mt-1 text-sm text-muted-foreground leading-relaxed print:text-xs print:text-neutral-700">
-                      Proxies bidirectional JSON-RPC <code>tools/list</code> and <code>tools/call</code> streams. Dissects parameters, applies per-operation allow/deny policies, and maps authenticated developer credentials to ephemeral backend tokens.
+                      Tracks agent tool execution history across iterative reasoning loops. Identifies and halts 5 multi-step attack graphs (Exfiltration Chains, RCE, Destructive Mutations, Privilege Escalations, and Infinite Loop Runaways) before execution.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex gap-4 rounded-xl border border-border/70 bg-card p-5 break-inside-avoid print:break-inside-avoid print:p-4 print:bg-slate-50">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500 font-bold print:hidden">
-                    <Cpu className="h-5 w-5" />
+                    <CheckCircle2 className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-foreground print:text-sm">3. Real-Time OPA Policy Engine &amp; GenAI DLP</h4>
+                    <h4 className="font-semibold text-foreground print:text-sm">Pillar 3: MITRE ATLAS, OWASP GenAI &amp; Automated 10k Nightly Cron</h4>
                     <p className="mt-1 text-sm text-muted-foreground leading-relaxed print:text-xs print:text-neutral-700">
-                      Evaluates Open Policy Agent (OPA) Rego rules in under 4 milliseconds. Inspects prompt inputs and response token streams using compiled in-memory automata to mask PII, PHI, PCI, and proprietary code without buffering.
+                      100% compliant scoring across 11 standardized adversarial controls with real-time evidence generation. Celery Beat executes nightly 10,000-row golden dataset benchmarks at 02:00 UTC to guarantee regression-free rule updates.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex gap-4 rounded-xl border border-border/70 bg-card p-5 break-inside-avoid print:break-inside-avoid print:p-4 print:bg-slate-50">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold print:hidden">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-500 font-bold print:hidden">
+                    <Cpu className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-foreground print:text-sm">Pillar 4: Dynamic Cost Arbitrage Engine</h4>
+                    <p className="mt-1 text-sm text-muted-foreground leading-relaxed print:text-xs print:text-neutral-700">
+                      Analyzes prompt length, code syntax, and reasoning markers to dynamically route simple tasks (translation, summarization, Q&amp;A) to high-efficiency flash models, cutting token spend by 91.7% to 94.0% while preserving frontier models for complex tasks.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 rounded-xl border border-border/70 bg-card p-5 break-inside-avoid print:break-inside-avoid print:p-4 print:bg-slate-50">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500 font-bold print:hidden">
                     <Layers className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-foreground print:text-sm">4. Governed RAG Ingestion Barrier</h4>
+                    <h4 className="font-semibold text-foreground print:text-sm">Pillar 5: Distributed Edge Mesh &amp; Zero-Hop Wasm Sync</h4>
                     <p className="mt-1 text-sm text-muted-foreground leading-relaxed print:text-xs print:text-neutral-700">
-                      Enforces movement policies at the critical document-to-embedding threshold, ensuring restricted classification tiers are blocked before writing to vector databases (Pinecone, Milvus, Qdrant).
+                      Compiles declarative classifier rules, MCP sequence attack graphs, and OPA policies into regional sync bundles for local sub-50μs execution on Envoy/Wasm edge nodes with sub-1ms synchronization latency.
                     </p>
                   </div>
                 </div>

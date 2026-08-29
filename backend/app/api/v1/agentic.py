@@ -234,6 +234,37 @@ async def remove_sanctioned_tool_route(
     await db.commit()
 
 
+@router.get("/shadow-ai/summary")
+async def get_shadow_ai_summary(
+    user: Annotated[User, Depends(_require_agent_view)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Return aggregated shadow AI fleet discovery metrics and risk indicators."""
+    sanctioned = await list_sanctioned_tools(db, user.tenant_id)
+    sanctioned_names = {t.name.lower() for t in sanctioned}
+
+    stmt = select(SecurityEvent).where(SecurityEvent.tenant_id == user.tenant_id).limit(200)
+    result = await db.execute(stmt)
+    events = result.scalars().all()
+    shadow_events = [e for e in events if e.event_type == "discovery" or getattr(e, "action", "") == "bypassed"]
+
+    unsanctioned_detected: set[str] = set()
+    for ev in shadow_events:
+        meta = ev.metadata_json or {}
+        tools = meta.get("unsanctioned_tools") or []
+        for t in tools:
+            if t.lower() not in sanctioned_names:
+                unsanctioned_detected.add(t)
+
+    return {
+        "sanctioned_tools_count": len(sanctioned),
+        "unsanctioned_tools_count": len(unsanctioned_detected),
+        "unsanctioned_tools": sorted(list(unsanctioned_detected)),
+        "total_shadow_ai_events": len(shadow_events),
+        "fleet_workstations_monitored": len({ev.actor for ev in shadow_events if ev.actor}),
+    }
+
+
 @router.get("/agentic/policy", response_model=AgentPolicyResponse)
 async def get_agent_policy_route(
     client: Annotated[ClientApiKey, Depends(get_current_client)],

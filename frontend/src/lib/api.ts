@@ -4541,6 +4541,47 @@ export interface ClassifierAiAssistResponse {
   };
 }
 
+export interface ClassifierScenarioItem {
+  scenario: string;
+  total_rows: number;
+  accuracy_percent: number;
+  expected_decision: string;
+  risk_level: string;
+  status: string; // 'PASS' | 'REVIEW'
+}
+
+export interface ClassifierBenchmarkResponse {
+  total_rows_evaluated: number;
+  total_time_ms: number;
+  scan_rate_per_sec: number;
+  accuracy_percent: number;
+  precision_percent: number;
+  recall_percent: number;
+  f1_score_percent: number;
+  false_positive_rate_percent: number;
+  latency_profile: {
+    avg_micros: number;
+    avg_ms: number;
+    p50_micros: number;
+    p95_micros: number;
+    p99_micros: number;
+  };
+  confusion_matrix: {
+    true_positives: number;
+    true_negatives: number;
+    false_positives: number;
+    false_negatives: number;
+  };
+  scenario_breakdown: ClassifierScenarioItem[];
+  missed_samples: Array<{
+    id?: string;
+    text: string;
+    expected: string;
+    reason_code: string;
+    got_verdict: string;
+  }>;
+}
+
 export const classifierAPI = {
   getMetrics: async (token?: string) => {
     return apiFetch<ClassifierMetricsResponse>(`/platform/classifier/metrics`, {}, token);
@@ -4581,6 +4622,13 @@ export const classifierAPI = {
       body: JSON.stringify({ goal, target_scope }),
     }, token);
   },
+  runBenchmark: async (data: { file_content?: string; file_format?: string; sample_limit?: number }, token?: string) => {
+    return apiFetch<ClassifierBenchmarkResponse>(`/platform/classifier/benchmark`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token);
+  },
 };
+
 
 

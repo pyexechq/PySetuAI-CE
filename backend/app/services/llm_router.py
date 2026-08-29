@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.governance import LLMProvider, RoutingGroup, RoutingRule, RoutingRuleClientKey
+from app.services.cost_arbitrage_service import evaluate_cost_arbitrage
 from app.services.routing_conditions import evaluate_condition
 
 
@@ -15,6 +16,7 @@ class RoutingDecision:
     strategy: str = "passthrough"
     target_provider: str | None = None
     response_format: str | None = None
+    arbitrage_savings: dict | None = None
 
 
 def pick_weighted_provider(providers: list[LLMProvider]) -> LLMProvider | None:
@@ -126,6 +128,22 @@ async def select_model(
             target = pick_routing_group_member(group.members or [], strategy=group.strategy)
             if target:
                 return RoutingDecision(model=target, matched_rule=group.name, strategy="routing_group")
+
+    prompt_text = str(context.get("prompt_text") or "")
+    if prompt_text and (context.get("cost_arbitrage") or context.get("enable_cost_arbitrage")):
+        arb = evaluate_cost_arbitrage(
+            prompt_text,
+            requested_model if requested_model != "auto" else "gpt-4o",
+            estimated_prompt_tokens=int(context.get("prompt_tokens") or 100),
+            force_arbitrage=bool(context.get("force_arbitrage", False)),
+        )
+        if arb.should_arbitrate:
+            return RoutingDecision(
+                model=arb.target_model,
+                matched_rule="cost_arbitrage_engine",
+                strategy="cost_arbitrage",
+                arbitrage_savings=arb.to_dict(),
+            )
 
     if requested_model and requested_model != "auto":
         return RoutingDecision(model=requested_model, strategy="passthrough")

@@ -19,7 +19,9 @@ from app.schemas.openai import (
     ChatCompletionUsage,
     ChatMessage,
     InspectionResult,
+    PolicyViolation,
 )
+from app.services.classifier.intent_engine import ClassifierVerdict, classify_intent_and_risk
 from app.modules.uag.canonical import CanonicalPrompt, TranslationTrace
 from app.modules.uag.client_response import normalize_client_protocol, serialize_gateway_response
 from app.modules.uag.provider_registry import get_provider
@@ -53,6 +55,7 @@ from app.services.dynamic_tool_service import (
     to_openai_tools,
 )
 from app.services.mcp_agent_service import detect_agent, filter_servers_for_agent, toggles_from_tenant
+from app.services.mcp_sequence_detector import evaluate_tool_sequence
 from app.services.regional_adapters import call_bedrock_regional, call_vertex_regional
 from app.services.regional_routing_service import resolve_provider_region
 from app.services.http_client_pool import get_http_client
@@ -107,6 +110,8 @@ class PreparedChat:
     ingress_bearer_token: str | None = None
     mcp_servers: list = field(default_factory=list)
     mcp_tool_calls: int = 0
+    classifier_verdict: ClassifierVerdict | None = None
+    arbitrage_savings: dict | None = None
 
 
 def _estimate_tokens(text: str) -> int:
@@ -120,6 +125,10 @@ def _pysetu_meta(prepared: PreparedChat, **extra) -> dict:
         "routed_model": prepared.routed_model,
         "upstream": prepared.upstream,
     }
+    if prepared.classifier_verdict:
+        meta["classifier"] = prepared.classifier_verdict.to_dict()
+    if prepared.arbitrage_savings:
+        meta["cost_arbitrage"] = prepared.arbitrage_savings
     if prepared.matched_routing_rule:
         meta["matched_routing_rule"] = prepared.matched_routing_rule
     if prepared.prompt_template_id:
@@ -446,6 +455,99 @@ async def prepare_chat_request(
     effective_request = uag_pipeline.translated_request
 
     combined = canonical.text_for_inspection()
+
+    # 🚀 Pre-Flight Zero-AI Deterministic Classifier Guard (< 0.3ms)
+    classifier_verdict = await classify_intent_and_risk(
+        db,
+        text=combined,
+        tenant_id=ctx.tenant_id,
+    )
+
+    if classifier_verdict.verdict == "block":
+        matched_reasons = [m.get("explanation", "Prohibited intent detected.") for m in classifier_verdict.matches]
+        violation_detail = "; ".join(matched_reasons) or "Blocked by deterministic risk classifier."
+        is_injection = any(m.get("category") in ("prompt_injection", "indirect_prompt_injection") for m in classifier_verdict.matches)
+        audit_action = "Prompt Injection" if is_injection else "Classifier Threat Block"
+
+        blocked_violations = [
+            PolicyViolation(
+                rule_name=m.get("rule_name", "Classifier Guard"),
+                action="block",
+                severity=m.get("risk_level", "high"),
+                detail=m.get("explanation", "Blocked by security rule"),
+            )
+            for m in classifier_verdict.matches
+        ]
+
+        ingress = InspectionResult(
+            allowed=False,
+            action="block",
+            violations=blocked_violations,
+            risk=classifier_verdict.risk_tier.lower(),
+        )
+
+        await _write_audit(
+            db,
+            ctx,
+            audit_action,
+            f"{request.model} /chat",
+            "blocked",
+            classifier_verdict.risk_tier.lower(),
+            violation_detail,
+            request_log={
+                "request_payload": serialize_chat_request(request),
+                "guardrail_events": build_guardrail_events(ingress=ingress, classifier=classifier_verdict.to_dict()),
+            },
+        )
+        await db.commit()
+        await _dispatch_gateway_block_alert(
+            db,
+            ctx,
+            audit_action=audit_action,
+            resource=f"{request.model} /chat",
+            risk=classifier_verdict.risk_tier.lower(),
+            details=violation_detail,
+            injection=is_injection,
+        )
+        return None, ingress, f"Request blocked by PySetu Security Guard: {violation_detail}"
+
+    elif classifier_verdict.verdict == "request_approval":
+        violation_detail = "This request involves high-impact actions requiring Human-in-the-Loop authorization."
+        blocked_violations = [
+            PolicyViolation(
+                rule_name=m.get("rule_name", "Approval Required"),
+                action="request_approval",
+                severity="high",
+                detail=m.get("explanation", violation_detail),
+            )
+            for m in classifier_verdict.matches
+        ]
+        ingress = InspectionResult(
+            allowed=False,
+            action="request_approval",
+            violations=blocked_violations,
+            risk="high",
+        )
+        await _write_audit(
+            db,
+            ctx,
+            "Approval Required",
+            f"{request.model} /chat",
+            "blocked",
+            "high",
+            violation_detail,
+            request_log={
+                "request_payload": serialize_chat_request(request),
+                "guardrail_events": build_guardrail_events(ingress=ingress, classifier=classifier_verdict.to_dict()),
+            },
+        )
+        await db.commit()
+        return None, ingress, f"Request requires Human-in-the-Loop approval: {classifier_verdict.matches[0]['explanation'] if classifier_verdict.matches else violation_detail}"
+
+    elif classifier_verdict.verdict == "redact" and classifier_verdict.modified_text:
+        combined = classifier_verdict.modified_text
+        uag_trace.governance_actions.append("classifier_redaction")
+
     bundle = await _load_bundle(db, ctx.policy_bundle_id)
     region = infer_region_from_bundle(ctx.policy_bundle_name)
     dlp = dlp_scan_content(combined, region=region)
@@ -601,11 +703,17 @@ async def prepare_chat_request(
     if dynamic_tools.enabled:
         uag_trace.governance_actions.append("dynamic_tools")
 
+    routing_ctx = build_routing_context(request)
+    routing_ctx["prompt_text"] = combined
+    routing_ctx["prompt_tokens"] = _estimate_tokens(combined)
+    if (tenant and getattr(tenant, "cost_arbitrage_enabled", False)) or (request.metadata and request.metadata.get("cost_arbitrage")):
+        routing_ctx["enable_cost_arbitrage"] = True
+
     routing = await select_model(
         effective_request.model,
         db,
         ctx.tenant_id,
-        build_routing_context(request),
+        routing_ctx,
         client_api_key_id=ctx.client_api_key_id,
     )
     routed_model = routing.model
@@ -748,6 +856,8 @@ async def prepare_chat_request(
         dynamic_tools_payload=dynamic_tools_payload,
         ingress_bearer_token=ctx.ingress_bearer_token,
         mcp_servers=mcp_servers,
+        classifier_verdict=classifier_verdict,
+        arbitrage_savings=routing.arbitrage_savings,
     )
 
     if upstream == "ollama":
@@ -927,6 +1037,8 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
     usage = data.get("usage", {})
 
     iterations = 0
+    tool_sequence_history: list[dict[str, Any]] = []
+
     while finish_reason == "tool_calls" and tool_calls and iterations < MAX_MCP_TOOL_ITERATIONS:
         iterations += 1
         prepared.mcp_tool_calls += len(tool_calls)
@@ -940,7 +1052,29 @@ async def _execute_upstream(prepared: PreparedChat, request: ChatCompletionReque
                 args = json.loads(fn.get("arguments") or "{}")
             except (ValueError, TypeError):
                 args = {}
-            result_text = await _execute_mcp_tool_call(prepared, name, args)
+
+            # 🛡️ Sequential Tool Chain Attack Inspection
+            seq_verdict = evaluate_tool_sequence(tool_sequence_history, name, args)
+            if seq_verdict.is_threat and seq_verdict.action == "block":
+                result_text = json.dumps({
+                    "error": f"[PYSETU GOVERNANCE BLOCKED] {seq_verdict.reason}",
+                    "security_verdict": "blocked",
+                    "attack_pattern": seq_verdict.attack_pattern,
+                    "risk_score": seq_verdict.risk_score,
+                })
+                tool_sequence_history.append({"name": name, "arguments": args, "status": "blocked", "attack_pattern": seq_verdict.attack_pattern})
+            elif seq_verdict.is_threat and seq_verdict.action == "request_approval":
+                result_text = json.dumps({
+                    "status": "pending_human_approval",
+                    "message": f"[PYSETU HUMAN APPROVAL REQUIRED] {seq_verdict.reason}",
+                    "attack_pattern": seq_verdict.attack_pattern,
+                    "risk_score": seq_verdict.risk_score,
+                })
+                tool_sequence_history.append({"name": name, "arguments": args, "status": "pending_approval", "attack_pattern": seq_verdict.attack_pattern})
+            else:
+                result_text = await _execute_mcp_tool_call(prepared, name, args)
+                tool_sequence_history.append({"name": name, "arguments": args, "status": "allowed"})
+
             prepared.messages.append(
                 ChatMessage(
                     role="tool",
@@ -1184,7 +1318,11 @@ async def stream_chat_completion(
                         "total_tokens": total_tokens,
                     },
                 },
-                "guardrail_events": build_guardrail_events(ingress=prepared.ingress, egress=egress),
+                "guardrail_events": build_guardrail_events(
+                    ingress=prepared.ingress,
+                    egress=egress,
+                    classifier=prepared.classifier_verdict.to_dict() if prepared.classifier_verdict else None,
+                ),
             },
         )
         await db.commit()
@@ -1436,7 +1574,11 @@ async def process_chat_completion(
             request_log={
                 "request_payload": serialize_chat_request(request),
                 "response_payload": serialize_chat_response(response),
-                "guardrail_events": build_guardrail_events(ingress=prepared.ingress, egress=egress),
+                "guardrail_events": build_guardrail_events(
+                    ingress=prepared.ingress,
+                    egress=egress,
+                    classifier=prepared.classifier_verdict.to_dict() if prepared.classifier_verdict else None,
+                ),
             },
         )
         await db.commit()

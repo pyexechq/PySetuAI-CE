@@ -49,6 +49,7 @@ def serialize_chat_response(response: ChatCompletionResponse | None) -> dict[str
 def build_guardrail_events(
     ingress: InspectionResult | None = None,
     egress: InspectionResult | None = None,
+    classifier: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     payload: dict[str, Any] = {}
     if ingress is not None:
@@ -67,6 +68,8 @@ def build_guardrail_events(
             "violations": [v.model_dump() for v in egress.violations],
             "redacted_content": egress.redacted_content,
         }
+    if classifier is not None:
+        payload["classifier"] = classifier
     return payload or None
 
 

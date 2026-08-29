@@ -210,15 +210,31 @@ async def _handle_chat_completions(
                 content=OpenAIErrorResponse(
                     error=OpenAIError(message=error_message, type="policy_violation", code="pysetu_blocked")
                 ).model_dump(),
+                headers={
+                    "X-PySetu-Action": inspection.action,
+                    "X-PySetu-Risk": inspection.risk,
+                },
             )
         if error_message or prepared is None:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY, detail=error_message or "Unable to prepare request"
             )
+        
+        stream_headers = {
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-PySetu-Stream": "true",
+        }
+        if prepared.classifier_verdict:
+            stream_headers["X-PySetu-Classifier-Verdict"] = prepared.classifier_verdict.verdict
+            stream_headers["X-PySetu-Classifier-Tier"] = prepared.classifier_verdict.risk_tier
+            stream_headers["X-PySetu-Classifier-Score"] = str(prepared.classifier_verdict.risk_score)
+            stream_headers["X-PySetu-Classifier-Latency-Us"] = str(prepared.classifier_verdict.execution_time_micros)
+
         return StreamingResponse(
             stream_chat_completion(prepared, request, ctx, db),
             media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-PySetu-Stream": "true"},
+            headers=stream_headers,
         )
 
     response, inspection, error_message = await process_chat_completion(request, ctx, db, user_agent=user_agent)
@@ -229,6 +245,10 @@ async def _handle_chat_completions(
             content=OpenAIErrorResponse(
                 error=OpenAIError(message=error_message, type="policy_violation", code="pysetu_blocked")
             ).model_dump(),
+            headers={
+                "X-PySetu-Action": inspection.action,
+                "X-PySetu-Risk": inspection.risk,
+            },
         )
 
     if error_message:

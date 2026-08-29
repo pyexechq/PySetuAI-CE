@@ -108,6 +108,7 @@ services:
       IAC_DEPLOY_ROOT: /deploy
     volumes:
       - ./deploy:/deploy:ro
+      - ./training data:/app/training data:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
