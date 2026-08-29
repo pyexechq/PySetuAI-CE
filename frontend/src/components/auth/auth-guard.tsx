@@ -6,6 +6,7 @@ import { useAuthStore, canAccessRoute, canAccessTenantModule } from "@/stores/au
 import { useTenantStore } from "@/stores/tenant-store";
 
 const PUBLIC_ROUTES = [
+  "/",
   "/login",
   "/accept-invite",
   "/auth/oidc/callback",
@@ -16,6 +17,7 @@ const PUBLIC_ROUTES = [
   "/legal/security",
   "/blog",
   "/whitepaper",
+  "/developer-portal",
 ];
 
 function isPublicRoute(pathname: string) {
@@ -40,8 +42,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
   useEffect(() => {
     if (!hydrated) return;
     if (pathname.startsWith("/platform")) return;
-    if (pathname === "/" && !isAuthenticated) return;
-    if (isPublicRoute(pathname)) return;
+    if (pathname.startsWith("/developer-portal")) return;
+    if (pathname === "/" || isPublicRoute(pathname)) return;
 
     if (!isAuthenticated) {
       const next = pathname === "/login" ? "" : `?next=${encodeURIComponent(pathname)}`;
@@ -72,15 +74,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  if (pathname.startsWith("/platform")) {
-    return <>{children}</>;
-  }
-
-  if (pathname === "/" && !isAuthenticated) {
-    return <>{children}</>;
-  }
-
-  if (isPublicRoute(pathname)) {
+  if (
+    pathname.startsWith("/platform") ||
+    pathname.startsWith("/developer-portal") ||
+    pathname === "/" ||
+    isPublicRoute(pathname)
+  ) {
     return <>{children}</>;
   }
 

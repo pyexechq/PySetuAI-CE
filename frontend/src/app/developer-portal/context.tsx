@@ -60,7 +60,7 @@ const DEFAULT_SYSTEM_TOOLS = [
 ];
 
 export function PortalProvider({ children }: { children: ReactNode }) {
-  const { token, isAuthenticated } = useAuthStore();
+  const { token, user, isAuthenticated } = useAuthStore();
   const [environment, setEnvironment] = useState<Environment>('Development');
   const [cart, setCart] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -77,16 +77,20 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       // 0. Check Tenant Portal Enablement
-      const settingsRes = await fetch("/api/v1/mcp/portal/settings", { headers });
-      if (settingsRes.ok) {
-        const settingsData = await settingsRes.json();
-        if (settingsData.enabled === false) {
-          setPortalEnabled(false);
-          setLoading(false);
-          return;
-        } else {
-          setPortalEnabled(true);
+      try {
+        const settingsRes = await fetch("/api/v1/mcp/portal/settings", { headers });
+        if (settingsRes.ok) {
+          const settingsData = await settingsRes.json();
+          if (settingsData.enabled === false && user?.role !== "platform_admin") {
+            setPortalEnabled(false);
+            setLoading(false);
+            return;
+          } else {
+            setPortalEnabled(true);
+          }
         }
+      } catch {
+        setPortalEnabled(true);
       }
 
       // 1. Fetch live Client API keys
