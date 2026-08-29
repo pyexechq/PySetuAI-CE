@@ -110,41 +110,41 @@ export function DashboardContent() {
             </div>
 
             {/* Quick KPI Highlights */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2.5 sm:gap-3 w-full lg:w-auto shrink-0">
-              <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm">
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider">Total Requests</span>
-                  <Activity className="h-3.5 w-3.5 text-primary" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2.5 sm:gap-3 w-full lg:w-auto">
+              <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm min-w-0">
+                <div className="flex items-center justify-between text-muted-foreground gap-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider truncate">Total Requests</span>
+                  <Activity className="h-3.5 w-3.5 text-primary shrink-0" />
                 </div>
-                <p className="mt-1.5 text-lg sm:text-xl font-bold text-foreground">{metrics.totalRequests}</p>
-                <p className="text-[10px] text-muted-foreground">{periodLabel}</p>
+                <p className="mt-1.5 text-lg sm:text-xl font-bold text-foreground truncate">{metrics.totalRequests}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{periodLabel}</p>
               </div>
 
-              <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm">
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider">Success Rate</span>
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm min-w-0">
+                <div className="flex items-center justify-between text-muted-foreground gap-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider truncate">Success Rate</span>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                 </div>
-                <p className="mt-1.5 text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">{metrics.successRate}%</p>
-                <p className="text-[10px] text-muted-foreground">Gateway throughput</p>
+                <p className="mt-1.5 text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 truncate">{metrics.successRate}%</p>
+                <p className="text-[10px] text-muted-foreground truncate">Gateway throughput</p>
               </div>
 
-              <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm">
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider">Threats Blocked</span>
-                  <ShieldAlert className="h-3.5 w-3.5 text-rose-500" />
+              <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm min-w-0">
+                <div className="flex items-center justify-between text-muted-foreground gap-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider truncate">Threats Blocked</span>
+                  <ShieldAlert className="h-3.5 w-3.5 text-rose-500 shrink-0" />
                 </div>
-                <p className="mt-1.5 text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400">{metrics.blockedRequests}</p>
-                <p className="text-[10px] text-muted-foreground">Injections & PII</p>
+                <p className="mt-1.5 text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400 truncate">{metrics.blockedRequests}</p>
+                <p className="text-[10px] text-muted-foreground truncate">Injections & PII</p>
               </div>
 
-              <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm">
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider">Compliance Score</span>
-                  <FileCheck className="h-3.5 w-3.5 text-blue-500" />
+              <div className="w-full rounded-xl border border-border/80 bg-card/80 p-3 sm:p-3.5 shadow-xs backdrop-blur-sm min-w-0">
+                <div className="flex items-center justify-between text-muted-foreground gap-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider truncate">Compliance</span>
+                  <FileCheck className="h-3.5 w-3.5 text-blue-500 shrink-0" />
                 </div>
-                <p className="mt-1.5 text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400">{metrics.complianceScore}%</p>
-                <p className="text-[10px] text-muted-foreground">EU AI Act & SOC2</p>
+                <p className="mt-1.5 text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400 truncate">{metrics.complianceScore}%</p>
+                <p className="text-[10px] text-muted-foreground truncate">EU AI Act & SOC2</p>
               </div>
             </div>
           </div>

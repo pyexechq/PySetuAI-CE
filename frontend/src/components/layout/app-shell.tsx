@@ -26,8 +26,8 @@ export function AppShell({ children, title, description }: AppShellProps) {
             description={description}
             onMenuClick={() => setMobileNavOpen(true)}
           />
-          <main className="relative min-h-0 flex-1 overflow-y-auto flex flex-col justify-between p-4 md:p-6">
-            <div className="flex-1">{children}</div>
+          <main className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden flex flex-col justify-between p-4 md:p-6">
+            <div className="flex-1 w-full max-w-full overflow-x-hidden">{children}</div>
             <footer className="mt-8 border-t border-border/50 pt-4 pb-2 text-xs text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span>© 2026 PySetu AI. All rights reserved.</span>
