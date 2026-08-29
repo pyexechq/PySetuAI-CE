@@ -641,6 +641,7 @@ class GatewayStatusResponse(BaseModel):
     status: str
     openai_compatible: bool
     gemini_compatible: bool
+    anthropic_compatible: bool = True
     requests_today: int
     blocked_today: int
     endpoints: list[str]

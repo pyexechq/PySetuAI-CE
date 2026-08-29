@@ -75,6 +75,24 @@ ${authHeader} \\
 }'`;
   }
 
+  if (cleanEndpoint === "/v1/messages" || cleanEndpoint.includes("/messages")) {
+    return `curl --location '${origin}/v1/messages' \\
+--request POST \\
+--header 'x-api-key: YOUR_TOKEN_HERE' \\
+--header 'anthropic-version: 2023-06-01' \\
+--header 'Content-Type: application/json' \\
+--data '{
+  "model": "claude-3-7-sonnet-20250219",
+  "max_tokens": 1024,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello from PySetu Anthropic Gateway"
+    }
+  ]
+}'`;
+  }
+
   if (cleanEndpoint === "/v1/chat/completions") {
     return `curl --location '${origin}/v1/chat/completions' \\
 ${methodFlag}${authHeader} \\
@@ -96,12 +114,14 @@ ${authHeader}`;
 
 const EMPTY_GATEWAY_STATUS = {
   status: "unknown",
-  openai_compatible: false,
-  gemini_compatible: false,
+  openai_compatible: true,
+  gemini_compatible: true,
+  anthropic_compatible: true,
   requests_today: 0,
   blocked_today: 0,
   endpoints: [
     "/v1/chat/completions",
+    "/v1/messages",
     "/v1/models",
     "/v1/mcp",
     "/v1beta/models/{model}:generateContent",
@@ -121,11 +141,13 @@ const PIPELINE_STEPS = [
 function upstreamLabel(status: {
   openai_compatible: boolean;
   gemini_compatible: boolean;
+  anthropic_compatible?: boolean;
   proxy_mode?: string;
 }): string {
   const parts: string[] = [];
   if (status.openai_compatible) parts.push("OpenAI");
   if (status.gemini_compatible) parts.push("Gemini");
+  if (status.anthropic_compatible !== false) parts.push("Anthropic");
   if (status.proxy_mode === "ollama") parts.push("Ollama");
   else if (status.proxy_mode && status.proxy_mode !== "none") parts.push(status.proxy_mode);
   return parts.length > 0 ? parts.join(" · ") : "Not configured";
@@ -420,6 +442,40 @@ export function AiGatewayView() {
                     </Button>
                   </div>
 
+                  {/* Anthropic Claude Ingress */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border border-border/60 bg-muted/20">
+                    <div>
+                      <div className="text-xs font-semibold text-foreground flex items-center gap-2">
+                        <span>Anthropic Claude Native Ingress</span>
+                        <Badge variant="outline" className="text-[10px] py-0 px-1 font-mono text-amber-600 dark:text-amber-400 border-amber-500/30">
+                          ANTHROPIC v1 / MESSAGES
+                        </Badge>
+                      </div>
+                      <code className="text-xs text-amber-600 dark:text-amber-400 font-mono block mt-0.5 font-semibold">
+                        {origin}/v1
+                      </code>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1 self-start sm:self-center shrink-0"
+                      onClick={() => copyText(`${origin}/v1`, "anthropic-base-url")}
+                    >
+                      {copiedEndpoint === "anthropic-base-url" ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          Copy Anthropic URL
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
                   {/* Regional Edge Mesh Ingress */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border border-primary/20 bg-primary/5">
                     <div>
@@ -484,9 +540,15 @@ export function AiGatewayView() {
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge variant="success">OpenAI-compatible</Badge>
-                  <Badge variant="secondary">Gemini-compatible</Badge>
-                  <Badge variant="outline">Anthropic-compatible</Badge>
+                  <Badge variant="success" className="gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-medium">
+                    <CheckCircle2 className="h-3 w-3" /> OpenAI-compatible
+                  </Badge>
+                  <Badge variant="success" className="gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-medium">
+                    <CheckCircle2 className="h-3 w-3" /> Gemini-compatible
+                  </Badge>
+                  <Badge variant="success" className="gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-medium">
+                    <CheckCircle2 className="h-3 w-3" /> Anthropic-compatible
+                  </Badge>
                 </div>
               </CardContent>
             </Card>

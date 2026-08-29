@@ -3258,6 +3258,7 @@ export interface ApiGatewayStatus {
   status: string;
   openai_compatible: boolean;
   gemini_compatible: boolean;
+  anthropic_compatible?: boolean;
   requests_today: number;
   blocked_today: number;
   endpoints: string[];
