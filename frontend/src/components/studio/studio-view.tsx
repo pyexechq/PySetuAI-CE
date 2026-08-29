@@ -123,18 +123,96 @@ export function StudioView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <Button
-            key={id}
-            variant={tab === id ? "default" : "outline"}
-            onClick={() => setTab(id)}
-            className="gap-2"
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </Button>
-        ))}
+      {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2.5 max-w-xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Zero-Production Impact Sandbox
+              </Badge>
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-xs font-medium gap-1">
+                <Beaker className="h-3.5 w-3.5 text-primary" />
+                Multi-Protocol Simulator
+              </Badge>
+              <Badge variant="outline" className="bg-muted text-muted-foreground border-border/60 text-xs font-mono">
+                Sub-1ms Evaluation
+              </Badge>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              Governance Sandbox & Testing Studio
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Safely test prompt guardrails, cross-protocol payload translations, OPA Rego rule triggers, and MCP tool execution chains without touching live production traffic.
+            </p>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 shrink-0">
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Active Rules</span>
+                <Shield className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-foreground">{totalRules}</p>
+              <p className="text-[10px] text-muted-foreground">In policy tree</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Matched Rules</span>
+                <ScanSearch className="h-3.5 w-3.5 text-amber-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-amber-600 dark:text-amber-400">{matchedRules}</p>
+              <p className="text-[10px] text-muted-foreground">Triggered in test</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Ingress Keys</span>
+                <Sparkles className="h-3.5 w-3.5 text-blue-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-foreground">{apiKeys.length}</p>
+              <p className="text-[10px] text-muted-foreground">Available bindings</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">MCP Servers</span>
+                <Plug className="h-3.5 w-3.5 text-purple-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-foreground">{mcpServers.length}</p>
+              <p className="text-[10px] text-muted-foreground">Governed tool hosts</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Navigation Tabs ──────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-card/60 border border-border/50 shadow-xs">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={cn(
+                "flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                tab === id
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === "prompt" && <PromptLabTab />}

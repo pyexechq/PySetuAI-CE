@@ -265,61 +265,78 @@ export function QADashboardView() {
 
   return (
     <div className="space-y-6">
-      {/* KPI row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Card className="border-border/60 bg-card/50">
-          <CardContent className="flex items-center gap-4 p-5">
-            <ProgressRing value={overview?.overall_pass_rate ?? 0} />
-            <div>
-              <p className="text-sm text-muted-foreground">Pass Rate</p>
-              <p className="text-xl font-bold">{overview?.overall_pass_rate ?? 0}%</p>
+      {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-5">
+            <div className="shrink-0">
+              <ProgressRing value={overview?.overall_pass_rate ?? 0} size={84} />
             </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/60 bg-card/50">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 text-emerald-400">
-              <CheckCircle2 className="h-4 w-4" />
-              <p className="text-sm text-muted-foreground">Passed</p>
+            <div className="space-y-2.5 max-w-xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Automated QA Runner Active
+                </Badge>
+                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-xs font-medium gap-1">
+                  <ClipboardCheck className="h-3.5 w-3.5 text-primary" />
+                  Release Gate: {cycle?.release_decision?.replace("_", " ") ?? "Pending"}
+                </Badge>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+                QA & Test Verification Command
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                Track real-time automated test cycles, test matrix execution, regression coverage, and S1/S2 defect blockers across all platform features.
+              </p>
             </div>
-            <p className="mt-1 text-2xl font-bold">{cycle?.passed_cases ?? 0}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/60 bg-card/50">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 text-red-400">
-              <XCircle className="h-4 w-4" />
-              <p className="text-sm text-muted-foreground">Failed</p>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 shrink-0">
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Passed</span>
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-emerald-600 dark:text-emerald-400">{cycle?.passed_cases ?? 0}</p>
+              <p className="text-[10px] text-muted-foreground">Test cases</p>
             </div>
-            <p className="mt-1 text-2xl font-bold">{cycle?.failed_cases ?? 0}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/60 bg-card/50">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 text-orange-400">
-              <ShieldAlert className="h-4 w-4" />
-              <p className="text-sm text-muted-foreground">Open Defects</p>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Failed</span>
+                <XCircle className="h-3.5 w-3.5 text-rose-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-rose-600 dark:text-rose-400">{cycle?.failed_cases ?? 0}</p>
+              <p className="text-[10px] text-muted-foreground">Requires fix</p>
             </div>
-            <p className="mt-1 text-2xl font-bold">{overview?.total_open_defects ?? 0}</p>
-            {(overview?.s1_open_defects ?? 0) > 0 && (
-              <p className="text-xs text-red-400">{overview?.s1_open_defects} S1 critical</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="border-border/60 bg-card/50">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2">
-              <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Release Gate</p>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Open Defects</span>
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-amber-600 dark:text-amber-400">{overview?.total_open_defects ?? 0}</p>
+              <p className="text-[10px] text-muted-foreground">{overview?.s1_open_defects ?? 0} S1 critical</p>
             </div>
-            <Badge
-              className="mt-2"
-              variant={releaseApproved ? "success" : releaseBlocked ? "destructive" : "warning"}
-            >
-              {cycle?.release_decision?.replace("_", " ") ?? "pending"}
-            </Badge>
-          </CardContent>
-        </Card>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Release Gate</span>
+                <ClipboardCheck className="h-3.5 w-3.5 text-blue-500" />
+              </div>
+              <p className="mt-1.5 text-sm font-bold capitalize text-foreground">
+                {cycle?.release_decision?.replace("_", " ") ?? "Pending"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Active cycle gate</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Active cycle bar */}
@@ -428,12 +445,27 @@ export function QADashboardView() {
       </Card>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-border/60 pb-2">
-        {(["overview", "cases", "defects"] as Tab[]).map((t) => (
-          <Button key={t} variant={tab === t ? "default" : "ghost"} size="sm" onClick={() => setTab(t)}>
-            {t === "overview" ? "Overview" : t === "cases" ? "Test Cases" : "Defects"}
-          </Button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-card/60 border border-border/50 shadow-xs">
+          {[
+            { id: "overview", label: "Cycle Overview & Readiness" },
+            { id: "cases", label: `Test Cases (${cycle?.total_cases ?? 0})` },
+            { id: "defects", label: `Defect Tracking (${overview?.total_open_defects ?? 0})` },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id as any)}
+              className={cn(
+                "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                tab === t.id
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === "overview" && (

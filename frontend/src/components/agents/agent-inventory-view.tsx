@@ -50,34 +50,90 @@ function AgentInventoryViewInner() {
 
   return (
     <div className="space-y-6">
-      <div className="flex w-full items-center justify-between border-b border-border/60 pb-4">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
+      {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2.5 max-w-xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Fleet EDR Mesh Active
+              </Badge>
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-xs font-medium gap-1">
+                <Bot className="h-3.5 w-3.5 text-primary" />
+                Zero-Trust Agent Discovery
+              </Badge>
+              <Badge variant="outline" className="bg-muted text-muted-foreground border-border/60 text-xs font-mono">
+                Local Sandbox Enforced
+              </Badge>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              Agent Fleet & Endpoint Inventory
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Track, govern, and enforce real-time DLP boundaries on all autonomous AI desktop agents, browser extensions, IDE copilots, and developer workstations.
+            </p>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid grid-cols-2 gap-3 shrink-0">
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Agents</span>
+                <Bot className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-foreground">{agents.length}</p>
+              <p className="text-[10px] text-muted-foreground">Discovered entities</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Endpoints</span>
+                <Monitor className="h-3.5 w-3.5 text-cyan-500" />
+              </div>
+              <p className="mt-1.5 text-xl font-bold text-foreground">{endpoints.length}</p>
+              <p className="text-[10px] text-muted-foreground">Monitored machines</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Navigation Action Bar ────────────────────────────────────────────── */}
+      <div className="flex w-full flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-card/60 border border-border/50 shadow-xs">
+          <button
             onClick={() => setActiveTab("agents")}
             className={cn(
-              "relative h-9 rounded-md px-4 py-2 text-sm font-medium transition-colors hover:text-primary",
-              activeTab === "agents" ? "bg-muted text-primary" : "text-muted-foreground hover:bg-muted/50"
+              "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all",
+              activeTab === "agents"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Discovered Agents
-          </Button>
-          <Button
-            variant="ghost"
+            Discovered AI Agents ({agents.length})
+          </button>
+          <button
             onClick={() => setActiveTab("endpoints")}
             className={cn(
-              "relative h-9 rounded-md px-4 py-2 text-sm font-medium transition-colors hover:text-primary",
-              activeTab === "endpoints" ? "bg-muted text-primary" : "text-muted-foreground hover:bg-muted/50"
+              "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all",
+              activeTab === "endpoints"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Endpoints
-          </Button>
+            Protected Endpoints ({endpoints.length})
+          </button>
         </div>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Download Agents
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8">
+              <Download className="h-3.5 w-3.5" />
+              Download Agent Binaries
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

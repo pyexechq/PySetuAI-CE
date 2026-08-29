@@ -15,14 +15,9 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  api,
-  type ApiCopilotConnector,
-  type ApiCopilotDrift,
-  type ApiCopilotInstance,
-  type ApiCopilotSummary,
-} from "@/lib/api";
+import { api, type ApiCopilotConnector, type ApiCopilotDrift, type ApiCopilotInstance, type ApiCopilotSummary } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
+import { cn } from "@/lib/utils";
 
 type Tab = "instances" | "connectors" | "drift";
 
@@ -149,72 +144,109 @@ function CopilotGovernanceViewInner() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-          <Card className="border-border/60 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Bot className="h-3.5 w-3.5" /> Instances
+      {/* ─── Hero Glassmorphic Telemetry Ribbon ───────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card/90 to-muted/30 p-6 shadow-sm">
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-blue-600/10 blur-3xl pointer-events-none" />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2.5 max-w-xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold gap-1.5 px-2.5 py-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                M365 & Copilot Studio Guard Active
+              </Badge>
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-xs font-medium gap-1">
+                <Bot className="h-3.5 w-3.5 text-primary" />
+                Graph API Token Sandbox
+              </Badge>
+              <Badge variant="outline" className="bg-muted text-muted-foreground border-border/60 text-xs font-mono">
+                Zero Over-Permissioning
+              </Badge>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              Microsoft Copilot & M365 Governance
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Discover and govern Microsoft 365 Copilot plugins, Power Platform connectors, SharePoint/OneDrive over-permissioning risks, and tenant configuration drift.
+            </p>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 shrink-0">
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Copilot Instances</span>
+                <Bot className="h-3.5 w-3.5 text-primary" />
               </div>
-              <p className="mt-1 text-2xl font-semibold">{s.instances_total}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Cable className="h-3.5 w-3.5" /> Connectors
+              <p className="mt-1.5 text-xl font-bold text-foreground">{s.instances_total}</p>
+              <p className="text-[10px] text-muted-foreground">Studio & Office</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Connectors</span>
+                <Cable className="h-3.5 w-3.5 text-blue-500" />
               </div>
-              <p className="mt-1 text-2xl font-semibold">{s.connectors_total}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> High-risk
+              <p className="mt-1.5 text-xl font-bold text-blue-600 dark:text-blue-400">{s.connectors_total}</p>
+              <p className="text-[10px] text-muted-foreground">External plugins</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">High Risk</span>
+                <ShieldAlert className="h-3.5 w-3.5 text-rose-500" />
               </div>
-              <p className="mt-1 text-2xl font-semibold">{s.high_risk_instances + s.high_risk_connectors}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Workflow className="h-3.5 w-3.5 text-amber-500" /> Open drift
+              <p className="mt-1.5 text-xl font-bold text-rose-600 dark:text-rose-400">{s.high_risk_instances + s.high_risk_connectors}</p>
+              <p className="text-[10px] text-muted-foreground">Over-permissioned</p>
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-card/80 p-3.5 shadow-xs backdrop-blur-sm min-w-[130px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Security Drift</span>
+                <Workflow className="h-3.5 w-3.5 text-amber-500" />
               </div>
-              <p className="mt-1 text-2xl font-semibold">{s.open_drift}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 bg-card/50">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> Critical drift
-              </div>
-              <p className="mt-1 text-2xl font-semibold">{s.by_severity.critical ?? 0}</p>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleCaptureBaseline} disabled={baselining}>
-            {baselining ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            Capture Baseline
-          </Button>
-          <Button size="sm" onClick={handleSync} disabled={syncing}>
-            {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Sync
-          </Button>
+              <p className="mt-1.5 text-xl font-bold text-amber-600 dark:text-amber-400">{s.open_drift}</p>
+              <p className="text-[10px] text-muted-foreground">Baseline mismatches</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            variant={activeTab === tab.id ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
+      {/* ─── Navigation Action Bar ────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-card/60 border border-border/50 shadow-xs">
+          {[
+            { id: "instances", label: "Copilot Instances & Plugins" },
+            { id: "connectors", label: "Enterprise Connectors & Graph" },
+            { id: "drift", label: `Configuration Drift (${s.open_drift})` },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={cn(
+                "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                activeTab === tab.id
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={handleSync} disabled={syncing}>
+            {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Sync M365 Tenant
           </Button>
-        ))}
+          <Button size="sm" className="gap-1.5 text-xs h-8" onClick={handleCaptureBaseline} disabled={baselining}>
+            {baselining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+            Compute Baseline
+          </Button>
+        </div>
       </div>
 
       {activeTab === "instances" && (
